@@ -50,7 +50,7 @@ mac:
   target:
     - target: dmg
       arch:
-        - universal
+        - x64
   icon: resources/icon-source.png
   category: public.app-category.developer-tools
   artifactName: Marketing-IDE-Setup-macOS.${ext}

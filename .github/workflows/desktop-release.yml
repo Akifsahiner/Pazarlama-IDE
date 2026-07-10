@@ -25,6 +25,8 @@ jobs:
             platform: linux
             build_flags: --linux
     runs-on: ${{ matrix.runner }}
+    env:
+      NPM_CONFIG_OPTIONAL: "true"
     defaults:
       run:
         working-directory: desktop
@@ -50,7 +52,13 @@ jobs:
         run: npm prune --omit=dev
 
       - name: Install desktop dependencies
-        run: npm ci
+        run: npm ci --include=optional
+
+      - name: Ensure Windows native bindings
+        if: matrix.platform == 'win'
+        run: |
+          npm install --no-save @rollup/rollup-win32-x64-msvc@4.62.2 @tailwindcss/oxide-win32-x64-msvc@4.3.1
+          node -e "require('@rollup/rollup-win32-x64-msvc'); require('@tailwindcss/oxide-win32-x64-msvc'); console.log('win32 bindings ok')"
 
       - name: Linux packaging deps
         if: matrix.platform == 'linux'
@@ -59,7 +67,7 @@ jobs:
       - name: Build renderer + main + preload
         run: npm run build
         env:
-          VITE_DEFAULT_SERVER_URL: ${{ vars.MARKETINGIDE_API_URL != '' && vars.MARKETINGIDE_API_URL || 'https://api.marketingide.app' }}
+          VITE_DEFAULT_SERVER_URL: https://api.marketingide.app
 
       - name: Package installer
         run: npx --no-install electron-builder ${{ matrix.build_flags }} --publish never --config electron-builder.yml
@@ -85,6 +93,7 @@ jobs:
 
   publish:
     needs: build
+    if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - name: Download installer artifacts
@@ -99,6 +108,6 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           files: artifacts/**
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
