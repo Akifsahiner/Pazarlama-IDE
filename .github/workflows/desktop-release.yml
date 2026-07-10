@@ -57,8 +57,8 @@ jobs:
       - name: Ensure Windows native bindings
         if: matrix.platform == 'win'
         run: |
-          npm install --no-save @rollup/rollup-win32-x64-msvc@4.62.2 @tailwindcss/oxide-win32-x64-msvc@4.3.1
-          node -e "require('@rollup/rollup-win32-x64-msvc'); require('@tailwindcss/oxide-win32-x64-msvc'); console.log('win32 bindings ok')"
+          npm install --no-save @rollup/rollup-win32-x64-msvc@4.62.2 @tailwindcss/oxide-win32-x64-msvc@4.3.1 lightningcss-win32-x64-msvc@1.32.0
+          node -e "require('@rollup/rollup-win32-x64-msvc'); require('@tailwindcss/oxide-win32-x64-msvc'); require('lightningcss-win32-x64-msvc'); console.log('win32 bindings ok')"
 
       - name: Linux packaging deps
         if: matrix.platform == 'linux'
