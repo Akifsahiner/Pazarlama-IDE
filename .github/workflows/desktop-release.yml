@@ -50,12 +50,7 @@ jobs:
         run: npm prune --omit=dev
 
       - name: Install desktop dependencies
-        shell: bash
-        run: |
-          npm ci
-          if [ "${{ matrix.platform }}" = "win" ]; then
-            npm install --no-save @rollup/rollup-win32-x64-msvc
-          fi
+        run: npm ci
 
       - name: Linux packaging deps
         if: matrix.platform == 'linux'
@@ -69,6 +64,7 @@ jobs:
       - name: Package installer
         run: npx --no-install electron-builder ${{ matrix.build_flags }} --publish never --config electron-builder.yml
         env:
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.platform == 'mac' && 'false' || 'true' }}
           CSC_LINK: ${{ matrix.platform == 'win' && secrets.WIN_CSC_LINK || (matrix.platform == 'mac' && secrets.MAC_CSC_LINK || '') }}
           CSC_KEY_PASSWORD: ${{ matrix.platform == 'win' && secrets.WIN_CSC_KEY_PASSWORD || (matrix.platform == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || '') }}
           APPLE_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_ID || '' }}
