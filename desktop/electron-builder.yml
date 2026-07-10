@@ -54,7 +54,7 @@ mac:
   icon: resources/icon-source.png
   category: public.app-category.developer-tools
   artifactName: Marketing-IDE-Setup-macOS.${ext}
-  hardenedRuntime: true
+  hardenedRuntime: false
   gatekeeperAssess: false
   # Notarization: APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID in CI secrets.
 

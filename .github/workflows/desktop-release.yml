@@ -35,7 +35,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: "20"
 
       - name: Install server dependencies
         working-directory: server
@@ -45,8 +45,17 @@ jobs:
         working-directory: server
         run: npm run build
 
+      - name: Prune server for packaging
+        working-directory: server
+        run: npm prune --omit=dev
+
       - name: Install desktop dependencies
-        run: npm ci
+        shell: bash
+        run: |
+          npm ci
+          if [ "${{ matrix.platform }}" = "win" ]; then
+            npm install --no-save @rollup/rollup-win32-x64-msvc
+          fi
 
       - name: Linux packaging deps
         if: matrix.platform == 'linux'
@@ -55,14 +64,45 @@ jobs:
       - name: Build renderer + main + preload
         run: npm run build
         env:
-          VITE_DEFAULT_SERVER_URL: ${{ vars.MARKETINGIDE_API_URL || 'https://api.marketingide.app' }}
+          VITE_DEFAULT_SERVER_URL: ${{ vars.MARKETINGIDE_API_URL != '' && vars.MARKETINGIDE_API_URL || 'https://api.marketingide.app' }}
 
-      - name: Package and publish
-        run: npx --no-install electron-builder ${{ matrix.build_flags }} --publish always --config electron-builder.yml
+      - name: Package installer
+        run: npx --no-install electron-builder ${{ matrix.build_flags }} --publish never --config electron-builder.yml
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ matrix.platform == 'win' && secrets.WIN_CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.platform == 'win' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+          CSC_LINK: ${{ matrix.platform == 'win' && secrets.WIN_CSC_LINK || (matrix.platform == 'mac' && secrets.MAC_CSC_LINK || '') }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'win' && secrets.WIN_CSC_KEY_PASSWORD || (matrix.platform == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || '') }}
           APPLE_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_ID || '' }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_TEAM_ID || '' }}
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.dmg
+            desktop/dist/*.AppImage
+            desktop/dist/latest*.yml
+            desktop/dist/*.blockmap
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download installer artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          files: artifacts/**
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
