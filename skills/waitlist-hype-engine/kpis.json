@@ -1,0 +1,27 @@
+[
+  {
+    "name": "waitlist_signups_with_referral_rate",
+    "definition": "Percentage of waitlist signups who complete at least one referral share (click tracked on share button or unique referral link generated).",
+    "target_hint": "25–40% is healthy for a well-designed referral loop. <15% means the share UX or reward is broken."
+  },
+  {
+    "name": "waitlist_viral_coefficient",
+    "definition": "Average number of new signups generated per existing signup via referral links (K-factor). Calculated as (referrals sent × conversion rate on referral link).",
+    "target_hint": "K > 0.4 indicates organic growth potential; K > 1.0 means exponential waitlist growth. Below 0.2, redesign the loop before scaling traffic."
+  },
+  {
+    "name": "waitlist_to_activation_rate",
+    "definition": "Percentage of waitlist signups who complete onboarding (first meaningful action) within 7 days of launch access.",
+    "target_hint": "40–60% for B2B SaaS with a clear ICP. <25% suggests waitlist attracted wrong audience or onboarding fails message match."
+  },
+  {
+    "name": "waitlist_growth_week_over_week",
+    "definition": "Net new waitlist signups divided by total signups at start of week, expressed as a percentage.",
+    "target_hint": "15–30% WoW during active hype phase. Flat or declining for 2+ weeks means the hype engine needs a new wave (milestone, teaser, cohort invite)."
+  },
+  {
+    "name": "referral_driven_signup_share",
+    "definition": "Percentage of total waitlist signups attributed to referral links (not direct or paid traffic).",
+    "target_hint": "35–55% referral share indicates a working loop. <20% means you're relying on founder hustle, not systemized hype."
+  }
+]

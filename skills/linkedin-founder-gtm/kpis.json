@@ -1,0 +1,27 @@
+[
+  {
+    "name": "linkedin_icp_engagement_rate",
+    "definition": "Comments and DMs from profiles matching target titles (e.g. VP, Head of, Director in ICP function) divided by total post impressions, per post average over 30 days.",
+    "target_hint": "0.5–1.5% ICP engagement rate indicates content resonates with buyers. <0.2% means you're reaching the wrong audience or hooks aren't landing."
+  },
+  {
+    "name": "linkedin_dm_conversations_started",
+    "definition": "Number of new DM threads initiated by ICP-matching profiles per month (inbound) plus outbound DMs that receive a reply.",
+    "target_hint": "15–40 qualified DM conversations/month for an active founder GTM motion. 5+ that convert to demo or trial is strong for early stage."
+  },
+  {
+    "name": "linkedin_profile_to_landing_clicks",
+    "definition": "Clicks from LinkedIn bio link or post CTAs to landing page or booking link, tracked via UTM.",
+    "target_hint": "2–5% of post impressions should click through on CTA posts. Text-only posts: 0.3–1%. Carousel with CTA slide: 3–8%."
+  },
+  {
+    "name": "linkedin_follower_growth_icp_ratio",
+    "definition": "Percentage of net new followers in 30 days whose titles/industries match ICP (manual sample or Sales Navigator filter).",
+    "target_hint": "60%+ ICP ratio means you're building the right audience. <30% means content is going viral with non-buyers."
+  },
+  {
+    "name": "linkedin_content_to_pipeline",
+    "definition": "Qualified opportunities (demo booked, trial started, or SQL) attributed to LinkedIn touchpoint within 30 days of first engagement.",
+    "target_hint": "3–8 pipeline events/month from LinkedIn alone is realistic for B2B SaaS founder posting 3×/week. Track with 'How did you hear about us?' and UTM."
+  }
+]

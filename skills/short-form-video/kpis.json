@@ -1,0 +1,27 @@
+[
+  {
+    "name": "short_form_hook_retention_rate",
+    "definition": "Percentage of viewers who watch past 3 seconds (hook hold). Calculated as 3-second views divided by impressions.",
+    "target_hint": "45–65% hook retention is strong for cold audience. <35% means rewrite the first 1–3 seconds — try contrarian claim, number, or pattern interrupt."
+  },
+  {
+    "name": "short_form_completion_rate",
+    "definition": "Percentage of viewers who watch to 80%+ of video length.",
+    "target_hint": "25–40% completion for 30–45 sec videos. <15% means middle sags — cut fluff, add pattern interrupt at 50%, or shorten total length."
+  },
+  {
+    "name": "short_form_profile_click_rate",
+    "definition": "Profile visits or bio link clicks divided by video views, per post average.",
+    "target_hint": "1–3% click rate indicates CTA and caption are working. <0.5% means weak end CTA or bio link doesn't match video promise."
+  },
+  {
+    "name": "short_form_signup_attribution",
+    "definition": "Signups or trials with UTM source tiktok/instagram/youtube_shorts or landing page 'How did you hear about us?' = short-form video.",
+    "target_hint": "B2B: 5–20 signups/month from consistent 3×/week posting. B2C/mobile: 50–200+ possible with viral hits. Track weekly to identify winning formats."
+  },
+  {
+    "name": "short_form_format_win_rate",
+    "definition": "Percentage of videos in a format batch (e.g. 'founder talking head') that exceed channel median views by 2×.",
+    "target_hint": "After 20 videos, one format should show 30%+ win rate. Double down on that format; retire bottom quartile hooks."
+  }
+]

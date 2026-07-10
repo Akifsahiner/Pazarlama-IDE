@@ -14,7 +14,7 @@ export function GhostButton({ label, href = "#", onLight = false }: GhostButtonP
 
   const className = `inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-[15px] font-medium tracking-[-0.01em] transition-colors duration-200 ${
     onLight
-      ? "border-zinc-300 text-[#263043] hover:bg-zinc-100"
+      ? "border-line text-ink hover:bg-surface-2"
       : "border-white/30 text-white hover:bg-white/10"
   }`;
 

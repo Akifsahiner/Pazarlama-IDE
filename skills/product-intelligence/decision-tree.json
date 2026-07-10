@@ -1,0 +1,30 @@
+{
+  "root": "has_readme_and_routes",
+  "nodes": {
+    "has_readme_and_routes": {
+      "q": "Have you read README + enumerated primary routes?",
+      "yes": "has_evidence_backed_value_prop",
+      "no": "OUTPUT:read-readme-and-routes-first"
+    },
+    "has_evidence_backed_value_prop": {
+      "q": "Can you state one-liner + audience with file/quote evidence?",
+      "yes": "has_icp_specificity",
+      "no": "OUTPUT:derive-value-prop-from-landing-copy"
+    },
+    "has_icp_specificity": {
+      "q": "Is ICP a named role + company stage + trigger (not 'early adopters')?",
+      "yes": "has_competitive_wedge",
+      "no": "OUTPUT:rewrite-icp-with-jtbd"
+    },
+    "has_competitive_wedge": {
+      "q": "Are 2+ competitors named with a single differentiated axis?",
+      "yes": "has_pricing_signal",
+      "no": "OUTPUT:add-competitor-wedge-table"
+    },
+    "has_pricing_signal": {
+      "q": "Is pricing model or tier structure documented or flagged as gap?",
+      "yes": "OUTPUT:emit-product-profile",
+      "no": "OUTPUT:flag-pricing-gap-and-continue"
+    }
+  }
+}

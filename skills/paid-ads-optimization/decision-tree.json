@@ -1,0 +1,20 @@
+{
+  "root": "has_conversion_tracking",
+  "nodes": {
+    "has_conversion_tracking": {
+      "q": "Are pixel + conversion events firing correctly?",
+      "yes": "has_offer_angle",
+      "no": "OUTPUT:fix-tracking-before-spend"
+    },
+    "has_offer_angle": {
+      "q": "Is there one testable offer angle (outcome + audience)?",
+      "yes": "budget_defined",
+      "no": "OUTPUT:write-hypothesis-sheet"
+    },
+    "budget_defined": {
+      "q": "Is daily budget set with kill rules (CPA ceiling)?",
+      "yes": "OUTPUT:launch-creative-test",
+      "no": "OUTPUT:set-budget-and-kill-rules"
+    }
+  }
+}

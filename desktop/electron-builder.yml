@@ -1,0 +1,75 @@
+appId: com.marketingide.app
+productName: Marketing IDE
+copyright: Copyright © 2026 Marketing IDE
+
+directories:
+  output: dist
+  buildResources: resources
+
+files:
+  - "out/**/*"
+  - "package.json"
+
+# Bundle the marketing/sales skills (authored at repo root) so the Local Agent
+# Host can install them into each run worktree's .claude/skills at runtime.
+extraResources:
+  - from: "../skills"
+    to: "skills"
+  - from: "../server/dist"
+    to: "server/dist"
+    filter:
+      - "**/*"
+  - from: "../server/package.json"
+    to: "server/package.json"
+  - from: "../server/node_modules"
+    to: "server/node_modules"
+    filter:
+      - "**/*"
+
+asar: true
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icon.ico
+  executableName: Marketing IDE
+  artifactName: Marketing-IDE-Setup-Windows.${ext}
+  # Code signing: set CSC_LINK + CSC_KEY_PASSWORD in release CI secrets (desktop-release.yml).
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Marketing IDE
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - universal
+  icon: resources/icon-source.png
+  category: public.app-category.developer-tools
+  artifactName: Marketing-IDE-Setup-macOS.${ext}
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  # Notarization: APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID in CI secrets.
+
+linux:
+  target:
+    - AppImage
+  icon: resources/icon-source.png
+  category: Development
+  artifactName: Marketing-IDE-Setup-Linux.${ext}
+  maintainer: Akifsahiner
+
+publish:
+  provider: github
+  owner: Akifsahiner
+  repo: Pazarlama-IDE
+  releaseType: release
+
+npmRebuild: false

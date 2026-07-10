@@ -1,0 +1,30 @@
+{
+  "root": "has_launch_thesis",
+  "nodes": {
+    "has_launch_thesis": {
+      "q": "Can you state the launch goal as a single dated, numeric KPI (e.g. '500 signups by Friday')?",
+      "yes": "has_reachable_audience",
+      "no": "OUTPUT:define-primary-metric-first"
+    },
+    "has_reachable_audience": {
+      "q": "Do you have direct access to >5,000 warm contacts (list + social + community combined)?",
+      "yes": "have_30_days_runway",
+      "no": "OUTPUT:run-pre-launch-audience-build-first"
+    },
+    "have_30_days_runway": {
+      "q": "Do you have at least 14 days before the launch date for prep?",
+      "yes": "should_lead_with_PH",
+      "no": "OUTPUT:compress-to-3-channel-blitz"
+    },
+    "should_lead_with_PH": {
+      "q": "Is your product a horizontal tool that benefits from maker/early-adopter audience?",
+      "yes": "OUTPUT:30-day-PH-led-plan",
+      "no": "press_or_community_lead"
+    },
+    "press_or_community_lead": {
+      "q": "Do you have a journalist relationship or a vertical community where ICP concentrates?",
+      "yes": "OUTPUT:30-day-press-or-community-led-plan",
+      "no": "OUTPUT:run-content-led-soft-launch"
+    }
+  }
+}

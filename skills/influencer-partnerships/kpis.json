@@ -1,0 +1,27 @@
+[
+  {
+    "name": "influencer_cpa_qualified_signup",
+    "definition": "Total partnership spend divided by qualified signups (ICP-matching email domain or self-reported role) attributed via UTM or promo code within 14 days of post.",
+    "target_hint": "B2B SaaS: $15–$80 CPA for qualified signup is strong. >$150 means wrong creator or weak brief/landing page match."
+  },
+  {
+    "name": "influencer_engagement_rate",
+    "definition": "Comments + shares + saves divided by reach (or views) on sponsored content, compared to creator's organic average.",
+    "target_hint": "Sponsored post within 70% of organic engagement rate indicates authentic fit. <40% suggests audience mismatch or overly salesy brief."
+  },
+  {
+    "name": "influencer_trial_to_paid_rate",
+    "definition": "Percentage of trial or signup attributions from influencer traffic that convert to paid within 30 days.",
+    "target_hint": "8–20% for product-led B2B. <5% means traffic is curious but not buyer-intent — revisit creator selection or offer."
+  },
+  {
+    "name": "influencer_referral_traffic_share",
+    "definition": "Percentage of total new signups in campaign window attributed to influencer/creator partnerships.",
+    "target_hint": "20–40% share during active partnership sprint indicates partnerships are a real channel, not a side experiment."
+  },
+  {
+    "name": "creator_renewal_rate",
+    "definition": "Percentage of creators who complete a second campaign within 90 days of first.",
+    "target_hint": "50%+ renewal rate means you're finding fit and treating partners well. <25% means one-off spray-and-pray."
+  }
+]

@@ -1,0 +1,27 @@
+[
+  {
+    "name": "claim_evidence_ratio",
+    "definition": "Number of product claims with file/route/quote citations divided by total claims in the profile.",
+    "target_hint": "≥0.85 before downstream copy skills run. Below 0.7 = re-inspect README and landing routes."
+  },
+  {
+    "name": "icp_specificity_score",
+    "definition": "Manual rubric 1–5: 5 = named role + stage + trigger + budget; 1 = generic persona label only.",
+    "target_hint": "≥4 for outbound-ready profiles. Score 2 triggers ICP rewrite."
+  },
+  {
+    "name": "competitive_wedge_clarity",
+    "definition": "Percent of named competitors with a single-axis win statement (speed, price, workflow, compliance, etc.).",
+    "target_hint": "100% of listed competitors. Missing wedge blocks positioning decisions."
+  },
+  {
+    "name": "route_coverage",
+    "definition": "Share of discovered public routes categorized (marketing, app, docs, auth, other).",
+    "target_hint": "≥80% categorized. Uncategorized routes may hide core value props."
+  },
+  {
+    "name": "pricing_signal_present",
+    "definition": "Binary: pricing model documented from repo or explicitly flagged as gap.",
+    "target_hint": "Must be true or gap flagged before paid ads or enterprise outreach tasks."
+  }
+]

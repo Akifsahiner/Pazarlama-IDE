@@ -1,68 +1,44 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import {
-  dividerSpring,
-  getWordDelay,
-  subheadFade,
-  wordRevealSpring,
-} from "@/lib/animations";
 import { heroCopy } from "@/lib/tokens";
-
-const words = heroCopy.headline.split(" ");
 
 export function HeroHeadline() {
   const reducedMotion = useReducedMotion() ?? false;
+  const ease = [0.22, 1, 0.36, 1] as const;
 
   return (
     <div className="flex flex-col items-center gap-6 text-center">
-      <motion.span
-        className="rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-semibold tracking-[0.14em] text-white/90 uppercase backdrop-blur-sm"
+      <motion.div
+        className="relative flex items-center justify-center"
         initial={reducedMotion ? false : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={reducedMotion ? { duration: 0 } : { duration: 0.5 }}
+        transition={{ duration: 0.5, ease }}
       >
-        {heroCopy.eyebrow}
-      </motion.span>
+        <span className="eyebrow-glow eyebrow-glow--hero" aria-hidden="true" />
+        <span className="hero-eyebrow relative inline-flex items-center gap-2 rounded-full border border-white/36 bg-white/16 px-3.5 py-1.5 text-[12px] tracking-[0.14em] uppercase shadow-[0_4px_24px_rgba(8,48,96,0.16)] backdrop-blur-xl">
+          <span className="size-1.5 shrink-0 rounded-full bg-white/90 shadow-[0_0_8px_rgba(255,255,255,0.6)]" aria-hidden="true" />
+          {heroCopy.eyebrow}
+        </span>
+      </motion.div>
 
-      <h1 className="max-w-[640px] font-serif text-[52px] leading-[1.0] font-medium tracking-[-1px] text-white sm:text-[64px] lg:text-[76px]">
-        {words.map((word, index) => {
-          const isAccent = word === heroCopy.accentWord;
-          return (
-            <span
-              key={`${word}-${index}`}
-              className="-mb-[0.22em] inline-block overflow-hidden pb-[0.22em] align-bottom"
-            >
-              <motion.span
-                className={`inline-block ${isAccent ? "text-[#ffb87a]" : ""}`}
-                initial={reducedMotion ? false : { y: "1.25em" }}
-                animate={{ y: 0 }}
-                transition={{
-                  ...wordRevealSpring,
-                  delay: getWordDelay(index, reducedMotion),
-                }}
-              >
-                {word}
-                {index < words.length - 1 ? "\u00A0" : ""}
-              </motion.span>
-            </span>
-          );
-        })}
-      </h1>
-
-      <motion.hr
-        className="hero-divider h-px w-80 max-w-full border-0 opacity-90"
-        initial={reducedMotion ? false : { scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={reducedMotion ? { duration: 0 } : dividerSpring}
-        style={{ transformOrigin: "center" }}
-      />
+      <motion.h1
+        className="hero-headline max-w-[18ch] font-serif text-[44px] leading-[1.05] font-medium tracking-[-0.02em] text-white sm:text-[60px] lg:text-[72px]"
+        initial={reducedMotion ? false : { opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.08, ease }}
+      >
+        {heroCopy.headlineLine1}
+        <br />
+        {heroCopy.headlineLine2Before}{" "}
+        <span className="font-medium text-white">{heroCopy.accentWord}</span>
+      </motion.h1>
 
       <motion.p
-        className="hero-subhead-shadow max-w-[540px] text-[17px] leading-[1.5] font-medium tracking-[-0.02em] text-white sm:text-[19px]"
-        variants={subheadFade}
-        initial="hidden"
-        animate="visible"
+        className="hero-subheadline max-w-[46ch] text-[17px] leading-[1.55] sm:text-[18px]"
+        initial={reducedMotion ? false : { opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.16, ease }}
       >
         {heroCopy.subheadline}
       </motion.p>

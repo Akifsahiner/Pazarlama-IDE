@@ -1,0 +1,243 @@
+/* Agent conversation markdown — Claude-adjacent rhythm on design tokens */
+
+.agent-prose {
+  max-width: 100%;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.agent-prose > *:first-child {
+  margin-top: 0;
+}
+
+.agent-prose > *:last-child {
+  margin-bottom: 0;
+}
+
+.agent-prose h1,
+.agent-prose h2,
+.agent-prose h3 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.agent-prose h1 {
+  font-size: 16px;
+  margin: 1em 0 0.5em;
+}
+
+.agent-prose h2 {
+  font-size: 15px;
+  margin: 1.25em 0 0.45em;
+}
+
+.agent-prose h3 {
+  font-size: 14px;
+  margin: 1em 0 0.35em;
+}
+
+.agent-prose p {
+  margin: 0.65em 0;
+}
+
+.agent-prose ul,
+.agent-prose ol {
+  margin: 0.5em 0;
+  padding-left: 1.35em;
+}
+
+.agent-prose li {
+  margin: 0.35em 0;
+}
+
+.agent-prose li > p {
+  margin: 0.2em 0;
+}
+
+.agent-prose strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.agent-prose em {
+  color: var(--text-2);
+}
+
+.agent-prose code:not(pre code) {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.92em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.agent-prose pre {
+  margin: 0.75em 0;
+  overflow-x: auto;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.agent-prose pre code {
+  display: block;
+  padding: 0.75em 1em;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: 1.55;
+  background: transparent;
+  border: none;
+}
+
+.agent-prose blockquote {
+  margin: 0.75em 0;
+  padding-left: 0.85em;
+  border-left: 3px solid var(--accent);
+  color: var(--text-2);
+}
+
+.agent-prose hr {
+  margin: 1em 0;
+  border: none;
+  border-top: 1px solid var(--line);
+}
+
+.agent-prose table {
+  width: 100%;
+  margin: 0.75em 0;
+  border-collapse: collapse;
+  font-size: 12px;
+  display: block;
+  overflow-x: auto;
+}
+
+.agent-prose th,
+.agent-prose td {
+  border: 1px solid var(--line);
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+
+.agent-prose th {
+  background: var(--surface-2);
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.agent-prose a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.agent-prose a:hover {
+  opacity: 0.9;
+}
+
+.agent-prose .md-code-block {
+  margin: 0.75em 0;
+  overflow: hidden;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.agent-prose .md-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding: 0.35rem 0.65rem;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+}
+
+.agent-prose .md-code-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--line);
+  padding: 0.15rem 0.45rem;
+  font-size: 10px;
+  color: var(--text-2);
+  transition: background 0.12s;
+}
+
+.agent-prose .md-code-copy:hover {
+  background: var(--elevated);
+  color: var(--text);
+}
+
+.agent-prose .md-code-body .shiki-root pre,
+.agent-prose .md-code-body .shiki-root .shiki-pre {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  background: transparent !important;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.agent-prose .md-code-body .shiki-fallback {
+  margin: 0;
+  padding: 0.75rem 1rem;
+}
+
+.shiki-root pre,
+.shiki-root .shiki-pre {
+  margin: 0;
+  background: transparent !important;
+}
+
+.shiki-root code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: inherit;
+}
+
+.shiki-fallback {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.agent-prose .streaming-fence {
+  margin: 0.75em 0;
+  padding: 0.75em 1em;
+  border-radius: var(--radius-md, 10px);
+  border: 1px dashed var(--line-2);
+  background: var(--surface-2);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-2);
+}
+
+.agent-prose.streaming-caret > :last-child::after,
+.agent-prose.streaming-caret .streaming-fence::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 0.95em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  animation: streaming-caret-pulse 1s ease-in-out infinite;
+}
+
+@keyframes streaming-caret-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}

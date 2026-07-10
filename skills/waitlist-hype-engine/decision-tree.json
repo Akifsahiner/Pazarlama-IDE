@@ -1,0 +1,20 @@
+{
+  "root": "has_waitlist_page",
+  "nodes": {
+    "has_waitlist_page": {
+      "q": "Is there a live waitlist page with referral mechanic?",
+      "yes": "referral_loop_wired",
+      "no": "OUTPUT:ship-waitlist-page-first"
+    },
+    "referral_loop_wired": {
+      "q": "Does confirm email include share copy + rank skip?",
+      "yes": "k_factor_baseline",
+      "no": "OUTPUT:wire-referral-emails"
+    },
+    "k_factor_baseline": {
+      "q": "Is K-factor tracked after first 100 signups?",
+      "yes": "OUTPUT:scale-traffic-waves",
+      "no": "OUTPUT:measure-k-before-spend"
+    }
+  }
+}

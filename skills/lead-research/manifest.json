@@ -1,0 +1,27 @@
+{
+  "id": "lead-research",
+  "name": "Lead Research & ICP Qualification",
+  "category": "lead_research",
+  "applies_when": {
+    "company_stage": ["idea", "prelaunch", "pre-launch", "launched", "growing", "scaling", "early", "growth"],
+    "channels_includes": ["linkedin", "email", "product_hunt", "twitter"],
+    "business_model": ["saas", "freemium", "agency", "tool", "marketplace"]
+  },
+  "do_not_use_when": {
+    "constraints_includes": ["no_outbound_allowed", "gdpr_no_prospecting", "stealth_mode"]
+  },
+  "required_inputs": [
+    "product_name",
+    "main_value_proposition",
+    "target_audience",
+    "competitors",
+    "company_stage"
+  ],
+  "output_schema": "lead_research_pack",
+  "primary_metric": "icp_fit_rate",
+  "playbook_selector": [
+    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
+    { "if": { "channels_includes": ["email"] }, "pick": "with-email-list" },
+    { "if": { "business_model": ["saas", "freemium", "tool"] }, "pick": "b2b-saas" }
+  ]
+}

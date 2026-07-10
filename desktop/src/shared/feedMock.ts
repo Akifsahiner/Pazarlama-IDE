@@ -1,0 +1,86 @@
+import type { FeedItem } from "./feed";
+
+/** Demo connector events for UI validation (dev builds only — never production). */
+export function mockConnectorFeedItems(): FeedItem[] {
+  const now = Date.now();
+  const demo = true as const;
+  return [
+    {
+      id: "demo-feed-read",
+      ts: now - 120_000,
+      source: "connector",
+      category: "read",
+      title: "Google Ads account read",
+      summary: "Account 482-991-2203 · 3 campaigns · EUR billing",
+      status: "success",
+      isDemo: demo,
+      canvasTarget: { mode: "research-map" },
+    },
+    {
+      id: "demo-feed-analyze-kw",
+      ts: now - 90_000,
+      source: "connector",
+      category: "analyze",
+      title: "28 keywords discovered",
+      summary: "Grouped into brand, competitor, and generic themes",
+      status: "success",
+      isDemo: demo,
+      canvasTarget: { mode: "research-map" },
+    },
+    {
+      id: "demo-feed-analyze-risk",
+      ts: now - 60_000,
+      source: "connector",
+      category: "analyze",
+      title: "5 policy risks detected",
+      summary: "Restricted claims in 2 ad headlines · trademark overlap",
+      status: "failed",
+      isDemo: demo,
+      canvasTarget: { mode: "research-map" },
+    },
+    {
+      id: "demo-feed-external-campaign",
+      ts: now - 45_000,
+      source: "connector",
+      category: "external",
+      title: "Campaign created in paused state",
+      summary: "Launch campaign draft · daily budget €40",
+      status: "success",
+      isDemo: demo,
+      canvasTarget: { mode: "ad-preview" },
+    },
+    {
+      id: "demo-feed-verify-tag",
+      ts: now - 30_000,
+      source: "connector",
+      category: "verify",
+      title: "Conversion tag could not be verified",
+      summary: "GTM container missing on /signup thank-you page",
+      status: "failed",
+      isDemo: demo,
+      canvasTarget: { mode: "research-map" },
+    },
+    {
+      id: "demo-feed-external-pr",
+      ts: now - 15_000,
+      source: "system",
+      category: "external",
+      title: "Landing page PR opened",
+      summary: "PR #42 · hero copy + CTA experiment",
+      status: "success",
+      isDemo: demo,
+      canvasTarget: { mode: "marketing-diff" },
+    },
+    {
+      id: "demo-feed-gate",
+      ts: now - 5_000,
+      source: "connector",
+      category: "gate",
+      title: "User approval required",
+      summary: "Publish paused campaign to Google Ads when ready",
+      status: "waiting",
+      isDemo: demo,
+      canvasTarget: { mode: "ad-preview" },
+    },
+  ];
+}

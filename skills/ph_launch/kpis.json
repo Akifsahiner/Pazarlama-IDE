@@ -1,0 +1,42 @@
+[
+  {
+    "name": "ph_rank_day_one",
+    "definition": "Highest daily rank achieved on Product Hunt within 24 hours of launch (1 = #1 product of the day).",
+    "target_hint": "Top 5 is strong; Top 1 typically requires a pre-built audience >10k engaged followers. Don't optimize for rank at the cost of ICP fit."
+  },
+  {
+    "name": "ph_upvotes_24h",
+    "definition": "Total upvotes received in the 24 hours from 12:01am PT to 11:59pm PT on launch day.",
+    "target_hint": "300–600 = above average launch; 1,000+ = Top 5 territory; 1,500+ = competitive for #1 on a normal Tuesday."
+  },
+  {
+    "name": "ph_comment_count",
+    "definition": "Number of unique commenters on the launch page in the first 24 hours, excluding the maker's own replies.",
+    "target_hint": "40+ commenters indicates a thread that's resonating; <15 suggests low engagement even if upvotes are decent."
+  },
+  {
+    "name": "ph_referral_traffic_24h",
+    "definition": "Sessions from producthunt.com referrer to your landing page in the 24-hour launch window.",
+    "target_hint": "Top 10 launch: 3,000–8,000 sessions. Top 5: 5,000–15,000. Top 1: 15,000–40,000+. Heavily category-dependent."
+  },
+  {
+    "name": "ph_to_signup_rate",
+    "definition": "Signups attributable to PH-referred sessions divided by total PH-referred sessions during launch week.",
+    "target_hint": "8–18% for a focused landing page with strong message match. <5% means landing page is failing to convert curious traffic."
+  },
+  {
+    "name": "ph_to_paid_30d",
+    "definition": "Paying customers acquired from PH-referred signups within 30 days of launch.",
+    "target_hint": "1–4% of PH visitors who sign up convert to paid within 30d; PH skews curious-not-buying for B2B, so don't expect SQL-level conversion."
+  },
+  {
+    "name": "follower_growth_launch_week",
+    "definition": "Net new followers gained on the founder's primary social account (X or LinkedIn) during the 7-day launch window.",
+    "target_hint": "Successful Top-10 launches typically yield +500 to +5,000 followers depending on category. <100 indicates the launch didn't break out of PH."
+  },
+  {
+    "name": "featured_in_ph_newsletter",
+    "definition": "Boolean — did the launch appear in PH's daily or weekly editorial newsletter (~1M+ subscribers).",
+    "target_hint": "Strong correlation with Top 5 finish + high-quality discussion thread. Newsletter feature can extend launch traffic by 3–7 additional days."
+  }
+]

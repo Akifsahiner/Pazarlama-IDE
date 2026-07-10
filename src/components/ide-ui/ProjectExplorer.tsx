@@ -19,7 +19,7 @@ export function ProjectExplorer({ theme }: ProjectExplorerProps) {
           <div key={group.label} className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white/90">
               <ChevronDown className="size-3 text-white/50" />
-              <Folder className="size-3 text-[#749cff]" />
+              <Folder className="size-3 text-accent" />
               {group.label}
             </div>
             <div className="flex flex-col gap-0.5 pl-5">

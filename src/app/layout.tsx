@@ -24,7 +24,7 @@ const ebGaramond = EB_Garamond({
 export const metadata: Metadata = {
   title: "Marketing IDE — Ship your product. We'll handle the launch.",
   description:
-    "Open your project, get a complete marketing plan, and execute it together with AI.",
+    "Open your project, get a 30-day launch plan you approve, and run agent tasks — copy, diffs, and browser research you apply yourself.",
 };
 
 export default function RootLayout({

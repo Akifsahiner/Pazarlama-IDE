@@ -1,0 +1,42 @@
+[
+  {
+    "name": "qualified_signups_launch_week",
+    "definition": "Signups during launch week (T-0 through T+6) matching ICP filters (work email, company size, role) — deduped per company.",
+    "target_hint": "Pre-revenue with <5k warm reach: 200–800. With 5–20k warm reach: 800–3,000. >20k reach: 3,000+. Quality > volume."
+  },
+  {
+    "name": "ph_rank_day_one",
+    "definition": "Highest position achieved on Product Hunt's daily ranking on launch day (1 = top product of the day).",
+    "target_hint": "Top 5 is strong for first-time launchers; Top 1 requires either a large existing crowd or a viral concept. Don't over-index — rank correlates weakly with revenue."
+  },
+  {
+    "name": "press_mentions_tier_1_2",
+    "definition": "Count of articles in target tier-1 (TechCrunch, The Information, NYT, WSJ) and tier-2 (vertical newsletters, Substacks >10k subscribers) within 14 days of launch.",
+    "target_hint": "2–5 tier-2 mentions realistic without PR firm; 1 tier-1 mention is exceptional for first launch."
+  },
+  {
+    "name": "founder_social_reach_launch_window",
+    "definition": "Sum of impressions on founder-authored launch posts across X and LinkedIn during the 7-day launch window.",
+    "target_hint": "100k+ for a founder with 5k engaged followers; 500k+ for 25k+ followers. <50k indicates content didn't resonate or posting cadence was wrong."
+  },
+  {
+    "name": "list_growth_launch_window",
+    "definition": "Net new email subscribers added during the 7-day launch window divided by pre-launch list size.",
+    "target_hint": "+25–60% is healthy for a focused launch; >100% usually means broad/non-ICP traffic that won't convert later."
+  },
+  {
+    "name": "activation_rate_24h",
+    "definition": "Percent of launch-week signups that complete the core 'first value' event (e.g. first project created, first integration connected) within 24 hours.",
+    "target_hint": ">40% healthy for self-serve SaaS. <25% indicates onboarding friction or that the launch attracted curious lurkers, not buyers."
+  },
+  {
+    "name": "free_to_paid_30d",
+    "definition": "Percent of launch-window signups who become paying customers within 30 days.",
+    "target_hint": "3–8% for self-serve SaaS, 10–20% for high-intent vertical tools. <2% means pricing-fit or ICP mismatch."
+  },
+  {
+    "name": "earned_inbound_partnerships",
+    "definition": "Count of inbound DMs/emails from potential partners, integrations, investors, or press during the launch month.",
+    "target_hint": "20–80 for a strong launch; clusters of integration requests usually signal a category fit."
+  }
+]

@@ -1,0 +1,30 @@
+{
+  "root": "candidate_has_evidence",
+  "nodes": {
+    "candidate_has_evidence": {
+      "q": "Does each candidate have fit evidence + why-now from lead-research?",
+      "yes": "personalization_is_specific",
+      "no": "OUTPUT:return-to-lead-research"
+    },
+    "personalization_is_specific": {
+      "q": "Does the first line cite a real public signal (not generic praise)?",
+      "yes": "single_clear_ask",
+      "no": "OUTPUT:rewrite-hook-with-evidence"
+    },
+    "single_clear_ask": {
+      "q": "Is there exactly one low-friction CTA (reply, 15-min call, try link)?",
+      "yes": "claims_verified",
+      "no": "OUTPUT:simplify-cta"
+    },
+    "claims_verified": {
+      "q": "Are product claims traceable to product-intelligence profile?",
+      "yes": "followups_add_value",
+      "no": "OUTPUT:strip-unverifiable-claims"
+    },
+    "followups_add_value": {
+      "q": "Do follow-ups add new proof/asset (not 'just bumping')?",
+      "yes": "OUTPUT:emit-outreach-pack",
+      "no": "OUTPUT:rewrite-followups"
+    }
+  }
+}

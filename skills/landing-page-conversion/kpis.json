@@ -1,0 +1,42 @@
+[
+  {
+    "name": "visitor_to_signup_rate",
+    "definition": "Unique signups divided by unique visitors over a rolling 14-day window, attributed by first-touch session.",
+    "target_hint": "B2B SaaS PLG: 2–5% cold, 8–15% warm/email. Ecommerce: 1.5–3%. Below 1% with >1k visitors/day = page problem, not traffic problem."
+  },
+  {
+    "name": "hero_engagement_rate",
+    "definition": "Percent of sessions where the user scrolls past the hero OR clicks the primary/secondary CTA within the hero viewport.",
+    "target_hint": ">70% healthy; <50% means the headline or visual fails the 5-second test."
+  },
+  {
+    "name": "cta_click_through_rate",
+    "definition": "Clicks on the primary CTA divided by sessions, deduped per user per day.",
+    "target_hint": "Cold traffic: 8–15%. Warm traffic: 20–35%. Below 5% is a copy or placement problem."
+  },
+  {
+    "name": "form_completion_rate",
+    "definition": "Form submits divided by form starts (first field focus), tracked per form.",
+    "target_hint": ">60% with ≤3 fields. <40% means too many fields or unclear value at submit."
+  },
+  {
+    "name": "qualified_signup_rate",
+    "definition": "Signups that match ICP (verified by enrichment or post-signup survey) divided by total signups.",
+    "target_hint": ">60% for narrow ICPs. <40% means the headline is too broad or paid targeting is off."
+  },
+  {
+    "name": "time_to_first_value",
+    "definition": "Median time from signup to the first activation event (e.g. first project created, first integration connected).",
+    "target_hint": "<10 minutes for self-serve SaaS. Every additional minute correlates with day-7 retention loss."
+  },
+  {
+    "name": "page_load_lcp",
+    "definition": "Largest Contentful Paint at the 75th percentile of real-user sessions.",
+    "target_hint": "<2.5s. Each additional second above this typically costs 5–10% of conversions."
+  },
+  {
+    "name": "demo_to_paid_conversion",
+    "definition": "Paid customers divided by completed demos (sales-led path only), measured at a 60-day attribution window.",
+    "target_hint": "B2B SaaS: 20–35% healthy. <15% indicates lead-qual or demo-script problems, not page problems."
+  }
+]

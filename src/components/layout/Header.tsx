@@ -2,32 +2,42 @@
 
 import Link from "next/link";
 import { Menu } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { headerFade } from "@/lib/animations";
-import { ShimmerButton } from "@/components/ui/ShimmerButton";
-import { brand, heroCopy, navLinks } from "@/lib/tokens";
+import { PlatformDownloadButton } from "@/components/download/PlatformDownloadButton";
+import { brand, navLinks } from "@/lib/tokens";
 
-function Logo({ dark = false }: { dark?: boolean }) {
-  const color = dark ? "#18181B" : "white";
-  const fillOpacity = dark ? "0.1" : "0.15";
-
+function Logo({ onHero }: { onHero: boolean }) {
   return (
     <Link href="/" className="flex items-center gap-2" aria-label={`${brand.name} home`}>
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-        <rect x="1" y="1" width="20" height="20" rx="5" fill={color} fillOpacity={fillOpacity} />
+        <rect
+          x="1"
+          y="1"
+          width="20"
+          height="20"
+          rx="5"
+          fill={onHero ? "rgba(255,255,255,0.14)" : "var(--ink)"}
+          fillOpacity={onHero ? 1 : 0.1}
+        />
         <path
           d="M6.5 8L9 11L6.5 14"
-          stroke={color}
+          stroke={onHero ? "#ffffff" : "var(--ink)"}
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <path d="M11 14H15.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+        <path
+          d="M11 14H15.5"
+          stroke={onHero ? "#ffffff" : "var(--ink)"}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
       </svg>
       <span
         className={`text-[17px] font-medium tracking-[-0.02em] ${
-          dark ? "text-ink" : "text-white"
+          onHero ? "text-white" : "text-ink"
         }`}
       >
         {brand.name}
@@ -38,18 +48,11 @@ function Logo({ dark = false }: { dark?: boolean }) {
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
-  const [showCta, setShowCta] = useState(false);
-  const reducedMotion = useReducedMotion() ?? false;
+  const onHero = !scrolled;
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > window.innerHeight * 0.6);
-
-      const downloadBtn = document.getElementById("download-button");
-      if (downloadBtn) {
-        const rect = downloadBtn.getBoundingClientRect();
-        setShowCta(rect.bottom < 0);
-      }
+      setScrolled(window.scrollY > window.innerHeight * 0.55);
     };
 
     handleScroll();
@@ -61,30 +64,28 @@ export function Header() {
     <motion.header
       className={`z-50 flex w-full transition-all duration-300 ${
         scrolled
-          ? "fixed top-0 border-b border-black/6 bg-canvas/95 pt-2.5 backdrop-blur-xl"
-          : "absolute pt-4"
+          ? "fixed top-0 border-b border-line bg-surface/95 py-3 backdrop-blur-md"
+          : "absolute bg-transparent pt-4"
       }`}
       variants={headerFade}
       initial="hidden"
       animate="visible"
     >
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 md:px-8">
-        <Logo dark={scrolled} />
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-5 md:px-8">
+        <Logo onHero={onHero} />
 
         <nav
-          className={`hidden items-center md:flex ${
-            scrolled ? "" : "glass-nav-pill rounded-full px-1.5 py-1"
-          }`}
+          className="hidden items-center justify-center gap-1.5 md:flex"
           aria-label="Main navigation"
         >
           {navLinks.map((link) => (
             <a
               key={link.label}
               href={link.href}
-              className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                scrolled
-                  ? "text-ink-secondary hover:text-ink"
-                  : "text-white/90 hover:bg-white/10 hover:text-white"
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                onHero
+                  ? "border border-white/32 bg-white/16 text-white shadow-[0_2px_16px_rgba(8,48,96,0.18)] backdrop-blur-xl hover:bg-white/24 hover:text-white"
+                  : "border border-line/80 bg-surface/70 text-ink-2 backdrop-blur-sm hover:bg-surface hover:text-ink"
               }`}
             >
               {link.label}
@@ -92,25 +93,22 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
-          <motion.div
-            className="hidden md:block"
-            initial={false}
-            animate={{
-              opacity: showCta ? 1 : 0,
-              pointerEvents: showCta ? "auto" : "none",
-            }}
-            transition={reducedMotion ? { duration: 0 } : { duration: 0.3 }}
-          >
-            <ShimmerButton label={heroCopy.cta} compact animated={false} id="header-download-button" />
-          </motion.div>
+        <div className="flex items-center justify-end gap-3">
+          <div className="hidden md:block">
+            <PlatformDownloadButton
+              compact
+              animated={false}
+              id="header-download-button"
+              className="shimmer-button--hero shimmer-button--compact"
+            />
+          </div>
 
           <button
             type="button"
-            className={`flex size-10 items-center justify-center rounded-lg transition-colors md:hidden ${
-              scrolled
-                ? "text-ink-secondary hover:bg-black/5"
-                : "text-white/90 hover:bg-white/10 hover:text-white"
+            className={`flex size-10 items-center justify-center rounded-full transition-colors md:hidden ${
+              onHero
+                ? "border border-white/28 bg-white/14 text-white/92 backdrop-blur-xl hover:bg-white/22"
+                : "text-ink-2 hover:bg-black/5 hover:text-ink"
             }`}
             aria-label="Open menu"
           >

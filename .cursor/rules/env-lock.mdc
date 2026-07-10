@@ -1,0 +1,21 @@
+---
+description: Do not modify secret env files unless the user explicitly allows it
+alwaysApply: true
+---
+
+# Secret / env file lock
+
+The user has locked environment files. **Do not read, write, edit, or delete** any of the following unless they explicitly say to unlock or update `.env`:
+
+- `server/.env`
+- Any `.env` or `.env.local` with real API keys or credentials
+- Never commit secrets to git
+
+Allowed without explicit permission:
+
+- Update `server/.env.example` (placeholders only, no real keys)
+- Document env variable names in README
+
+If a task requires changing secrets, tell the user to edit `server/.env` manually or ask them to unlock first.
+
+To unlock on Windows (owner only): `attrib -R "server\.env"`

@@ -1,0 +1,27 @@
+[
+  {
+    "name": "kpi_coverage_ratio",
+    "definition": "Launch plan tasks with a mapped KPI divided by total measurable tasks in the active playbook.",
+    "target_hint": "≥80% before launch week. Unmapped tasks cannot be reviewed post-launch."
+  },
+  {
+    "name": "event_taxonomy_completeness",
+    "definition": "Funnel steps with named events divided by total funnel steps defined.",
+    "target_hint": "100% for signup and activation paths. Partial taxonomy blocks GA4 implementation."
+  },
+  {
+    "name": "manual_log_cadence",
+    "definition": "Weeks with ≥1 manual KPI update divided by weeks since plan start (when GA4 absent).",
+    "target_hint": "100% weekly logging until GA4 connected. Gaps >2 weeks = measurement discipline failure."
+  },
+  {
+    "name": "weekly_review_completion",
+    "definition": "Weekly reviews completed with documented stop/start/continue decisions.",
+    "target_hint": "Every week during active launch plan. Missed reviews correlate with failed retries."
+  },
+  {
+    "name": "north_star_trend",
+    "definition": "North-star metric week-over-week direction during launch month.",
+    "target_hint": "Define explicit threshold (e.g. +10% WoW signups). Flat 3 weeks triggers bottleneck re-diagnosis."
+  }
+]

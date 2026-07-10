@@ -1,0 +1,20 @@
+{
+  "root": "has_creator_icp",
+  "nodes": {
+    "has_creator_icp": {
+      "q": "Is the creator niche defined (audience overlap with your ICP)?",
+      "yes": "offer_structured",
+      "no": "OUTPUT:define-creator-icp-first"
+    },
+    "offer_structured": {
+      "q": "Is the partnership offer clear (affiliate, product access, flat fee)?",
+      "yes": "brief_ready",
+      "no": "OUTPUT:write-creator-brief"
+    },
+    "brief_ready": {
+      "q": "Does the brief include talking points, disclosure, and tracking link?",
+      "yes": "OUTPUT:run-outreach-wave",
+      "no": "OUTPUT:complete-brief-and-tracking"
+    }
+  }
+}

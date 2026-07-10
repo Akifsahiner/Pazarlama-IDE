@@ -1,0 +1,20 @@
+{
+  "root": "hook_library_ready",
+  "nodes": {
+    "hook_library_ready": {
+      "q": "Do you have 5+ hook scripts tested for 3-sec retention?",
+      "yes": "posting_cadence",
+      "no": "OUTPUT:batch-script-hooks-first"
+    },
+    "posting_cadence": {
+      "q": "Are you posting ≥3x/week for 4 weeks?",
+      "yes": "cta_tracked",
+      "no": "OUTPUT:lock-cadence-before-scale"
+    },
+    "cta_tracked": {
+      "q": "Is profile link UTM-tracked to signups?",
+      "yes": "OUTPUT:iterate-winning-format",
+      "no": "OUTPUT:add-utm-and-landing-match"
+    }
+  }
+}

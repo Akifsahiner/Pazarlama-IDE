@@ -1,0 +1,27 @@
+{
+  "id": "outreach-drafting",
+  "name": "Outreach Drafting",
+  "category": "outreach",
+  "applies_when": {
+    "company_stage": ["idea", "prelaunch", "pre-launch", "launched", "growing", "scaling", "early", "growth"],
+    "channels_includes": ["email", "linkedin"],
+    "business_model": ["saas", "freemium", "agency", "tool", "marketplace"]
+  },
+  "do_not_use_when": {
+    "constraints_includes": ["no_outbound_allowed", "bulk_email_only", "no_cold_outreach"]
+  },
+  "required_inputs": [
+    "product_name",
+    "main_value_proposition",
+    "target_audience",
+    "differentiators",
+    "icp_candidates"
+  ],
+  "output_schema": "outreach_drafts",
+  "primary_metric": "reply_rate",
+  "playbook_selector": [
+    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
+    { "if": { "channels_includes": ["email"] }, "pick": "with-email-list" },
+    { "if": { "business_model": ["saas", "freemium", "tool"] }, "pick": "b2b-saas" }
+  ]
+}

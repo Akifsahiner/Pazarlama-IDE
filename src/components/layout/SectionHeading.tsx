@@ -17,7 +17,7 @@ export function SectionHeading({
   title,
   subtitle,
   eyebrow,
-  accent = "orange",
+  accent = "neutral",
   children,
   className = "",
   align = "left",
@@ -25,14 +25,14 @@ export function SectionHeading({
   const alignClass = align === "center" ? "items-center text-center" : "";
 
   return (
-    <div className={`flex flex-col gap-3 ${alignClass} ${className}`}>
+    <div className={`flex flex-col gap-4 ${alignClass} ${className}`}>
       {eyebrow && <TonalBadge accent={accent}>{eyebrow}</TonalBadge>}
-      <h2 className="section-headline text-4xl leading-[1.15] font-medium text-[#1A202C] lg:text-5xl">
+      <h2 className="section-headline text-4xl leading-[1.12] font-medium text-ink lg:text-5xl">
         {title}
       </h2>
       {subtitle && (
         <p
-          className={`max-w-2xl text-base leading-relaxed text-ink-secondary md:text-lg ${
+          className={`max-w-2xl text-base leading-relaxed text-ink-2 md:text-lg ${
             align === "center" ? "mx-auto" : ""
           }`}
         >

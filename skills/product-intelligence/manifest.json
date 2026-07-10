@@ -1,0 +1,27 @@
+{
+  "id": "product-intelligence",
+  "name": "Product Intelligence",
+  "category": "positioning",
+  "applies_when": {
+    "company_stage": ["idea", "prelaunch", "pre-launch", "launched", "growing", "scaling", "early", "growth"],
+    "channels_includes": ["seo", "email", "linkedin", "product_hunt", "twitter", "paid_ads"],
+    "business_model": ["saas", "freemium", "marketplace", "agency", "tool", "consumer", "open_source", "mobile_app"]
+  },
+  "do_not_use_when": {
+    "company_stage": ["enterprise_field_sales_only"],
+    "constraints_includes": ["stealth_mode", "no_codebase_access"]
+  },
+  "required_inputs": [
+    "product_name",
+    "routes",
+    "readme_summary",
+    "competitors"
+  ],
+  "output_schema": "product_profile",
+  "primary_metric": "claim_evidence_ratio",
+  "playbook_selector": [
+    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
+    { "if": { "channels_includes": ["email"] }, "pick": "with-email-list" },
+    { "if": { "business_model": ["saas", "freemium", "tool"] }, "pick": "b2b-saas" }
+  ]
+}

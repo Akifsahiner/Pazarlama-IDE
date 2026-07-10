@@ -1,0 +1,27 @@
+{
+  "id": "short-form-video",
+  "name": "Short-Form Video (Reels, TikTok, Shorts)",
+  "category": "content",
+  "applies_when": {
+    "company_stage": ["pre-launch", "early", "growth", "relaunch"],
+    "channels_includes": ["tiktok", "instagram", "youtube", "twitter"],
+    "business_model": ["saas", "mobile_app", "ecommerce", "info_product", "marketplace"]
+  },
+  "do_not_use_when": {
+    "company_stage": ["enterprise_field_sales_only"],
+    "constraints_includes": ["icp_not_on_short_form_platforms", "product_requires_long_demo_no_visual_hook", "no_video_production_capacity"]
+  },
+  "required_inputs": [
+    "product_name",
+    "main_value_proposition",
+    "target_audience",
+    "available_assets",
+    "existing_proof"
+  ],
+  "output_schema": "marketing_decision",
+  "primary_metric": "short_form_hook_retention_rate",
+  "playbook_selector": [
+    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
+    { "if": { "business_model": ["saas"] }, "pick": "b2b-saas" }
+  ]
+}

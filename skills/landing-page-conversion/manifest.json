@@ -1,0 +1,29 @@
+{
+  "id": "landing-page-conversion",
+  "name": "Landing Page Conversion",
+  "category": "landing",
+  "applies_when": {
+    "company_stage": ["pre-launch", "early", "growth"],
+    "channels_includes": ["paid_ads", "seo", "social", "email", "product_hunt"],
+    "business_model": ["saas", "ecommerce", "marketplace", "info_product", "agency", "mobile_app"]
+  },
+  "do_not_use_when": {
+    "company_stage": ["enterprise_field_sales_only"],
+    "constraints_includes": ["no_website", "stealth_mode", "legal_review_blocking_copy"]
+  },
+  "required_inputs": [
+    "product_name",
+    "main_value_proposition",
+    "target_audience",
+    "differentiators",
+    "existing_proof",
+    "available_assets"
+  ],
+  "output_schema": "marketing_decision",
+  "primary_metric": "visitor_to_signup_rate",
+  "playbook_selector": [
+    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
+    { "if": { "channels_includes": ["email"] }, "pick": "with-email-list" },
+    { "if": { "business_model": ["saas"] }, "pick": "b2b-saas" }
+  ]
+}

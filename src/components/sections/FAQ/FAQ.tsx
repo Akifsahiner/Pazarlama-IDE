@@ -9,35 +9,35 @@ import { sections } from "@/lib/tokens";
 
 export function FAQ() {
   return (
-    <SectionContainer id="faq">
+    <SectionContainer id="faq" className="section-tint section-tint--tri">
       <ScrollReveal>
         <SectionHeading
           eyebrow={sections.faq.eyebrow}
-          accent="blue"
           title={sections.faq.title}
+          accent="orange"
           align="center"
           className="mb-12 lg:mb-14"
         />
       </ScrollReveal>
       <ScrollReveal>
-        <div className="surface-card mx-auto max-w-3xl px-6 md:px-10">
+        <div className="mx-auto max-w-3xl">
           <Accordion.Root type="single" collapsible className="flex flex-col">
             {sections.faq.items.map((item, index) => (
               <Accordion.Item
                 key={item.question}
                 value={`item-${index}`}
-                className="border-b border-black/6 last:border-b-0"
+                className="border-t border-line last:border-b"
               >
                 <Accordion.Header>
-                  <Accordion.Trigger className="group flex w-full items-center justify-between gap-4 py-6 text-left">
-                    <span className="text-xl font-medium tracking-tight text-[#1A202C] lg:text-2xl">
+                  <Accordion.Trigger className="group flex w-full items-center justify-between gap-4 py-5 text-left">
+                    <span className="text-base font-medium tracking-tight text-ink">
                       {item.question}
                     </span>
-                    <ChevronDown className="size-5 shrink-0 text-ink-muted transition-transform duration-200 group-data-[state=open]:rotate-180 group-data-[state=open]:text-[var(--accent-blue)]" />
+                    <ChevronDown className="size-5 shrink-0 text-ink-3 transition-transform duration-200 group-data-[state=open]:rotate-180 group-data-[state=open]:text-blue" />
                   </Accordion.Trigger>
                 </Accordion.Header>
                 <Accordion.Content className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                  <p className="max-w-[616px] pb-6 text-base leading-relaxed text-ink-secondary md:text-lg">
+                  <p className="max-w-[616px] pb-5 text-sm leading-relaxed text-ink-2">
                     {item.answer}
                   </p>
                 </Accordion.Content>

@@ -1,0 +1,27 @@
+[
+  {
+    "name": "reply_rate",
+    "definition": "Replies received divided by first-touch messages sent, over a 14-day window per cohort.",
+    "target_hint": "B2B cold email to ICP: 5–15% healthy; LinkedIn DM: 8–20%. Below 3% = hook or list problem."
+  },
+  {
+    "name": "positive_reply_rate",
+    "definition": "Replies expressing interest or asking for next step divided by total replies.",
+    "target_hint": "≥50% of replies should be positive or curious. Mostly 'not interested' = wrong ICP or weak value line."
+  },
+  {
+    "name": "meeting_booked_rate",
+    "definition": "Meetings booked divided by first-touch messages sent.",
+    "target_hint": "1–4% for cold outbound to qualified list. Track by channel separately."
+  },
+  {
+    "name": "personalization_evidence_rate",
+    "definition": "Drafts with cited public evidence in line 1 divided by total drafts.",
+    "target_hint": "100% before user sends. Zero tolerance for template-only hooks."
+  },
+  {
+    "name": "follow_up_lift",
+    "definition": "Incremental replies attributed to follow-up 1 or 2 divided by non-responders after touch 1.",
+    "target_hint": "Follow-up 1 should add 30–50% of total replies. If <10%, follow-ups are too weak."
+  }
+]

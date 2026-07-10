@@ -1,0 +1,27 @@
+[
+  {
+    "name": "icp_fit_rate",
+    "definition": "A-tier candidates divided by total candidates reviewed.",
+    "target_hint": "≥40% for narrow B2B ICPs; ≥25% acceptable for new categories. Below 15% = ICP too tight or wrong sources."
+  },
+  {
+    "name": "evidence_coverage",
+    "definition": "Candidates with public source URL or repo signal divided by total candidates.",
+    "target_hint": "100%. Any candidate without evidence must be dropped or flagged."
+  },
+  {
+    "name": "why_now_rate",
+    "definition": "A-tier candidates with documented trigger in last 90 days divided by A-tier total.",
+    "target_hint": "≥60% before outreach drafting. Below 40% = research pass incomplete."
+  },
+  {
+    "name": "source_diversity",
+    "definition": "Number of distinct source types (LinkedIn, PH, community, inbound) with ≥3 qualified leads each.",
+    "target_hint": "≥2 sources for launch week outbound; 1 source OK for manual seed phase."
+  },
+  {
+    "name": "review_to_outreach_conversion",
+    "definition": "Candidates the user approved for outreach divided by candidates presented.",
+    "target_hint": "≥50% approval means research quality is high; <25% means scoring too loose."
+  }
+]

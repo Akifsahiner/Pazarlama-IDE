@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# desktop (electron) — isolated npm project
+/desktop/node_modules
+/desktop/out
+/desktop/dist
+
+# server — isolated npm project
+/server/node_modules
+/server/dist
+/server/.env

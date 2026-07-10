@@ -1,0 +1,8 @@
+# Ownership map to avoid cross-team conflicts.
+# Desktop app and backend are owned by the desktop track.
+/desktop/                     @Akifsahiner
+/server/                      @Akifsahiner
+/.github/workflows/desktop-release.yml  @Akifsahiner
+
+# The marketing website is owned by the web track.
+# /src/                       @web-teammate

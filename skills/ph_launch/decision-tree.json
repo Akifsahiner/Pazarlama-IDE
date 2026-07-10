@@ -1,0 +1,30 @@
+{
+  "root": "is_audience_on_ph",
+  "nodes": {
+    "is_audience_on_ph": {
+      "q": "Is your ICP active on Product Hunt (indie makers, early-stage founders, prosumer/dev/design tools)?",
+      "yes": "have_warm_supporter_pool",
+      "no": "OUTPUT:skip-PH-pick-vertical-channel"
+    },
+    "have_warm_supporter_pool": {
+      "q": "Can you personally reach 100+ engaged supporters (list, X, LinkedIn, Discord, customers)?",
+      "yes": "have_tagline_under_60_chars",
+      "no": "OUTPUT:build-warm-pool-first-postpone-30-days"
+    },
+    "have_tagline_under_60_chars": {
+      "q": "Do you have a tagline that's under 60 chars and names the outcome, not the technology?",
+      "yes": "have_gallery_with_real_product",
+      "no": "OUTPUT:rewrite-tagline-first"
+    },
+    "have_gallery_with_real_product": {
+      "q": "Do you have 4+ gallery slides with real product UI (not mockups or illustrations)?",
+      "yes": "have_hunter_strategy",
+      "no": "OUTPUT:build-gallery-before-submitting"
+    },
+    "have_hunter_strategy": {
+      "q": "Have you decided whether to self-hunt or partner with a known hunter?",
+      "yes": "OUTPUT:ready-to-schedule-12am-PT-launch",
+      "no": "OUTPUT:default-to-self-hunt-and-personal-outreach"
+    }
+  }
+}

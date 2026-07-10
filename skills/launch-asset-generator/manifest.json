@@ -1,0 +1,28 @@
+{
+  "id": "launch-asset-generator",
+  "name": "Launch Asset Generator",
+  "category": "launch",
+  "applies_when": {
+    "company_stage": ["idea", "prelaunch", "pre-launch", "launched", "growing", "scaling", "early", "growth", "relaunch"],
+    "channels_includes": ["product_hunt", "twitter", "linkedin", "email", "paid_ads", "social"],
+    "business_model": ["saas", "freemium", "marketplace", "info_product", "mobile_app", "open_source", "consumer", "tool"]
+  },
+  "do_not_use_when": {
+    "constraints_includes": ["no_public_announcement_allowed", "stealth_mode", "embargo_locked_no_owned_channels"]
+  },
+  "required_inputs": [
+    "product_name",
+    "main_value_proposition",
+    "target_audience",
+    "differentiators",
+    "available_channels",
+    "company_stage"
+  ],
+  "output_schema": "launch_assets",
+  "primary_metric": "launch_asset_completion_rate",
+  "playbook_selector": [
+    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
+    { "if": { "channels_includes": ["email"] }, "pick": "with-email-list" },
+    { "if": { "business_model": ["saas", "freemium", "tool"] }, "pick": "b2b-saas" }
+  ]
+}

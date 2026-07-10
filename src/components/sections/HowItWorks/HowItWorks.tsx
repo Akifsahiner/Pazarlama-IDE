@@ -7,6 +7,7 @@ import {
   GitBranch,
   Play,
   ScanSearch,
+  Server,
   type LucideIcon,
 } from "lucide-react";
 import { SectionContainer } from "@/components/layout/SectionContainer";
@@ -16,6 +17,7 @@ import { sections } from "@/lib/tokens";
 import { cardReveal, staggerContainer } from "@/lib/animations";
 
 const iconMap: Record<string, LucideIcon> = {
+  Server,
   FolderOpen,
   ScanSearch,
   GitBranch,
@@ -23,63 +25,69 @@ const iconMap: Record<string, LucideIcon> = {
   BarChart3,
 };
 
-const iconBg = [
-  "bg-[var(--accent-orange-bg)] text-[var(--accent-orange)]",
-  "bg-[var(--accent-blue-bg)] text-[var(--accent-blue)]",
-  "bg-[var(--accent-orange-bg)] text-[var(--accent-orange)]",
-  "bg-[var(--accent-blue-bg)] text-[var(--accent-blue)]",
-  "bg-[var(--accent-green-bg)] text-[var(--accent-green)]",
-];
+const cardByAccent = {
+  blue: "card-blue",
+  orange: "card-orange",
+  green: "card-green",
+} as const;
+
+const iconByAccent = {
+  blue: "step-icon step-icon--blue",
+  orange: "step-icon step-icon--orange",
+  green: "step-icon step-icon--green",
+} as const;
+
+const stepLabelByAccent = {
+  blue: "text-blue-ink",
+  orange: "text-orange-ink",
+  green: "text-green-ink",
+} as const;
 
 export function HowItWorks() {
   const reducedMotion = useReducedMotion() ?? false;
   const { eyebrow, title, subtitle, steps } = sections.howItWorks;
 
   return (
-    <SectionContainer id="how-it-works">
+    <SectionContainer id="how-it-works" className="section-tint section-tint--tri pt-20 lg:pt-28">
       <ScrollReveal>
         <SectionHeading
           eyebrow={eyebrow}
-          accent="orange"
           title={title}
           subtitle={subtitle}
+          accent="blue"
           align="center"
           className="mb-14 lg:mb-16"
         />
       </ScrollReveal>
 
       <motion.ol
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5"
+        className="mx-auto flex max-w-3xl flex-col gap-4"
         variants={staggerContainer}
-        initial={reducedMotion ? false : "hidden"}
+        initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, margin: "-50px" }}
+        viewport={{ once: true, margin: "-80px" }}
       >
         {steps.map((step, index) => {
-          const Icon = iconMap[step.icon] ?? FolderOpen;
+          const Icon = iconMap[step.icon];
           return (
             <motion.li
               key={step.title}
-              variants={cardReveal}
-              className="surface-card flex flex-col gap-4 p-6"
+              variants={reducedMotion ? undefined : cardReveal}
+              className={`${cardByAccent[step.accent]} card-hover flex items-start gap-4 p-5 md:p-6`}
             >
-              <div className="flex items-center justify-between">
-                <span
-                  className={`flex size-10 items-center justify-center rounded-xl ${iconBg[index]}`}
+              <span className={iconByAccent[step.accent]}>
+                {Icon ? <Icon className="size-5" aria-hidden="true" /> : null}
+              </span>
+              <div>
+                <p
+                  className={`text-[13px] font-semibold tracking-[0.08em] uppercase ${stepLabelByAccent[step.accent]}`}
                 >
-                  <Icon className="size-5" />
-                </span>
-                <span className="font-mono text-xs text-ink-muted">
-                  0{index + 1}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <h3 className="text-lg font-medium tracking-tight text-[#1A202C]">
+                  Step {index + 1}
+                </p>
+                <h3 className="mt-1 text-[17px] font-semibold tracking-[-0.02em] text-ink md:text-[18px]">
                   {step.title}
                 </h3>
-                <p className="text-sm leading-relaxed text-ink-secondary">
-                  {step.description}
-                </p>
+                <p className="mt-1.5 text-[15px] leading-relaxed text-ink-2">{step.description}</p>
               </div>
             </motion.li>
           );

@@ -1,0 +1,27 @@
+[
+  {
+    "name": "launch_asset_completion_rate",
+    "definition": "Required assets produced (PH, email, thread, ad) divided by planned asset count for the launch.",
+    "target_hint": "100% before launch day. Missing any core asset delays coordinated launch."
+  },
+  {
+    "name": "cross_channel_consistency_score",
+    "definition": "Manual rubric 1–5: same outcome promise across tagline, thread, email, ad.",
+    "target_hint": "≥4. Below 3 means rewrite before publishing."
+  },
+  {
+    "name": "ph_tagline_ctr_proxy",
+    "definition": "PH listing clicks divided by impressions on launch day (from PH analytics).",
+    "target_hint": "Top 5 products often >8% CTR on tagline+thumbnail combo. Weak tagline shows <3%."
+  },
+  {
+    "name": "email_launch_open_rate",
+    "definition": "Opens divided by sends for launch announcement email to owned list.",
+    "target_hint": "Warm list: 35–55%. Below 25% = subject line or list hygiene problem."
+  },
+  {
+    "name": "social_thread_engagement_rate",
+    "definition": "Engagements (likes + replies + reposts) divided by impressions on hook tweet.",
+    "target_hint": "Founder accounts 500–5k followers: 2–6% healthy on launch thread hook."
+  }
+]

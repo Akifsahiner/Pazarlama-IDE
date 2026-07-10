@@ -1,51 +1,66 @@
-export const colors = {
-  canvas: "#FAFAF8",
-  canvasElevated: "#FFFFFF",
-  ink: "#18181B",
-  inkSecondary: "#52525B",
-  inkMuted: "#A1A1AA",
-  borderSubtle: "rgba(0, 0, 0, 0.06)",
-  borderMedium: "rgba(0, 0, 0, 0.10)",
-  accentSunset: "#E8956A",
-  accentBlue: "#2563EB",
-  accentGreen: "#22A55B",
-  ctaBlueStart: "#2563EB",
-  ctaBlueEnd: "#1D4ED8",
-  ctaGlow: "rgba(37, 99, 235, 0.4)",
-  springGreen: "#6BCB77",
-  uiBg: "hsla(252, 10%, 10%, 0.8)",
-  uiBorder: "rgba(255, 255, 255, 0.25)",
-  uiText: "#edeef2",
-  uiMuted: "#b2b3ba",
-  productDark: "#18181B",
-} as const;
-
 export const brand = {
   name: "Marketing IDE",
 } as const;
 
+export { DOWNLOAD_OPTIONS, RELEASE_LATEST, downloadUrl } from "./download";
+
 export const heroCopy = {
   eyebrow: "For founders who ship",
-  headline: "Ship your product. We'll handle the launch.",
+  headlineLine1: "Ship your product.",
+  headlineLine2Before: "We'll handle the",
   accentWord: "launch.",
   subheadline:
-    "Open your project, get a complete marketing plan, and execute it together with AI.",
-  cta: "Download for Windows",
-  secondaryCta: "Watch 90-second demo",
+    "Connect once (or preview offline), open your project folder, and get a 30-day launch plan you approve — agent tasks, diffs, and browser research you apply yourself.",
+  cta: "Download Marketing IDE",
+  secondaryCta: "See your first 10 minutes",
 } as const;
 
 export const trustItems = [
-  "Free product analysis",
-  "No credit card",
-  "Works with your stack",
+  "Windows, macOS & Linux",
+  "Local-first — files stay on device",
+  "Preview offline, connect for AI",
 ] as const;
 
+export const firstRunFunnel = {
+  eyebrow: "First launch",
+  title: "Your first 10 minutes in the app",
+  subtitle:
+    "Download is step zero — the desktop app walks you through connect, scan, and your first plan.",
+  steps: [
+    {
+      title: "Connect",
+      description:
+        "Start the bundled local AI stack or sign in — or skip and preview a scan-based outline offline.",
+      icon: "Server",
+      accent: "blue" as const,
+    },
+    {
+      title: "Open folder",
+      description: "Point at the same repo you built in Cursor. Secrets in .env are never read.",
+      icon: "FolderOpen",
+      accent: "orange" as const,
+    },
+    {
+      title: "Scan & reveal",
+      description: "Routes, stack, gaps, and suggested first moves — before any AI runs.",
+      icon: "ScanSearch",
+      accent: "green" as const,
+    },
+    {
+      title: "Plan & execute",
+      description: "30-day task graph, diffs you approve, browser research — you publish and send.",
+      icon: "GitBranch",
+      accent: "blue" as const,
+    },
+  ],
+} as const;
+
 export const outcomeStrip = {
-  line: "From finished code to a real launch — without hiring a marketing team.",
+  line: "From finished code to launched and selling — without hiring a marketing or sales team.",
   badges: [
-    { label: "30-day plan", accent: "orange" as const },
-    { label: "1-click apply", accent: "blue" as const },
-    { label: "Weekly experiments", accent: "green" as const },
+    { label: "Edit site as diffs", accent: "blue" as const },
+    { label: "Verify in a live browser", accent: "orange" as const },
+    { label: "Research & draft outreach — you send", accent: "green" as const },
   ],
 } as const;
 
@@ -60,6 +75,74 @@ export const navLinks = [
   { label: "Workspace", href: "#workspace" },
   { label: "FAQ", href: "#faq" },
 ] as const;
+
+export const featureBento = {
+  eyebrow: "Capabilities",
+  title: "Everything you need to ship marketing",
+  subtitle: "Six focused surfaces — not six disconnected tools.",
+  items: [
+    {
+      title: "Campaign Canvas",
+      description: "See your entire campaign logic on one surface.",
+    },
+    {
+      title: "Audience Intelligence",
+      description: "Persona, pain points, objections, and buying triggers.",
+    },
+    {
+      title: "Competitor Scan",
+      description: "Analyze competitor messaging and find positioning gaps.",
+    },
+    {
+      title: "Copy Studio",
+      description: "Ad copy, landing sections, emails, and social content.",
+    },
+    {
+      title: "Launch Checklist",
+      description: "Track every step from idea to live campaign.",
+    },
+    {
+      title: "Brand Memory",
+      description: "Generate on-brand output from past campaigns and tone.",
+    },
+  ],
+} as const;
+
+export const useCases = {
+  eyebrow: "Use cases",
+  title: "Marketing should feel fluid, not fragmented",
+  subtitle: "Four workflows Marketing IDE is built for.",
+  scenarios: [
+    {
+      title: "New product launch",
+      description: "Positioning, landing page, and ad angles in one sprint.",
+    },
+    {
+      title: "Founder-led marketing",
+      description: "Turn scattered ideas into a clear campaign plan.",
+    },
+    {
+      title: "Agency workflow",
+      description: "From client brief to strategy and content, fast.",
+    },
+    {
+      title: "Growth sprint",
+      description: "Weekly test plan, hypotheses, and channel priorities.",
+    },
+  ],
+} as const;
+
+export const outputProof = {
+  eyebrow: "What you get",
+  title: "Real output, not generic advice",
+  pipeline: [
+    "1 brief",
+    "5 campaign angles",
+    "1 landing structure",
+    "12 ad copies",
+    "4 email sequences",
+  ],
+} as const;
 
 export const heroAgentCopy = {
   command: "Launch on Product Hunt in two weeks. Budget $1,000.",
@@ -98,34 +181,46 @@ export const sections = {
     eyebrow: "How it works",
     title: "From codebase to launch-ready",
     subtitle:
-      "Marketing IDE reads your project, builds a plan, and ships the work with you.",
+      "Local-first GTM IDE — connect for AI or preview offline, then ship from your repo.",
     steps: [
+      {
+        title: "Connect",
+        description:
+          "Start the bundled local stack, sign in, or continue with preview-only — your files never leave the device.",
+        icon: "Server",
+        accent: "blue" as const,
+      },
       {
         title: "Open",
         description: "Point it at a local project, a GitHub repo, or a live URL.",
         icon: "FolderOpen",
+        accent: "blue" as const,
       },
       {
         title: "Understand",
         description:
           "It builds a product profile, positioning, and launch readiness score.",
         icon: "ScanSearch",
+        accent: "orange" as const,
       },
       {
         title: "Plan",
         description: "A 30-day task graph with dependencies and clear metrics.",
         icon: "GitBranch",
+        accent: "green" as const,
       },
       {
         title: "Execute",
         description: "Every change arrives as a diff. Preview, approve, apply.",
         icon: "Play",
+        accent: "blue" as const,
       },
       {
         title: "Measure",
         description:
-          "Track results, run experiments, and get a weekly marketing review.",
+          "Log KPIs manually or connect GA4 read-only — optional analytics, not required on day one.",
         icon: "BarChart3",
+        accent: "green" as const,
       },
     ],
   },
@@ -210,6 +305,11 @@ export const sections = {
     title: "Frequently asked questions",
     items: [
       {
+        question: "Do I need to connect before I can use it?",
+        answer:
+          "No. Scan, product reveal, and a preview launch outline work offline. Connect (bundled local stack or hosted sign-in) unlocks full AI plan generation, agent runs, and browser research.",
+      },
+      {
         question: "Is Marketing IDE a chatbot?",
         answer:
           "No. The center of the app is a living launch workspace — projects, plans, diffs, and results. Chat is just one way to give commands; the real work happens on the canvas.",
@@ -223,6 +323,11 @@ export const sections = {
         question: "Does it edit my files without permission?",
         answer:
           "Never. Every change is shown as a diff with a live preview. You approve, edit, or reject before anything is applied, and changes land on a separate Git branch you can roll back.",
+      },
+      {
+        question: "Which operating systems are supported?",
+        answer:
+          "Windows 10/11, macOS 12+ (Apple Silicon and Intel), and Linux (AppImage). The download button detects your device; you can also pick another platform on the download page.",
       },
       {
         question: "What types of projects does it support?",
@@ -239,6 +344,6 @@ export const sections = {
   footerCta: {
     title: "Built it? Now launch it.",
     subtitle:
-      "Download Marketing IDE and turn your project into a launch-ready product.",
+      "Download Marketing IDE — connect or preview offline, open your folder, ship your launch plan.",
   },
 } as const;

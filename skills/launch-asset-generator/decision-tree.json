@@ -1,0 +1,30 @@
+{
+  "root": "positioning_locked",
+  "nodes": {
+    "positioning_locked": {
+      "q": "Is there a one-line outcome promise from product-intelligence?",
+      "yes": "channel_set_defined",
+      "no": "OUTPUT:run-product-intelligence-first"
+    },
+    "channel_set_defined": {
+      "q": "Are target channels explicit (PH, email, social, ads)?",
+      "yes": "assets_within_limits",
+      "no": "OUTPUT:pick-channels-from-profile"
+    },
+    "assets_within_limits": {
+      "q": "Do PH tagline, ad text, and tweets meet character limits?",
+      "yes": "claims_evidence_backed",
+      "no": "OUTPUT:trim-to-channel-limits"
+    },
+    "claims_evidence_backed": {
+      "q": "Are metrics and features cited from product profile?",
+      "yes": "cta_consistent",
+      "no": "OUTPUT:remove-unverifiable-claims"
+    },
+    "cta_consistent": {
+      "q": "Is the primary CTA consistent across assets (try / waitlist / demo)?",
+      "yes": "OUTPUT:emit-launch-asset-bundle",
+      "no": "OUTPUT:align-ctas-across-channels"
+    }
+  }
+}

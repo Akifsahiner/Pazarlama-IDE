@@ -1,0 +1,25 @@
+{
+  "root": "icp_defined",
+  "nodes": {
+    "icp_defined": {
+      "q": "Are must-have ICP criteria explicit (role, stage, pain, trigger)?",
+      "yes": "sources_identified",
+      "no": "OUTPUT:define-icp-criteria-first"
+    },
+    "sources_identified": {
+      "q": "Is there a permitted source matrix (LinkedIn, PH, communities, inbound)?",
+      "yes": "candidates_have_evidence",
+      "no": "OUTPUT:build-source-matrix"
+    },
+    "candidates_have_evidence": {
+      "q": "Does every candidate have fit evidence + source URL (no fabricated names)?",
+      "yes": "why_now_present",
+      "no": "OUTPUT:drop-or-research-evidence"
+    },
+    "why_now_present": {
+      "q": "Do A-tier candidates have a why-now trigger in the last 90 days?",
+      "yes": "OUTPUT:emit-lead-scorecard",
+      "no": "OUTPUT:add-timing-signals"
+    }
+  }
+}

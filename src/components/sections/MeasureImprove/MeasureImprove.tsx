@@ -11,13 +11,13 @@ export function MeasureImprove() {
   const { eyebrow, title, subtitle, stats } = sections.measure;
 
   return (
-    <SectionContainer>
+    <SectionContainer className="section-tint section-tint--green">
       <ScrollReveal>
         <SectionHeading
           eyebrow={eyebrow}
-          accent="orange"
           title={title}
           subtitle={subtitle}
+          accent="green"
           align="center"
           className="mb-12 lg:mb-14"
         />
@@ -25,20 +25,20 @@ export function MeasureImprove() {
 
       <div className="mx-auto flex max-w-6xl flex-col gap-10 lg:flex-row lg:gap-16">
         <div className="flex flex-1 flex-col justify-center">
-          <div className="surface-card flex flex-col divide-y divide-black/6 px-6 md:px-8">
+          <div className="flex flex-col divide-y divide-line">
             {stats.map((stat) => (
               <ScrollReveal key={stat.label} delay={0.05}>
-                <div className="flex flex-col gap-1.5 py-6 first:pt-6 last:pb-6">
+                <div className="flex flex-col gap-1.5 py-6 first:pt-0 last:pb-0">
                   <div className="flex items-baseline gap-3">
                     <NumberCounter
                       value={stat.value}
-                      className="font-serif text-5xl font-medium tracking-tight text-[#1A202C] lg:text-6xl"
+                      className="font-serif text-5xl font-medium tracking-tight text-green lg:text-6xl"
                     />
-                    <span className="text-lg font-normal text-ink-muted lg:text-xl">
+                    <span className="text-lg font-normal text-ink-3 lg:text-xl">
                       {stat.label}
                     </span>
                   </div>
-                  <p className="max-w-md text-sm leading-relaxed text-ink-secondary">
+                  <p className="max-w-md text-sm leading-relaxed text-ink-2">
                     {stat.description}
                   </p>
                 </div>

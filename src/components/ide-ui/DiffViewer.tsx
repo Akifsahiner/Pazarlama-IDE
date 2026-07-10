@@ -43,7 +43,7 @@ export function DiffViewer() {
       <div className="flex items-center gap-1.5 border-t border-white/8 p-3">
         <button
           type="button"
-          className="rounded-lg bg-accent-blue px-3 py-1.5 text-[11px] font-medium text-white"
+          className="rounded-lg bg-accent px-3 py-1.5 text-[11px] font-medium text-white"
         >
           Accept
         </button>

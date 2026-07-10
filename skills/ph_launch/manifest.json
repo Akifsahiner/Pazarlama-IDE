@@ -1,0 +1,29 @@
+{
+  "id": "ph_launch",
+  "name": "Product Hunt Launch",
+  "category": "launch",
+  "applies_when": {
+    "company_stage": ["pre-launch", "early", "growth", "relaunch"],
+    "channels_includes": ["product_hunt", "twitter", "linkedin", "email", "indie_hackers"],
+    "business_model": ["saas", "info_product", "open_source", "mobile_app", "marketplace", "agency_tool"]
+  },
+  "do_not_use_when": {
+    "company_stage": ["enterprise_field_sales_only"],
+    "constraints_includes": ["target_audience_not_on_PH", "regulated_industry_no_public_launch", "stealth_mode"]
+  },
+  "required_inputs": [
+    "product_name",
+    "main_value_proposition",
+    "target_audience",
+    "differentiators",
+    "existing_proof",
+    "available_assets"
+  ],
+  "output_schema": "marketing_decision",
+  "primary_metric": "ph_rank_day_one",
+  "playbook_selector": [
+    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
+    { "if": { "channels_includes": ["email"] }, "pick": "with-email-list" },
+    { "if": { "business_model": ["saas"] }, "pick": "b2b-saas" }
+  ]
+}

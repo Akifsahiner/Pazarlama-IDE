@@ -1,8 +1,8 @@
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/hero/Hero";
-import { OutcomeStrip } from "@/components/ui/OutcomeStrip";
-import { OutcomeQuote } from "@/components/ui/OutcomeQuote";
+import { PostHeroBridge } from "@/components/sections/PostHeroBridge/PostHeroBridge";
+import { FirstRunFunnel } from "@/components/sections/FirstRunFunnel/FirstRunFunnel";
 import { HowItWorks } from "@/components/sections/HowItWorks/HowItWorks";
 import { WorkspacePreview } from "@/components/sections/WorkspacePreview/WorkspacePreview";
 import { ExecuteTogether } from "@/components/sections/ExecuteTogether/ExecuteTogether";
@@ -15,13 +15,13 @@ export default function Home() {
     <>
       <Header />
       <Hero />
-      <main className="bg-canvas">
-        <OutcomeStrip />
+      <main className="bg-bg">
+        <PostHeroBridge />
+        <FirstRunFunnel />
         <HowItWorks />
         <WorkspacePreview />
         <ExecuteTogether />
         <MeasureImprove />
-        <OutcomeQuote />
         <FAQ />
         <FooterCTA />
       </main>

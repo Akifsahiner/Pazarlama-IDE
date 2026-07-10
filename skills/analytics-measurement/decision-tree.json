@@ -1,0 +1,30 @@
+{
+  "root": "north_star_defined",
+  "nodes": {
+    "north_star_defined": {
+      "q": "Is there one north-star metric for the current company stage?",
+      "yes": "funnel_mapped_to_routes",
+      "no": "OUTPUT:pick-north-star-from-stage"
+    },
+    "funnel_mapped_to_routes": {
+      "q": "Are key routes mapped to funnel steps (visit, signup, activation)?",
+      "yes": "events_named",
+      "no": "OUTPUT:build-funnel-from-routes"
+    },
+    "events_named": {
+      "q": "Is there a consistent event taxonomy (snake_case, past tense)?",
+      "yes": "analytics_connected_or_manual",
+      "no": "OUTPUT:draft-event-taxonomy"
+    },
+    "analytics_connected_or_manual": {
+      "q": "Is GA4 connected OR manual_kpis populated for core metrics?",
+      "yes": "weekly_review_scheduled",
+      "no": "OUTPUT:setup-manual-logging-first"
+    },
+    "weekly_review_scheduled": {
+      "q": "Is there a weekly review template with owners and thresholds?",
+      "yes": "OUTPUT:emit-measurement-plan",
+      "no": "OUTPUT:add-weekly-review-cadence"
+    }
+  }
+}

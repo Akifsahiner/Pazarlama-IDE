@@ -1,0 +1,30 @@
+{
+  "root": "has_clear_value_prop",
+  "nodes": {
+    "has_clear_value_prop": {
+      "q": "Does the hero state who it's for and the concrete outcome in one sentence?",
+      "yes": "has_product_visual_above_fold",
+      "no": "OUTPUT:rewrite-hero-first"
+    },
+    "has_product_visual_above_fold": {
+      "q": "Is there a real product screenshot, GIF, or loom above the fold?",
+      "yes": "has_credible_social_proof",
+      "no": "OUTPUT:add-product-shot-above-fold"
+    },
+    "has_credible_social_proof": {
+      "q": "Are there 3+ named customers, real quotes with photos, or usage numbers visible?",
+      "yes": "cta_matches_traffic_temperature",
+      "no": "OUTPUT:install-proof-stack"
+    },
+    "cta_matches_traffic_temperature": {
+      "q": "Does the primary CTA match the visitor's likely intent (try / demo / learn)?",
+      "yes": "page_passes_core_web_vitals",
+      "no": "OUTPUT:rewire-cta-and-form"
+    },
+    "page_passes_core_web_vitals": {
+      "q": "LCP < 2.5s, CLS < 0.1, no jank on the CTA?",
+      "yes": "OUTPUT:ready-to-ab-test-headline",
+      "no": "OUTPUT:fix-performance-before-copy"
+    }
+  }
+}

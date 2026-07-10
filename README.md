@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Marketing IDE
 
-## Getting Started
+**Claude for Marketing & Sales** — a **local-first GTM IDE** for developers who ship from their own repo.
 
-First, run the development server:
+Open a folder or clone, generate a 30-day launch plan, run an agent that produces copy and diffs you review and apply, and use the browser operator for research — **you approve every change; you publish outreach and ads yourself.**
+
+| What we do | What we don't |
+|------------|----------------|
+| Scan repo → launch plan → agent edits → diff → apply | Auto-send outreach or bulk email |
+| Browser research in the operator | Meta/Google Ads publish from the app |
+| Manual KPIs + optional GA4 read-only | Upload your codebase to the cloud |
+| Talk-through marketing today: strategy, drafts, plan tasks — you apply diffs (L2) | Fully automated publish/send without your approval (L4+ roadmap) |
+
+## Maturity & roadmap (Konuşarak Pazarlama Vaadi)
+
+| Level | Experience | Status |
+|-------|------------|--------|
+| **L2** | Plan + tasks; Ask/Edit/Browse; manual apply; session report export | **Today** |
+| **L3** | Auto composer + one-click handoff with confirm gates | **Shipped** (Faz 4–5) |
+| **L4** | Single campaign thread; integrate copy to repo; done = applied value | **Shipped** (Faz 2, 6, 8) |
+| **L5** | GA4 read loop; outreach/ad export; weekly evidence report | **Shipped** (Faz 9–10) |
+
+### Faz 12 — Market (shipped)
+
+| Epic | Scope | Status |
+|------|--------|--------|
+| **12A Hosted tier** | Signup → instant backend; free = scan + preview; Pro+ for AI | **Shipped** |
+| **12B Team mode** | Org members, approval queue, client report sharing | **Shipped** |
+| **12C Connector marketplace** | GA4 + Meta read OAuth; LinkedIn/HubSpot connect v1 | **Shipped** |
+| **12D Eval loop** | Thumbs on decisions + 30-day quality dashboard | **Shipped** |
+
+See [`docs/FAZ-12-PIYASA.md`](docs/FAZ-12-PIYASA.md) for API tables and rollout. Apply migration `server/supabase/migrations/0007_faz12_market.sql` on hosted Supabase.
+
+In-app Meta/Google Ads **publish** and unsupervised bulk send **remain out of scope** — read connectors and export packs are the last mile today.
+
+| Layer | Path | Role |
+|-------|------|------|
+| **Desktop app** | [`desktop/`](desktop/) | Electron IDE: onboarding, Plan Studio, local agent, diff/preview, browser operator |
+| **Backend** | [`server/`](server/) | Cloud orchestrator: LLM SSE, Anthropic proxy for local agent billing, headless browser CU, Supabase auth |
+| **Skills** | [`skills/`](skills/) | Filesystem `SKILL.md` packages copied into agent worktrees |
+| **Marketing site** | [`src/`](src/) | Next.js landing page (separate from the desktop product) |
+
+## Quick start (5 minutes)
+
+### 1. Backend
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd server
+npm ci
+cp .env.example .env   # add ANTHROPIC_API_KEY (and Supabase vars for hosted mode)
+npm run dev            # http://127.0.0.1:8787
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+See [`server/README.md`](server/README.md) for auth modes and persistence.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 2. Desktop
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cd desktop
+npm ci
+npm run dev
+```
 
-## Learn More
+On first launch: **Welcome → Connect (or Continue offline) → Open project → Scan → Workspace**.
 
-To learn more about Next.js, take a look at the following resources:
+Offline mode scans your folder and previews a heuristic plan outline. Connect the backend for full AI plan generation and agent runs.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Golden path
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Open a local folder (Next.js / React repo works best)
+2. Wait for **Scan Theater** → **Project Reveal**
+3. Click **Start launch plan** (or **Preview plan in workspace** offline)
+4. Run a plan task from the timeline → review diff → apply
+5. Optional: **Browser task** from Plan Studio or composer for competitor research
 
-## Deploy on Vercel
+## Developer scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Command | Where | Purpose |
+|---------|-------|---------|
+| `npm run typecheck` | `desktop/`, `server/` | TypeScript |
+| `npm run test:shared` | `desktop/` | Shared logic unit tests |
+| `npm run test:ci` | `desktop/` | typecheck + shared + trust-copy + golden-path + wow-checklist smoke |
+| `npm run eval:gtm` | `server/` | GTM brain golden evals (needs `ANTHROPIC_API_KEY`) |
+| `npm run build:win` | `desktop/` | Windows installer + bundled server |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Architecture (short)
+
+- **Local Agent Host** — Claude Agent SDK runs in Electron main; files and git stay on your machine.
+- **Cloud proxy** — Desktop sends session token as `ANTHROPIC_API_KEY`; server injects the real key and meters usage.
+- **Unified RunEvent bus** — Agent runs, browser CU, and feed items share one event stream for replay.
+
+Details: [`progress.md`](progress.md), [`desktop/README.md`](desktop/README.md), [`AGENTS.md`](AGENTS.md).
+
+## CI
+
+GitHub Actions (`desktop-ci.yml`): desktop typecheck/build/tests, server build + skill-coverage, GTM eval (when secret present), Electron e2e smoke.
+
+## License
+
+Private — see repository owner.

@@ -1,40 +1,60 @@
+"use client";
+
+import { motion } from "framer-motion";
+import { Check } from "lucide-react";
 import { sections } from "@/lib/tokens";
+import { HERO_DEMO_WEEKS_INITIAL } from "@/lib/hero-ide-demo";
+import type { HeroIDEDemoState } from "@/components/ide-ui/useHeroIDEDemo";
 import type { IDETheme } from "@/lib/ide-themes";
 
-const weeks = [
-  { label: "Week 1 — Foundation", progress: 100 },
-  { label: "Week 2 — Assets", progress: 70 },
-  { label: "Week 3 — Distribution", progress: 35 },
-  { label: "Week 4 — Launch", progress: 10 },
-];
+const weekLabels = [
+  "Week 1 — Foundation",
+  "Week 2 — Assets",
+  "Week 3 — Distribution",
+  "Week 4 — Launch",
+] as const;
 
 type CanvasPanelProps = {
   theme: IDETheme;
+  demo?: HeroIDEDemoState | null;
 };
 
-export function CanvasPanel({ theme }: CanvasPanelProps) {
+export function CanvasPanel({ theme, demo }: CanvasPanelProps) {
   const { taskGraph } = sections.workspace;
   const isGlass = theme.blur !== "0px";
+  const weekProgress = demo?.weekProgress ?? [...HERO_DEMO_WEEKS_INITIAL];
+  const activeTaskIndex = demo?.activeTaskIndex ?? -1;
+  const approved = demo?.phase === "approved";
 
   return (
     <div className="flex h-full flex-col gap-4 p-4">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-semibold text-white/90">Launch plan</span>
-        <span className="rounded-full bg-[#6BCB77]/20 px-2 py-0.5 text-[9px] font-medium text-[#8ee09a]">
-          30-day
-        </span>
+        <motion.span
+          animate={
+            approved
+              ? { scale: [1, 1.06, 1], backgroundColor: "rgba(107, 203, 119, 0.28)" }
+              : { scale: 1 }
+          }
+          transition={{ duration: 0.5 }}
+          className="rounded-full bg-[#6BCB77]/20 px-2 py-0.5 text-[9px] font-medium text-[#8ee09a]"
+        >
+          {approved ? "In progress" : "30-day"}
+        </motion.span>
       </div>
 
       <div className="flex flex-col gap-2.5">
-        {weeks.map((week) => (
-          <div key={week.label} className="flex flex-col gap-1">
-            <span className="text-[10px] text-white/65">{week.label}</span>
+        {weekLabels.map((label, index) => (
+          <div key={label} className="flex flex-col gap-1">
+            <span className="text-[10px] text-white/65">{label}</span>
             <div
               className={`h-1.5 overflow-hidden rounded-full ${isGlass ? "bg-black/25" : "bg-white/10"}`}
             >
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-[#497ee9] to-[#749cff]"
-                style={{ width: `${week.progress}%` }}
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-[#1d4ed8] to-[#3c83f6]"
+                initial={false}
+                animate={{ width: `${weekProgress[index]}%` }}
+                transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1], delay: index * 0.06 }}
               />
             </div>
           </div>
@@ -42,20 +62,39 @@ export function CanvasPanel({ theme }: CanvasPanelProps) {
       </div>
 
       <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-2">
-        {taskGraph.map((task, i) => (
-          <div key={task} className="flex items-center gap-1.5">
-            <span
-              className={`rounded-md px-2 py-1 text-[9px] font-medium text-white/80 ${
-                isGlass ? "bg-black/30" : "bg-white/8"
-              }`}
-            >
-              {task}
-            </span>
-            {i < taskGraph.length - 1 && (
-              <span className="text-[9px] text-white/35">→</span>
-            )}
-          </div>
-        ))}
+        {taskGraph.map((task, i) => {
+          const active = i === activeTaskIndex;
+          return (
+            <div key={task} className="flex items-center gap-1.5">
+              <motion.span
+                animate={
+                  active
+                    ? {
+                        scale: [1, 1.04, 1],
+                        boxShadow: [
+                          "0 0 0 rgba(107,203,119,0)",
+                          "0 0 12px rgba(107,203,119,0.35)",
+                          "0 0 8px rgba(107,203,119,0.2)",
+                        ],
+                      }
+                    : { scale: 1 }
+                }
+                transition={{ duration: 0.6 }}
+                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[9px] font-medium ${
+                  active
+                    ? "border border-[#6BCB77]/40 bg-[#6BCB77]/20 text-[#b8f5c8]"
+                    : `text-white/80 ${isGlass ? "bg-black/30" : "bg-white/8"}`
+                }`}
+              >
+                {active ? <Check className="size-2.5" aria-hidden="true" /> : null}
+                {task}
+              </motion.span>
+              {i < taskGraph.length - 1 && (
+                <span className="text-[9px] text-white/35">→</span>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

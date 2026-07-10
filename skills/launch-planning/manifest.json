@@ -1,0 +1,29 @@
+{
+  "id": "launch-planning",
+  "name": "Launch Planning (14/30 Day)",
+  "category": "launch",
+  "applies_when": {
+    "company_stage": ["pre-launch", "early", "growth", "relaunch"],
+    "channels_includes": ["product_hunt", "hacker_news", "twitter", "linkedin", "email", "press", "youtube"],
+    "business_model": ["saas", "ecommerce", "marketplace", "info_product", "mobile_app", "open_source"]
+  },
+  "do_not_use_when": {
+    "company_stage": ["enterprise_field_sales_only"],
+    "constraints_includes": ["no_public_announcement_allowed", "embargo_locked_no_owned_channels"]
+  },
+  "required_inputs": [
+    "product_name",
+    "main_value_proposition",
+    "target_audience",
+    "differentiators",
+    "existing_proof",
+    "available_assets"
+  ],
+  "output_schema": "marketing_decision",
+  "primary_metric": "qualified_signups_launch_week",
+  "playbook_selector": [
+    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
+    { "if": { "channels_includes": ["email"] }, "pick": "with-email-list" },
+    { "if": { "business_model": ["saas"] }, "pick": "b2b-saas" }
+  ]
+}

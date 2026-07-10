@@ -1,0 +1,20 @@
+{
+  "root": "founder_posting_cadence",
+  "nodes": {
+    "founder_posting_cadence": {
+      "q": "Can the founder post 3–5x/week for 30 days?",
+      "yes": "icp_on_linkedin",
+      "no": "OUTPUT:reduce-cadence-or-defer-playbook"
+    },
+    "icp_on_linkedin": {
+      "q": "Is the ICP active on LinkedIn (not just Twitter)?",
+      "yes": "has_proof_story",
+      "no": "OUTPUT:pivot-channel-or-dual-post"
+    },
+    "has_proof_story": {
+      "q": "Is there one concrete customer or build story to anchor posts?",
+      "yes": "OUTPUT:run-14d-post-grid",
+      "no": "OUTPUT:ship-build-in-public-series-first"
+    }
+  }
+}

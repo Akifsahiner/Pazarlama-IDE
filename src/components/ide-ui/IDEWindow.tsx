@@ -13,18 +13,23 @@ import { CanvasPanel } from "./CanvasPanel";
 import { AgentPanel } from "./AgentPanel";
 import { ActivityBar } from "./ActivityBar";
 import { IDEThemePicker } from "./IDEThemePicker";
+import { useHeroIDEDemo } from "./useHeroIDEDemo";
 
 type IDEWindowProps = {
   showThemePicker?: boolean;
   initialTheme?: IDEThemeId;
+  /** Hero landing demo — Approve plan triggers scripted UI sequence */
+  interactive?: boolean;
 };
 
 export function IDEWindow({
   showThemePicker = true,
   initialTheme = defaultIDETheme,
+  interactive = false,
 }: IDEWindowProps) {
   const [themeId, setThemeId] = useState<IDEThemeId>(initialTheme);
   const theme: IDETheme = ideThemes[themeId];
+  const demo = useHeroIDEDemo(interactive);
 
   return (
     <div className="ide-shell flex w-full flex-col">
@@ -57,7 +62,7 @@ export function IDEWindow({
                 theme.blur !== "0px" ? `blur(${theme.blur})` : undefined,
             }}
           >
-            <CanvasPanel theme={theme} />
+            <CanvasPanel theme={theme} demo={demo} />
           </div>
 
           <div
@@ -68,11 +73,11 @@ export function IDEWindow({
                 theme.blur !== "0px" ? `blur(${theme.blur})` : undefined,
             }}
           >
-            <AgentPanel theme={theme} />
+            <AgentPanel theme={theme} demo={demo} />
           </div>
         </div>
 
-        <ActivityBar theme={theme} />
+        <ActivityBar theme={theme} demo={demo} />
       </div>
     </div>
   );

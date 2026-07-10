@@ -9,19 +9,11 @@ type ShimmerButtonProps = {
   id?: string;
   compact?: boolean;
   animated?: boolean;
+  /** When false, hides the periodic light sweep (hero CTA). */
+  sweep?: boolean;
   icon?: React.ReactNode;
+  className?: string;
 };
-
-function WindowsIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M1.5 2.5L7.5 1.7V7.8H1.5V2.5Z" fill="currentColor" />
-      <path d="M8.5 1.6L14.5 0.8V7.8H8.5V1.6Z" fill="currentColor" />
-      <path d="M1.5 8.7H7.5V14.5L1.5 13.7V8.7Z" fill="currentColor" />
-      <path d="M8.5 8.7H14.5V15.2L8.5 14.4V8.7Z" fill="currentColor" />
-    </svg>
-  );
-}
 
 export function ShimmerButton({
   label,
@@ -29,17 +21,20 @@ export function ShimmerButton({
   id,
   compact = false,
   animated = true,
+  sweep = true,
   icon,
+  className: extraClassName,
 }: ShimmerButtonProps) {
   const reducedMotion = useReducedMotion() ?? false;
   const sizeClass = compact ? "px-4 py-2 text-[13px]" : "px-6 py-3 text-[15px]";
-  const className = `shimmer-button inline-flex items-center gap-2 rounded-xl font-medium tracking-[-0.01em] text-white hover:scale-[1.02] active:scale-[0.98] ${sizeClass}`;
+  const className = `shimmer-button inline-flex items-center gap-2 rounded-xl font-semibold tracking-[-0.01em] text-white ${!sweep ? "shimmer-button--no-sweep" : ""} ${sizeClass}${extraClassName ? ` ${extraClassName}` : ""}`;
 
   const content = (
     <>
-      <span className="shimmer-button__sweep" aria-hidden="true" />
-      <span className="relative flex items-center gap-2">
-        {icon ?? <WindowsIcon />}
+      <span className="shimmer-button__sheen" aria-hidden="true" />
+      {sweep && <span className="shimmer-button__sweep" aria-hidden="true" />}
+      <span className="relative z-[2] flex items-center gap-2">
+        {icon}
         {label}
       </span>
     </>

@@ -7,10 +7,10 @@ export function OutcomeQuote() {
     <SectionContainer>
       <ScrollReveal>
         <figure className="mx-auto max-w-3xl text-center">
-          <blockquote className="font-serif text-2xl leading-[1.35] font-medium tracking-[-0.02em] text-[#1A202C] md:text-3xl">
+          <blockquote className="font-serif text-2xl leading-[1.35] font-medium tracking-[-0.02em] text-ink md:text-3xl">
             &ldquo;{founderQuote.quote}&rdquo;
           </blockquote>
-          <figcaption className="mt-8 text-sm text-ink-muted">
+          <figcaption className="mt-8 text-sm text-ink-3">
             {founderQuote.author}
           </figcaption>
         </figure>
