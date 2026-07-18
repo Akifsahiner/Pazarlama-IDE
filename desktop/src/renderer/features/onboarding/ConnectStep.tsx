@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useApp } from "@renderer/state/store";
 import { readDemoConnectorsEnabled, setDemoConnectorsEnabled } from "@shared/demoConnectors";
 import { ConnectionSetupWizard } from "@renderer/components/ConnectionSetupWizard";
@@ -9,17 +9,10 @@ export function ConnectStep() {
   const auth = useApp((s) => s.auth);
   const runtime = useApp((s) => s.runtime);
   const continueOffline = useApp((s) => s.continueOffline);
-  const checkConnection = useApp((s) => s.checkConnection);
   const [demoFeed, setDemoFeed] = useState(readDemoConnectorsEnabled());
 
   const connected = runtime === "connected";
   const signedIn = auth.state === "signed-in" || !auth.authEnabled;
-
-  useEffect(() => {
-    if (!connected) {
-      void checkConnection();
-    }
-  }, []);
 
   return (
     <div className="space-y-4">

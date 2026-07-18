@@ -1,0 +1,42 @@
+[
+  {
+    "name": "press_pickups_embargo_window",
+    "definition": "Count of published or syndicated stories citing your launch between embargo lift and +48 hours, excluding paid/sponsored placements.",
+    "target_hint": "Cold (0 relationships): 0–1 realistic. Warm intro + strong hook: 1–3. Funding + tier-1 relationships: 3–8. Do not plan around TechCrunch unless you have a prior relationship."
+  },
+  {
+    "name": "press_pitch_reply_rate",
+    "definition": "Reporters who reply (any tone) divided by personalized pitches sent (target 5).",
+    "target_hint": "Cold list: 10–30% reply is good. 0% after 5 beat-matched pitches → hook or proof problem, not volume problem."
+  },
+  {
+    "name": "press_embargo_compliance",
+    "definition": "Boolean — did all live stories publish at or after embargo lift with no founder-caused leaks?",
+    "target_hint": "Must be 100%. One early leak can zero out coordinated coverage."
+  },
+  {
+    "name": "press_referral_sessions_72h",
+    "definition": "Sessions with utm_source=press or referrer from target outlet domains in 72h post-embargo.",
+    "target_hint": "Trade press: 200–2k sessions per pickup. Tier-1 tech: 1k–15k depending on story placement. Zero sessions with a pickup → wrong audience or weak CTA in story."
+  },
+  {
+    "name": "press_to_signup_rate",
+    "definition": "Signups from press-referred sessions divided by press-referred sessions in launch week.",
+    "target_hint": "5–12% for strong message match on LP. <3% means landing page doesn't match story angle."
+  },
+  {
+    "name": "press_kit_download_or_open",
+    "definition": "Reporters who confirm receiving/opening press kit PDF (track via link or direct reply).",
+    "target_hint": "≥3 of 5 pitched reporters should acknowledge kit. If 0 opens, attachment/link delivery is broken."
+  },
+  {
+    "name": "press_follow_up_sla_met",
+    "definition": "Percentage of reporter replies answered within 24 business hours during pitch and launch window.",
+    "target_hint": "Target 100% during T-7→D+2 window. One missed fact-check call can distort the published story."
+  },
+  {
+    "name": "press_founders_quote_used_verbatim",
+    "definition": "Boolean — did ≥1 pickup use your pre-approved founder quote without hostile reframing?",
+    "target_hint": "Pre-approved ≤60-word quotes get used ~70% of the time when story runs. Long or jargon quotes get rewritten."
+  }
+]

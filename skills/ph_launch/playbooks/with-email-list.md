@@ -2,13 +2,50 @@
 
 A warm list is the single highest-leverage asset for a PH launch. Use it as a *velocity source*, not as a fire hose.
 
-- **Day −7: Send a "we're launching on Product Hunt next Tuesday" email** with a clear ask: "If you find it useful, an honest comment with your real use case helps the most." Include a "remind me 1 hour before" link.
-- **Day −2: DM your top 30 list-engaged users personally** (not via the ESP). Ask if they'd be willing to be one of the first 10 commenters. Personal asks convert at 50–70%; mass asks at 1–3%.
-- **Launch day, 12:01am PT: submit.** Do NOT email yet. Let the early indie crowd seed the first 30–60 upvotes organically.
-- **6am PT (9am ET): first email wave** to most-engaged segment (opened 3 of last 5). Sender = founder; subject = product name + outcome ("Linear for marketing teams is live"). Single CTA = link to PH.
-- **9am PT (12pm ET): second wave** to general list. Different subject, same link. Avoid "we launched!" — lead with the product.
-- **12pm PT: third wave to cold segment** with a slight reframe ("In case you missed it…"). At this point your PH page already has social proof on it.
-- **Throughout the day**: every PH comment gets a substantive reply within 30 min. Tag commenters' work where relevant ("I love what you're doing at [X]"). The thread quality is what curators see.
-- **Day +1 email**: thank-you note with a screenshot of the rank, a real metric, and what you learned. Many of the people who didn't act on Day 1 will convert here.
+## Preconditions
+- [ ] ESP with segmentable engagement (opens)
+- [ ] Tagline ≤60 chars + real-UI gallery
+- [ ] Founder available launch day PT
 
-Realistic outcome with a 5–20k engaged list: ranks #1–5, 5k–25k page visits, 1,000–4,000 signups, often featured in PH's daily newsletter.
+## Aggression dial
+
+| Level | When | Focus |
+|-------|------|-------|
+| conservative | List <1k or low opens | Soft announce + one wave |
+| standard | 1–5k engaged | This playbook (3 waves) |
+| aggressive | ≥5k engaged + comment squad | Use `aggressive-top-1` |
+
+## Timeline
+- **T-7**: “Launching next Tue” email — ask for honest comments, not votes
+- **T-2**: Personal DM top 30 engaged users for first-hour comments
+- **H0 12:01am PT**: Submit — **do not email yet**
+- **H+6 6am PT**: Wave 1 most-engaged
+- **H+9 9am PT**: Wave 2 general
+- **H+12 12pm PT**: Wave 3 cold / missed
+- **All day**: Reply ≤30 min
+- **D+1**: Thank-you + rank screenshot + learnings
+
+## Tactic stack
+1. Day −7 announce email with “remind me 1 hour before” link
+2. Day −2 personal DMs to top 30 (50–70% yes vs 1–3% mass)
+3. `ph_submit_1201_pt` — organic seed first 30–60 upvotes
+4. `ph_email_wave_1_6am` — engaged segment, founder sender
+5. `ph_email_wave_2_9am` — general list, different subject
+6. `ph_email_wave_3_12pm` — cold reframe
+7. `ph_comment_reply_sla_30m` — thread quality for curators
+8. D+1 thank-you converts fence-sitters
+
+## Orchestration
+- ESP waves timed to PT; never “upvote us” in copy
+- Optional LinkedIn founder post at H+9
+
+## Realistic outcomes
+With 5–20k engaged list: ranks **#1–5**, 5k–25k visits, 1k–4k signups, often PH newsletter.
+
+## Kill / pivot rules
+- Open rate <15% on announce → fix list hygiene before launch day
+- H+6 wave flops → do not triple-send; lean on comments + teardown
+
+## Ethics line
+- Ask for honest comments / use cases — never votes
+- No vote rings or paid engagement

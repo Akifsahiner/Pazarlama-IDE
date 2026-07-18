@@ -70,10 +70,16 @@ export function Operator() {
   }, [browser.lastStatus, browser.url]);
 
   const idle = !browser.running && !browser.frame;
+  const actionLabel = browser.lastAction ?? browser.actionVerb;
 
   return (
     <div className="flex h-full flex-col">
-      <BrowserChrome url={browser.url} title={browser.title} reloading={browser.phase === "acting"} />
+      <BrowserChrome
+        url={browser.url}
+        title={browser.title}
+        reloading={browser.phase === "acting"}
+        actionLabel={actionLabel}
+      />
 
       <div className="flex items-center justify-between gap-3 border-b border-line bg-surface/60 px-3 py-1.5">
         <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -97,6 +103,8 @@ export function Operator() {
           verb={selectedTs ? undefined : browser.actionVerb}
           running={browser.running}
           reducedMotion={reducedMotion}
+          lastStatus={browser.lastStatus}
+          actionLabel={selectedTs ? undefined : actionLabel}
         />
 
         {/* Idle / offline / failed states get designed placeholders with recovery. */}
@@ -126,7 +134,14 @@ export function Operator() {
                 title="No live session"
                 description="Run a browser task — competitor teardowns, lead research, and site verification appear here live."
                 primaryAction={{
-                  label: "Start a browser task",
+                  label: "Research competitors on Google",
+                  onClick: () =>
+                    runBrowserTask(
+                      "Open Google and search for our top 2 competitors. Open their marketing sites, capture positioning and primary CTAs, and list 3 findings we can act on.",
+                    ),
+                }}
+                secondaryAction={{
+                  label: "Type a custom task",
                   onClick: () => launchComposerAction({ mode: "browse" }),
                 }}
               />

@@ -1,0 +1,47 @@
+---
+description: Canonical product strategy — Software CMO north star. Read before any product, GTM, onboarding, or plan feature work.
+alwaysApply: true
+---
+
+# Product North Star (Software CMO)
+
+**Full doc:** [`PRODUCT_NORTH_STAR.md`](../../PRODUCT_NORTH_STAR.md) — read for strategy, channel matrix, Cluely calibration, build pillars.
+
+## Non-negotiable positioning
+
+Marketing IDE is **not** a modest “SEO + meta tag + launch checklist” tool. It is a **Software CMO**:
+
+- **Diagnose** product + market + founder assets → **channel thesis** (one primary growth lever)
+- **Operate** daily/weekly with the user — zero ambiguity (what / why / who / when / done)
+- **Lane A:** ship in repo (landing, SEO technical, tracking, affiliate pages, research artifacts)
+- **Lane B:** prepare + direct human execution (post scripts, influencer DMs, ads export, PH runbook) — **do not auto-post to social**
+- **Lane C:** delegate briefs (hire creator, agency SOW)
+- **Lane D:** pause marketing for product/activation bottlenecks; ship site fixes via Lane A and export tracked core issues
+- **Revenue plane (P16):** pricing thesis, funnel, paying-customer targets, evidence-bound CAC/LTV — focus shift, not full marketing pause
+- **Growth mechanism intelligence (P17):** 14-mechanism corpus picks growth physics per product/founder/presence — not one Cluely default; anti-pattern red list; mechanism-specific Week 1 ops
+- **Measure → review → pivot** continuously (`CampaignSession` loop), not one-month launch
+
+## Anti-patterns (never ship toward these)
+
+- Generic chat advice without executable ops
+- 30-day plan PDFs without owner/deadline/metric gates
+- Shrinking ambition to “conversion wedge only” to avoid hard problems
+- Fake ROI slogans; fake analytics rows
+- Defaulting every project to SEO/hero CTA when thesis should be viral, outbound, PH, etc.
+- Copying superficial growth tactics (random mascot TikTok, empty Discord, thin SEO pages) when mechanism evidence says otherwise
+
+## Feature checklist (every PR)
+
+1. Right **growth mechanism + channel thesis** for this product class?
+2. Reduces **“what do I do today?”** ambiguity?
+3. Lane A ship, Lane B prepare, Lane C brief, or Lane D product unblock?
+4. Tied to a **metric** within 7 days?
+5. Would a **world-class CMO** do this step?
+
+## Code anchors
+
+`campaignSession.ts`, `bottleneck.ts`, `firstHourWow.ts`, `cmoGrowthMechanismKnowledge.ts`, `cmoGrowthEngine.ts`, Plan `execution_mode`, skills under `skills/`, Operator/browser CU, edit run + apply pipeline.
+
+## Calibration
+
+Cluely succeeded via **distribution-first + founder story + short-form volume + pivot from data** — not hero meta alone. Our intake must recommend the **correct** path per product, not one template.

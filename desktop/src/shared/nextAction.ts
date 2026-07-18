@@ -1,6 +1,23 @@
 import type { FeedItem } from "./feed";
 import { countPendingApprovals } from "./feed";
 import type { MarketingPlan, PlanTask, CampaignSession } from "./types";
+import type { ChannelThesis } from "./cmoIntake";
+import type { CmoOpsCadence } from "./cmoOpsCadence";
+import { getNowTask, isWeekReviewDue, opsQueueBlocksLaneWork } from "./cmoOpsCadence";
+import { allOpsTasksTerminal } from "./cmoProofLoop";
+import type { LaneBWorkspace } from "./cmoLaneB";
+import { getNextLaneBItem } from "./cmoLaneB";
+import type { CmoDelegateWorkspace } from "./cmoLaneC";
+import { getNextDelegateBrief } from "./cmoLaneC";
+import { getNextDelegateRubricDay } from "./cmoDelegateOperator";
+import type { CmoContinuousState } from "./cmoContinuous";
+import { isContinuousReplanReady } from "./cmoContinuous";
+import type { GrowthControlPlane } from "./cmoGrowthPlane";
+import type { GrowthMemoryState } from "./cmoGrowthMemory";
+import {
+  isCommandSurfaceActive,
+  isCommandSurfaceOwnedAction,
+} from "./cmoCommandSurface";
 import {
   campaignNextActionEyebrow,
   campaignNextActionReason,
@@ -38,7 +55,19 @@ export type NextActionDispatch =
   | { type: "composer_focus" }
   | { type: "open_workspace" }
   | { type: "draft_landing_copy" }
-  | { type: "open_plan_surface" };
+  | { type: "open_plan_surface" }
+  | { type: "start_edit_from_receipt" }
+  | { type: "apply_from_receipt" }
+  | { type: "open_ops_proof"; taskId: string }
+  | { type: "run_ops_system_task"; taskId: string }
+  | { type: "focus_ops_board" }
+  | { type: "open_week_review" }
+  | { type: "start_next_cmo_cycle"; thesisId?: string; mode?: "pivot" | "double_down" }
+  | { type: "complete_lane_b_item"; itemId: string }
+  | { type: "focus_lane_b_panel" }
+  | { type: "open_delegate_brief"; briefId: string }
+  | { type: "open_delegate_rubric"; rubricId: string }
+  | { type: "focus_delegate_panel" };
 
 export interface ResolvedNextAction {
   id: string;
@@ -81,6 +110,24 @@ export interface NextActionInput {
 
   /** Active campaign session — session-aware eyebrow/reason (Faz 6). */
   campaignSession?: CampaignSession | null;
+
+  /** P1 — CMO ops cadence when Week 1 is active without a full plan. */
+  opsCadence?: CmoOpsCadence | null;
+  /** P3 — Lane B workspace (posting / outreach / runbook). */
+  laneBWorkspace?: LaneBWorkspace | null;
+  channelThesis?: ChannelThesis | null;
+  /** P4 — continuous CMO cycle state. */
+  cmoContinuous?: CmoContinuousState | null;
+  /** P11 — pending evidence-backed Week N+1 replan. */
+  growthMemory?: GrowthMemoryState | null;
+  /** P5 — Lane C delegate workspace. */
+  delegateWorkspace?: CmoDelegateWorkspace | null;
+  /** P7 — growth control plane (binding + today move). */
+  growthControlPlane?: GrowthControlPlane | null;
+  /** Last ask turn receipt — chat-aware next actions. */
+  lastTurnReceipt?: import("./turnReceipt").TurnReceipt | null;
+  /** Edit run with unapplied patches (non-plan). */
+  pendingRunApply?: { runId: string; files: string[] } | null;
 }
 
 function firstWaitingGate(items: FeedItem[]): FeedItem | null {
@@ -153,14 +200,51 @@ function surfaceUnlockAction(surface: WorkSurface): ResolvedNextAction | null {
   };
 }
 
+function enrichWithGrowthPlane(
+  action: ResolvedNextAction,
+  plane?: GrowthControlPlane | null,
+): ResolvedNextAction {
+  if (!plane?.binding.headline) return action;
+  const bindingEyebrow = `Bottleneck · ${plane.binding.headline}`;
+  const eyebrow =
+    action.eyebrow.startsWith("Bottleneck ·") || action.eyebrow.length > 72
+      ? action.eyebrow
+      : bindingEyebrow.length > 72
+        ? `${bindingEyebrow.slice(0, 69)}…`
+        : bindingEyebrow;
+  const reason =
+    action.reason && action.reason.length > 12
+      ? action.reason
+      : plane.primary_lever || action.reason;
+  return { ...action, eyebrow, reason };
+}
+
 /** Single prioritized “what should I do now?” for the current screen. */
 export function resolveNextAction(input: NextActionInput): ResolvedNextAction | null {
-  const action = resolveNextActionCore(input);
-  if (!action || !input.campaignSession) return action;
+  const commandSurfaceActive = isCommandSurfaceActive({
+    growthControlPlane: input.growthControlPlane,
+    opsCadence: input.opsCadence,
+  });
+  let action = resolveNextActionCore(input);
+  if (action && commandSurfaceActive && isCommandSurfaceOwnedAction(action.id)) {
+    // The command surface owns CMO daily/governance work. Resolve again without
+    // those sources so blocking run/apply/approval actions can still surface.
+    action = resolveNextActionCore({
+      ...input,
+      opsCadence: null,
+      laneBWorkspace: null,
+      delegateWorkspace: null,
+    });
+  }
+  if (!action) return null;
+  const enriched = !commandSurfaceActive && input.opsCadence && !input.plan
+    ? enrichWithGrowthPlane(action, input.growthControlPlane)
+    : action;
+  if (!input.campaignSession) return enriched;
   return {
-    ...action,
-    eyebrow: campaignNextActionEyebrow(input.campaignSession, action.eyebrow),
-    reason: campaignNextActionReason(input.campaignSession, action.reason),
+    ...enriched,
+    eyebrow: campaignNextActionEyebrow(input.campaignSession, enriched.eyebrow),
+    reason: campaignNextActionReason(input.campaignSession, enriched.reason),
   };
 }
 
@@ -176,6 +260,201 @@ function resolveNextActionCore(input: NextActionInput): ResolvedNextAction | nul
       tone: "accent",
       primaryLabel: "Open project",
       dispatch: { type: "open_project" },
+    };
+  }
+
+  if (input.pendingRunApply?.files.length) {
+    return {
+      id: "apply-from-receipt",
+      eyebrow: "Needs you",
+      title: "Apply pending changes",
+      reason: `${input.pendingRunApply.files.length} file(s) ready in worktree — ship to repo.`,
+      tone: "warn",
+      primaryLabel: "Review & apply",
+      dispatch: { type: "apply_from_receipt" },
+      secondaryDispatch: { type: "focus_run" },
+    };
+  }
+
+  if (input.opsCadence && !input.plan) {
+    const replanReady = isContinuousReplanReady(
+      input.cmoContinuous,
+      input.opsCadence,
+      input.campaignSession?.phase,
+    );
+    if (replanReady) {
+      const pivot = input.opsCadence.pivot_suggestion;
+      const nextWeek = input.opsCadence.week_index + 1;
+      const suggested = pivot?.suggested_thesis_ids[0];
+      return {
+        id: "cmo-start-next-cycle",
+        eyebrow: `Week ${nextWeek}`,
+        title:
+          suggested && pivot && !pivot.dismissed_at && pivot.verdict === "flat"
+            ? `Pivot to ${suggested.replace(/_/g, " ")}`
+            : `Start Week ${nextWeek} ops`,
+        reason:
+          input.growthMemory?.pending_replan?.rationale[0] ??
+          pivot?.rationale[0] ??
+          "Measuring complete — replan from KPI truth, message memory, and scan delta.",
+        tone: pivot?.verdict === "flat" ? "warn" : "accent",
+        primaryLabel:
+          suggested && pivot && !pivot.dismissed_at
+            ? `Start Week ${nextWeek}`
+            : "Start next week",
+        secondaryLabel: "View cycle history",
+        dispatch: {
+          type: "start_next_cmo_cycle",
+          thesisId:
+            suggested && pivot && !pivot.dismissed_at ? suggested : undefined,
+          mode:
+            suggested && pivot && !pivot.dismissed_at && pivot.verdict === "flat"
+              ? "pivot"
+              : "double_down",
+        },
+        secondaryDispatch: { type: "focus_ops_board" },
+      };
+    }
+
+    const pivot = input.opsCadence.pivot_suggestion;
+    if (
+      pivot &&
+      !pivot.dismissed_at &&
+      input.opsCadence.week_review.status === "completed"
+    ) {
+      return {
+        id: "ops-pivot",
+        eyebrow: "CMO pivot",
+        title: pivot.headline,
+        reason: pivot.rationale[0] ?? "Week metrics suggest a channel pivot.",
+        tone: pivot.verdict === "flat" ? "warn" : "neutral",
+        primaryLabel: "Review pivot",
+        secondaryLabel: "View ops table",
+        dispatch: { type: "focus_ops_board" },
+        secondaryDispatch: { type: "focus_ops_board" },
+      };
+    }
+
+    if (
+      (isWeekReviewDue(input.opsCadence) ||
+        (allOpsTasksTerminal(input.opsCadence) &&
+          input.opsCadence.week_review.status === "pending")) &&
+      input.opsCadence.week_review.status !== "completed"
+    ) {
+      return {
+        id: "ops-week-review",
+        eyebrow: `Week ${input.opsCadence.week_index} review`,
+        title: `Close Week ${input.opsCadence.week_index} with KPI truth`,
+        reason: "Log outcomes and capture pivot decision before the next week.",
+        tone: "warn",
+        primaryLabel: "Complete review",
+        dispatch: { type: "open_week_review" },
+        secondaryDispatch: { type: "focus_ops_board" },
+      };
+    }
+
+    const now = getNowTask(input.opsCadence);
+    if (now && now.status !== "done" && now.status !== "skipped") {
+      if (now.owner === "user" || now.owner === "delegate") {
+        return {
+          id: `ops-user-${now.id}`,
+          eyebrow: now.owner === "delegate" ? "Delegate proof" : "Your move",
+          title: now.what,
+          reason: `Done when: ${now.done_when}`,
+          tone: "warn",
+          primaryLabel: "Mark done",
+          secondaryLabel: "View ops table",
+          dispatch: { type: "open_ops_proof", taskId: now.id },
+          secondaryDispatch: { type: "focus_ops_board" },
+        };
+      }
+      if (
+        now.owner === "system" &&
+        !input.runActive &&
+        input.connected &&
+        input.hasAgentCwd
+      ) {
+        return {
+          id: `ops-system-${now.id}`,
+          eyebrow: "IDE ships",
+          title: now.what,
+          reason: now.why,
+          tone: "accent",
+          primaryLabel: "Start in IDE",
+          secondaryLabel: "View ops table",
+          dispatch: { type: "run_ops_system_task", taskId: now.id },
+          secondaryDispatch: { type: "focus_ops_board" },
+        };
+      }
+    }
+  }
+
+  const laneWorkUnblocked =
+    !!input.opsCadence && !input.plan && !opsQueueBlocksLaneWork(input.opsCadence);
+
+  if (laneWorkUnblocked && input.delegateWorkspace) {
+    const rubric = getNextDelegateRubricDay(
+      input.delegateWorkspace as import("./cmoDelegateOperator").DelegateOperatorWorkspace,
+      input.opsCadence?.day_index,
+    );
+    if (rubric) {
+      return {
+        id: `lane-c-rubric-${rubric.id}`,
+        eyebrow: "Lane C · Rubric",
+        title: rubric.title,
+        reason: `Day ${rubric.day_index} delegate check-in — log proof when done.`,
+        tone: "warn",
+        primaryLabel: "Log rubric day",
+        secondaryLabel: "View delegate panel",
+        dispatch: { type: "open_delegate_rubric", rubricId: rubric.id },
+        secondaryDispatch: { type: "focus_delegate_panel" },
+      };
+    }
+    const nextDelegate = getNextDelegateBrief(input.delegateWorkspace);
+    if (nextDelegate) {
+      const isHandoff = nextDelegate.status === "draft";
+      return {
+        id: `lane-c-${nextDelegate.id}`,
+        eyebrow: "Lane C",
+        title: nextDelegate.title,
+        reason: nextDelegate.what,
+        tone: "warn",
+        primaryLabel: isHandoff ? "Hand off" : "Mark delivered",
+        secondaryLabel: "View delegate panel",
+        dispatch: { type: "open_delegate_brief", briefId: nextDelegate.id },
+        secondaryDispatch: { type: "focus_delegate_panel" },
+      };
+    }
+  }
+
+  if (laneWorkUnblocked && input.laneBWorkspace) {
+    const nextLaneB = getNextLaneBItem(input.laneBWorkspace);
+    if (nextLaneB) {
+      return {
+        id: `lane-b-${nextLaneB.id}`,
+        eyebrow: "Lane B",
+        title: nextLaneB.title,
+        reason: nextLaneB.detail ?? "Human execution — post, DM, or launch step.",
+        tone: "accent",
+        primaryLabel: "Mark done",
+        secondaryLabel: "View Lane B",
+        dispatch: { type: "complete_lane_b_item", itemId: nextLaneB.id },
+        secondaryDispatch: { type: "focus_lane_b_panel" },
+      };
+    }
+  }
+
+  const editAction = input.lastTurnReceipt?.primaryAction;
+  if (editAction?.kind === "edit_run" && !input.runActive) {
+    return {
+      id: "edit-from-receipt",
+      eyebrow: "Ready to ship",
+      title: "Run in project",
+      reason: editAction.goal.slice(0, 160),
+      tone: "accent",
+      primaryLabel: "Run in project",
+      dispatch: { type: "start_edit_from_receipt" },
+      secondaryDispatch: { type: "composer_focus" },
     };
   }
 
@@ -447,10 +726,10 @@ function resolveNextActionCore(input: NextActionInput): ResolvedNextAction | nul
     return {
       id: "connect-home",
       eyebrow: "Unlock AI",
-      title: "Connect your backend",
-      reason: "Scan and preview work offline — connect for agent, browser, and full plans.",
+      title: "Enable AI features",
+      reason: "Scan and preview work offline — enable AI for agent, browser, and full plans.",
       tone: "neutral",
-      primaryLabel: "Connect",
+      primaryLabel: "Retry connection",
       secondaryLabel: "Preview plan",
       dispatch: { type: "connect" },
       secondaryDispatch: input.plan ? { type: "open_plan_surface" } : { type: "preview_plan" },

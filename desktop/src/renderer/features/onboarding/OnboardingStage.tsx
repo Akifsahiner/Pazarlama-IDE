@@ -13,7 +13,8 @@ export const ONBOARDING_STEP_META: Record<
   connect: {
     label: "Connect",
     title: "Connect to run the agent",
-    subtitle: "Your project scan works offline. Sign in or connect a backend for AI plans, chat, and runs.",
+    subtitle:
+      "Optional for now — next you'll pick a project folder, git repo, or live URL. AI needs a backend; scan and preview work offline.",
   },
   signin: {
     label: "Sign in",

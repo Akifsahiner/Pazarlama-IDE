@@ -57,6 +57,7 @@ export const IPC = {
     interrupt: "agent:interrupt",
     approve: "agent:approve",
     apply: "agent:apply",
+    applyHunks: "agent:applyHunks",
     discard: "agent:discard",
     discardFiles: "agent:discardFiles",
     preview: "agent:preview",
@@ -91,5 +92,29 @@ export const IPC = {
     available: "bundledServer:available",
     setApiKey: "bundledServer:setApiKey",
     hasApiKey: "bundledServer:hasApiKey",
+  },
+  runs: {
+    start: "runs:start",
+    interrupt: "runs:interrupt",
+    browserControl: "runs:browserControl",
+  },
+  context: {
+    suggest: "context:suggest",
+    search: "context:search",
+  },
+  notifications: {
+    list: "notifications:list",
+    dismiss: "notifications:dismiss",
+    updated: "notifications:updated",
+  },
+  index: {
+    enqueue: "index:enqueue",
+  },
+  traces: {
+    list: "traces:list",
+    read: "traces:read",
+  },
+  evidence: {
+    saveScreenshot: "evidence:saveScreenshot",
   },
 } as const;

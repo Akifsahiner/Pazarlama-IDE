@@ -13,6 +13,11 @@ import type {
   SessionOutcome,
   Settings,
   CampaignSession,
+  Finding,
+  FounderFitProfile,
+  GrowthNarrative,
+  StrategicDecision,
+  StrategicOptionId,
 } from "@shared/types";
 import { DEFAULT_SETTINGS, emptyMarketingProfile } from "@shared/defaults";
 import {
@@ -27,10 +32,25 @@ import {
 } from "@shared/connectorFeedPlaceholder";
 import { buildOfflinePlanOutline } from "@shared/offlinePlanOutline";
 import {
+  compactPlanSnapshot,
+  DEFAULT_CONTEXT_LIMIT,
+  trimHistoryToBudget,
+} from "@shared/contextBudget";
+import {
   canRunAgent,
-  resolveRuntimeCapability,
   type RuntimeCapability,
 } from "@shared/runtimeCapability";
+import {
+  assertCan,
+  deriveMatrix,
+  type CapabilityMatrix,
+} from "@shared/capability";
+import type { IdeNotification } from "@shared/orchestration";
+import { profileFromProjectScan } from "@shared/profileFromScan";
+import { parseMentionsFromText } from "@shared/mentionParse";
+import { enrichEditGoal } from "@shared/editGoalEnrich";
+import { buildTurnReceipt, type TurnReceipt } from "@shared/turnReceipt";
+import { aggregatePatchStats } from "@shared/turnReceipt";
 import { presentError } from "@renderer/lib/errorPresenter";
 import { reportBackgroundError, swallowBackground } from "@renderer/lib/backgroundError";
 import {
@@ -38,6 +58,8 @@ import {
   apiCreateSession,
   apiDeleteSession,
   apiGetMe,
+  apiBillingCheckout,
+  apiBillingPortal,
   apiGetRun,
   apiGetRunEvents,
   apiListAssets,
@@ -55,11 +77,17 @@ import {
   apiStartGa4Connect,
   apiSyncGa4Metrics,
   checkHealth,
-  streamAgent,
   streamPlan,
   StreamHttpError,
   type ServerPlanRow,
 } from "@renderer/lib/api";
+import {
+  createAskFoldSession,
+  finalizeAskFold,
+  foldAskStreamEvent,
+  type AskFoldDeps,
+  type AskFoldSession,
+} from "./askStreamFold";
 import { AuthError } from "@renderer/lib/http";
 import {
   completeAuthFromCallbackUrl,
@@ -95,6 +123,7 @@ import {
   type PermissionScope,
   type RunEvent,
   type RunStatus,
+  type AgentStreamEvent,
 } from "@shared/types";
 import type { ArchiveRunItem } from "@shared/runs";
 import { runChangedFiles, serverEventToRunEvent } from "@shared/runs";
@@ -147,6 +176,233 @@ import {
   type ConversationIntent,
 } from "@shared/conversationIntent";
 import { handoffFromResolved, type HandoffConfirmState } from "@shared/workspaceHandoff";
+import { resolveFirstShipTarget, resolveFirstHourAutoHandoff, FIRST_HOUR_AUTO_HANDOFF_DELAY_MS } from "@shared/firstHourWow";
+import {
+  parseShipSnapshotFromSource,
+  buildShipSummary,
+  type FirstShipSnapshot,
+} from "@shared/firstShipSnapshot";
+import {
+  type OnboardingTrack,
+  type WedgePhase,
+} from "@shared/quickStartWedge";
+import {
+  nextShipPipelineStage,
+  patchCountFromEvents,
+  initialShipPipelineState,
+  type ShipPipelineState,
+} from "@shared/shipPipeline";
+import { buildShipRecovery, type ShipRecoveryAction } from "@shared/shipPipelineRecovery";
+import { appendExecutionMetric, type ExecutionMetricsRollup } from "@shared/executionMetrics";
+import type { FirstShipLedger } from "@shared/types";
+import {
+  captureFirstShipSnapshotFromProject,
+  loadExecutionMetrics,
+  loadFirstShipLedger,
+  loadOnboardingTrack,
+  loadSessionOutcomesLocal,
+  persistExecutionMetricsLocal,
+  persistFirstShipLedgerLocal,
+  persistOnboardingTrack,
+  persistSessionOutcomesLocal,
+} from "@renderer/state/quickStartWedgeHelpers";
+import { buildCmoIntake, buildFinalChannelThesis } from "@shared/cmoIntake";
+import type { ChannelThesis } from "@shared/cmoIntake";
+import { validateFounderFit } from "@shared/cmoFounderFit";
+import { synthesizeGrowthNarrative } from "@shared/cmoGrowthNarrative";
+import {
+  buildStrategicDecision,
+  isStrategicDecisionSealed,
+  sealStrategicDecision as sealStrategicDecisionCore,
+} from "@shared/cmoStrategicOptions";
+import {
+  completeOpsTask as completeOpsTaskCore,
+  completeWeekReview,
+  createOpsCadenceFromThesis,
+  getNowTask,
+  hydrateOpsCadenceFromJson,
+  markOpsTaskInProgress,
+  skipOpsTask as skipOpsTaskCore,
+  tryAutoCompleteSystemTask,
+  attachBrowserEvidenceToSystemTask,
+  type CmoOpsCadence,
+} from "@shared/cmoOpsCadence";
+import {
+  buildVerifyChecklistFromTask,
+  buildVerifyFixGoal,
+  mergeReportToVerifyResult,
+  toBrowserEvidenceProof,
+  verifyPassed,
+} from "@shared/browserVerify";
+import {
+  assessMeasurementBaseline,
+  isMeasurementGateHard,
+} from "@shared/measurementBaseline";
+import {
+  allOpsTasksTerminal,
+  attachKpiToCompletedProof,
+  buildManualKpiFromOpsProof,
+  buildPivotSuggestion,
+  canCompleteWeekReview,
+  evaluateWeek1Metrics,
+  evaluateWeek1MetricsWithGa4Priority,
+  hasGa4Connected,
+  validateFullOpsProof,
+} from "@shared/cmoProofLoop";
+import {
+  applyNextCycleStarted,
+  archiveCompletedCycle,
+  buildIntakeContextForNextCycle,
+  buildIntakeDelta,
+  canStartNextCycle,
+  createInitialContinuousState,
+  hydrateContinuousStateFromJson,
+  resolveNextCycleThesisId,
+  weekLabel,
+  type CmoContinuousState,
+  type NextCycleMode,
+} from "@shared/cmoContinuous";
+import {
+  completeLaneBItem as completeLaneBItemCore,
+  createLaneBWorkspaceFromThesis,
+  hydrateLaneBWorkspaceFromJson,
+  skipLaneBItem as skipLaneBItemCore,
+  updateLaneBTarget as updateLaneBTargetCore,
+  type LaneBWorkspace,
+} from "@shared/cmoLaneB";
+import {
+  completeLaneAItemOnApply,
+  createLaneAWorkspaceFromThesis,
+  getLaneAItemForOpsTask,
+  hydrateLaneAWorkspaceFromJson,
+  markLaneAItemInProgress,
+  resolveLaneARunPlan,
+  type LaneARunPlan,
+  type LaneAWorkspace,
+} from "@shared/cmoLaneA";
+import {
+  bindExecutionPlansForCadence,
+  executionPlanToLaneARunPlan,
+} from "@shared/cmoExecutionBind";
+import {
+  bindHumanExecutionForCadence,
+  resolveHumanProofAction,
+  type HumanExecutionRef,
+} from "@shared/cmoHumanExecutionBind";
+import {
+  buildProductActivationProfile,
+  canResumeMarketing,
+  completeLinkedProductRequestOnApply,
+  completeProductRequest as completeProductRequestCore,
+  createLaneDWorkspaceFromBinding,
+  createProductLoopOpsCadence,
+  detectProductBinding,
+  hydrateLaneDWorkspaceFromJson,
+  linkSiteLevelToLaneA,
+  resumeMarketing,
+  skipProductRequest as skipProductRequestCore,
+  type LaneDWorkspace,
+  type ProductActivationProfile,
+  type ProductRequestProofInput,
+} from "@shared/cmoLaneD";
+import {
+  completeDelegateBrief as completeDelegateBriefCore,
+  hydrateDelegateWorkspaceFromJson,
+  skipDelegateBrief as skipDelegateBriefCore,
+} from "@shared/cmoLaneC";
+import {
+  buildDelegateHandoffBundle,
+  completeRubricDay as completeRubricDayCore,
+  createDelegateOperatorFromThesis,
+  hydrateDelegateOperatorFromJson,
+  importDelegateDelivery,
+  migrateToOperatorWorkspace,
+  prepareDelegateHandoff,
+  resolveDelegateOperator,
+  rollupDelegateKpis,
+  type DelegateOperatorWorkspace,
+  type RubricProofInput,
+} from "@shared/cmoDelegateOperator";
+import {
+  buildGrowthControlPlane,
+  hydrateGrowthControlPlaneFromJson,
+  type GrowthControlPlane,
+} from "@shared/cmoGrowthPlane";
+import {
+  applyMechanismToChannelThesis,
+  buildGrowthMechanismProfile,
+  hydrateGrowthMechanismProfileFromJson,
+  resolveMechanismLaneBMode,
+  resolveMechanismOperatorFlags,
+  type PublicPresencePolicy,
+} from "@shared/cmoGrowthEngine";
+import type { GrowthMechanismId } from "@shared/cmoGrowthMechanismKnowledge";
+import {
+  applyMemoryReplan,
+  buildReplanPreview,
+  createInitialGrowthMemory,
+  growthMemorySummary,
+  harvestMemoryFromCycle,
+  hydrateGrowthMemoryFromJson,
+  replanLaneBFromMemory,
+  rollupGrowthMemoryKpis,
+  type GrowthMemoryState,
+} from "@shared/cmoGrowthMemory";
+import {
+  applyActionCostEstimates,
+  applyBudgetReallocation,
+  buildBudgetAllocation,
+  buildBudgetSnapshot,
+  hydrateBudgetPlanFromJson,
+  rollupBudgetActuals,
+  seedActionCosts,
+  type BudgetPlan,
+} from "@shared/cmoBudgetPlane";
+import {
+  buildRevenueCloseout,
+  buildRevenueProfile,
+  buildRevenueScanSignals,
+  buildRevenueSnapshot,
+  completeLinkedMonetizationTaskOnApply,
+  completeMonetizationTask as completeMonetizationTaskCore,
+  createMonetizationWorkspaceFromBinding,
+  detectRevenueBinding,
+  hydrateMonetizationWorkspaceFromJson,
+  hydrateRevenueProfileFromJson,
+  linkSiteLevelMonetizationToLaneA,
+  logRevenueAttribution,
+  skipMonetizationTask as skipMonetizationTaskCore,
+  type MonetizationTaskProofInput,
+  type MonetizationWorkspace,
+  type RevenueProfile,
+} from "@shared/cmoRevenuePlane";
+import {
+  completeDistributionSlot,
+  createDistributionOperatorFromThesis,
+  evaluateHookPerformanceWithProfile,
+  hydrateDistributionOperatorFromJson,
+  isDistributionOperatorGate,
+  rollupOperatorKpis,
+  skipDistributionSlot,
+  syncLaneBFromOperator,
+  type DistributionOperatorWorkspace,
+  type DistributionProofInput,
+} from "@shared/cmoDistributionOperator";
+import {
+  completeInfluencerTouch,
+  createInfluencerOperatorFromThesis,
+  evaluatePitchPerformanceWithProfile,
+  hydrateInfluencerOperatorFromJson,
+  isInfluencerOperatorGate,
+  rollupInfluencerKpis,
+  skipInfluencerTouch,
+  syncLaneBFromInfluencerOperator,
+  updateInfluencerTouchCreator,
+  type InfluencerDeal,
+  type InfluencerOperatorWorkspace,
+  type InfluencerProofInput,
+} from "@shared/cmoInfluencerOperator";
+import { ga4SyncStatusMessage, planGa4SyncOnCycleStart } from "@shared/cmoMeasurement";
 import {
   buildAgentTurnContext,
   type ProactiveSuggestionAction,
@@ -286,9 +542,15 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let planAbort: AbortController | null = null;
 let agentAbort: AbortController | null = null;
+/** Active Ask fold session — Brain events arrive via RunEvent bus. */
+let askFoldSession: AskFoldSession | null = null;
+let firstHourAutoHandoffTimer: number | null = null;
 let runEventsBound = false;
 let activeRunResumed = false;
 let authCallbackBound = false;
+/** Edit-run thread bubble coalescing for successive agent.message deltas. */
+let editStreamBubbleId: string | null = null;
+let editStreamRunId: string | null = null;
 
 function quotaBlocked(auth: AuthInfo, kind: "plan" | "agent"): boolean {
   if (!auth.usage || !auth.quota) return false;
@@ -321,6 +583,10 @@ interface AppState {
   connection: ConnectionInfo;
   /** Derived from connection + auth — single source for AI gating. */
   runtime: RuntimeCapability;
+  /** Per-capability readiness — gate CTAs on matrix.can* / assertCan. */
+  capabilityMatrix: CapabilityMatrix;
+  /** Background brain notifications (deduped). */
+  ideNotifications: IdeNotification[];
   /** User chose local exploration (splash continue offline). */
   localOnlyMode: boolean;
   /** Plan is a read-only scan outline, not AI-generated. */
@@ -397,6 +663,8 @@ interface AppState {
   lastQueueDrainGoal?: string;
   /** E2E fixture — queue drain records intent without starting agent host. */
   e2eDryRunExecution?: boolean;
+  /** E2E: first-ship wedge tests — never auto-complete ops/runs. */
+  e2eMockAgentEvents?: boolean;
   outboxCount: number;
   outboxFlushing: boolean;
   replayRun: RunInfo | null;
@@ -426,6 +694,77 @@ interface AppState {
   suggestedComposerMode?: { mode: ComposerMode; reason?: string };
   /** Last user message in agent ask turn — used for suggested_mode handoff. */
   lastAgentUserMessage?: string;
+  /** Last completed ask turn receipt — carried into edit runs. */
+  lastTurnReceipt?: TurnReceipt;
+  lastAskAssets: MarketingAsset[];
+  lastAnswerText?: string;
+  /** Timestamp of first successful apply (sidecar or edit run). */
+  firstShipAt?: number;
+  /** First session after reveal — skip edit confirm, prioritize ship wow. */
+  firstHourActive?: boolean;
+  /** Scout ask from beginFirstHourWow — auto-start edit when answer lands. */
+  firstHourScoutPending?: boolean;
+  /** Faz 1 — Quick Start vs Full CMO onboarding track. */
+  onboardingTrack?: OnboardingTrack;
+  wedgePhase?: WedgePhase;
+  firstShipSnapshot?: FirstShipSnapshot;
+  firstShipLedger?: FirstShipLedger;
+  shipPipeline?: ShipPipelineState;
+  shipRecovery?: ShipRecoveryAction;
+  executionMetrics?: ExecutionMetricsRollup;
+  projectOpenedAt?: number;
+  pendingAutoPreview?: boolean;
+  /** P0 channel thesis — refreshed on project open via runCmoIntake. */
+  channelThesis?: ChannelThesis;
+  /** P1 — Week 1 ops cadence (daily table + user accountability). */
+  opsCadence?: CmoOpsCadence;
+  pendingOpsProofTaskId?: string;
+  pendingWeekReviewOpen?: boolean;
+  /** P3 — Lane B workspace (posting / outreach / runbook). */
+  laneBWorkspace?: LaneBWorkspace;
+  pendingLaneBProofItemId?: string;
+  /** P6 — Lane A workspace (IDE ships — repo / browser / drafts). */
+  laneAWorkspace?: LaneAWorkspace;
+  /** P7 — Growth control plane (binding + today + red list). */
+  growthControlPlane?: GrowthControlPlane;
+  /** P7 — expand full ops / lane panels when command strip is active. */
+  warRoomExpanded: boolean;
+  /** Faz 2 — Week 1 command-surface-first UX; backstage collapsed until opened. */
+  week1FocusMode?: boolean;
+  /** P13 — first-session founder-fit / strategic decision surface. */
+  strategicIntakeOpen: boolean;
+  /** Faz 5 — measurement baseline gate before Week 1. */
+  measurementIntakeOpen: boolean;
+  /** P8 — Distribution operator (hook grid + volume). */
+  distributionOperator?: DistributionOperatorWorkspace;
+  pendingDistributionProofSlotId?: string;
+  /** P9 — Influencer operator (creator pipeline + DM/deal). */
+  influencerOperator?: InfluencerOperatorWorkspace;
+  pendingInfluencerProofTouchId?: string;
+  pendingInfluencerDealTouchId?: string;
+  /** P4 — Continuous CMO cycle history + measuring replan. */
+  cmoContinuous?: CmoContinuousState;
+  /** P11 — experiment ledger + message winners/losers + pending N+1 replan. */
+  growthMemory?: GrowthMemoryState;
+  /** P14 — monthly allocation, action-cost ledger, and spend closeout. */
+  budgetPlan?: BudgetPlan;
+  /** P15 — activation intake and Lane D product requests. */
+  productActivation?: ProductActivationProfile;
+  laneDWorkspace?: LaneDWorkspace;
+  pendingProductRequestId?: string;
+  pendingProductIssueRequestId?: string;
+  /** P16 — revenue profile and monetization tasks. */
+  revenueProfile?: RevenueProfile;
+  monetizationWorkspace?: MonetizationWorkspace;
+  pendingMonetizationTaskId?: string;
+  pendingMonetizationIssueTaskId?: string;
+  pendingRevenueAttributionSourceId?: string;
+  /** P5 / P10 — Lane C delegate briefs + delegation operator. */
+  delegateWorkspace?: DelegateOperatorWorkspace;
+  delegateOperator?: DelegateOperatorWorkspace;
+  pendingDelegateBriefId?: string;
+  pendingDelegateRubricId?: string;
+  pendingDelegateHireBriefId?: string;
   /** Edit / integrate run confirmation gate (Faz 4). */
   pendingHandoffConfirm?: HandoffConfirmState;
 
@@ -454,6 +793,8 @@ interface AppState {
   settingsSection?: string;
 
   recordSessionOutcome: (outcome: Omit<SessionOutcome, "id" | "at">) => void;
+  /** Append a system/user event to the active thread (status, errors). */
+  appendEvent: (event: Omit<SessionEvent, "id" | "ts"> & { id?: string }) => string;
 
   init: () => Promise<void>;
   navigate: (route: Route, settingsSection?: string) => void;
@@ -464,6 +805,157 @@ interface AppState {
   continueOffline: () => void;
   syncRuntimeCapability: () => void;
   openConnectFlow: () => void;
+  dismissIdeNotification: (id: string) => void;
+  /** Reveal → workspace: open Plan Studio and start plan (one click, no handoff). */
+  beginFirstHour: () => void;
+  /** Reveal → workspace: scout ask on hero file, then one-click edit (first-hour wow). */
+  beginFirstHourWow: () => void;
+  /** Faz 1 — Quick Start wedge: snapshot + ship pipeline + beginFirstHourWow. */
+  beginQuickStartShip: (opts?: { skipScout?: boolean; goalOverride?: string }) => void;
+  retryQuickStartShip: (goalOverride?: string) => void;
+  setOnboardingTrack: (track: OnboardingTrack) => void;
+  promptApplyFirstChange: () => void;
+  beginFirstShip: () => void;
+  /** P0 — rebuild channel thesis from scan + profile. */
+  runCmoIntake: () => ChannelThesis | null;
+  /** P13 — founder-fit + A/B/C decision actions. */
+  saveFounderFit: (profile: FounderFitProfile) => void;
+  savePublicPresencePolicy: (policy: PublicPresencePolicy) => void;
+  runStrategicIntake: () => StrategicDecision | null;
+  selectStrategicOption: (id: StrategicOptionId) => void;
+  sealStrategicDecision: (id?: StrategicOptionId) => boolean;
+  openStrategicIntake: () => void;
+  closeStrategicIntake: () => void;
+  openMeasurementIntake: () => void;
+  closeMeasurementIntake: () => void;
+  acknowledgeMeasurementBaseline: (note?: string) => void;
+  /** P14 — confirm numeric budget or deterministic band estimate. */
+  saveBudgetPlan: (monthlyAmountUsd?: number, cpaCeilingUsd?: number) => boolean;
+  /** P15 — activation intake and product-loop proof actions. */
+  saveProductActivation: (profile: Partial<ProductActivationProfile>) => boolean;
+  openProductRequestModal: (requestId: string) => void;
+  dismissProductRequestModal: () => void;
+  openProductIssueModal: (requestId: string) => void;
+  dismissProductIssueModal: () => void;
+  completeProductRequest: (requestId: string, proof: ProductRequestProofInput) => string | null;
+  skipProductRequest: (requestId: string, reason?: string) => void;
+  resumeMarketingAfterProductLoop: () => string | null;
+  /** P16 — revenue intake, attribution, and monetization task proof. */
+  saveRevenueProfile: (input: {
+    modelOverride?: import("@shared/cmoRevenuePlane").MonetizationModel;
+    paymentProvider?: import("@shared/cmoRevenuePlane").PaymentProvider;
+    paidCustomers?: number;
+    mrrUsd?: number;
+    ltvUsd?: number;
+    pricingViews?: number;
+    checkoutStarts?: number;
+    trialStarts?: number;
+  }) => boolean;
+  logRevenueAttributionForSource: (
+    sourceId: string,
+    paidCustomers: number,
+    note?: string,
+  ) => string | null;
+  openMonetizationTaskModal: (taskId: string) => void;
+  dismissMonetizationTaskModal: () => void;
+  openMonetizationIssueModal: (taskId: string) => void;
+  dismissMonetizationIssueModal: () => void;
+  openRevenueAttributionModal: (sourceId: string) => void;
+  dismissRevenueAttributionModal: () => void;
+  completeMonetizationTask: (taskId: string, proof: MonetizationTaskProofInput) => string | null;
+  skipMonetizationTask: (taskId: string, reason?: string) => void;
+  /** P7 — toggle war-room panel stack under command strip. */
+  toggleWarRoomExpanded: () => void;
+  /** P7/P12 — expand backstage then scroll to anchor id. */
+  focusBackstageAnchor: (anchorId: string) => void;
+  /** P8 — distribution operator proof actions. */
+  openDistributionProofModal: (slotId: string) => void;
+  dismissDistributionProofModal: () => void;
+  completeDistributionSlot: (
+    slotId: string,
+    proof: DistributionProofInput,
+  ) => string | null;
+  skipDistributionSlot: (slotId: string) => void;
+  /** P9 — influencer operator proof actions. */
+  openInfluencerProofModal: (touchId: string) => void;
+  dismissInfluencerProofModal: () => void;
+  openInfluencerDealModal: (touchId: string) => void;
+  dismissInfluencerDealModal: () => void;
+  completeInfluencerTouch: (
+    touchId: string,
+    targetStage: import("@shared/cmoInfluencerOperator").PipelineStage,
+    proof: InfluencerProofInput,
+    deal?: InfluencerDeal,
+  ) => string | null;
+  skipInfluencerTouch: (touchId: string) => void;
+  updateInfluencerCreator: (
+    touchId: string,
+    fields: Partial<
+      Pick<
+        import("@shared/cmoInfluencerOperator").InfluencerTouch,
+        | "target_name"
+        | "target_handle"
+        | "platform"
+        | "followers"
+        | "engagement_rate_pct"
+        | "icp_fit"
+      >
+    >,
+  ) => void;
+  /** P0 — start Week 1 from channel thesis (campaign + first system run). */
+  beginCmoWeek1: () => void;
+  /** P1 — ops cadence persistence + accountability actions. */
+  openOpsProofModal: (taskId: string) => void;
+  dismissOpsProofModal: () => void;
+  persistOpsCadence: (cadence: CmoOpsCadence) => void;
+  completeOpsTask: (
+    taskId: string,
+    proof: import("@shared/cmoOpsCadence").OpsProofInput,
+  ) => string | null;
+  skipOpsTask: (taskId: string, reason?: string) => void;
+  startOpsSystemTask: (taskId: string) => void;
+  /** Faz 2 — run bound execution_plan for a system ops task (no raw startRun bypass). */
+  executeOpsSystemTask: (taskId: string) => void;
+  /** P6 — thesis-aware Lane A run (skills, scout, browser). */
+  startLaneARun: (plan: LaneARunPlan) => void;
+  completeOpsWeekReview: (summary: string) => string | null;
+  openWeekReviewModal: () => void;
+  dismissWeekReviewModal: () => void;
+  dismissPivotSuggestion: () => void;
+  /** P4 — start next ops week from pivot or double-down. */
+  startNextCmoCycle: (opts?: {
+    thesisId?: import("@shared/cmoIntake").ChannelThesisId;
+    mode?: NextCycleMode;
+  }) => string | null;
+  /** P3 — Lane B actions. */
+  openLaneBProofModal: (itemId: string) => void;
+  dismissLaneBProofModal: () => void;
+  completeLaneBItem: (itemId: string, proof: import("@shared/cmoLaneB").LaneBProofInput) => string | null;
+  skipLaneBItem: (itemId: string) => void;
+  updateLaneBTarget: (
+    itemId: string,
+    patch: { target_name?: string; target_handle?: string },
+  ) => void;
+  /** P5 / P10 — Lane C delegate actions. */
+  openDelegateBriefModal: (briefId: string) => void;
+  dismissDelegateBriefModal: () => void;
+  openDelegateHireModal: (briefId: string) => void;
+  dismissDelegateHireModal: () => void;
+  openDelegateRubricModal: (rubricId: string) => void;
+  dismissDelegateRubricModal: () => void;
+  handOffDelegateBrief: (
+    briefId: string,
+    input: import("@shared/cmoLaneC").DelegateHandoffInput,
+  ) => string | null;
+  completeDelegateBrief: (
+    briefId: string,
+    proof: import("@shared/cmoLaneC").DelegateProofInput,
+  ) => string | null;
+  completeDelegateRubricDay: (
+    rubricId: string,
+    input: RubricProofInput,
+  ) => string | null;
+  skipDelegateBrief: (briefId: string, reason?: string) => void;
   connectGa4: () => Promise<void>;
   syncGa4Metrics: () => Promise<void>;
   previewPlanOutline: () => void;
@@ -477,6 +969,8 @@ interface AppState {
   handleAuthCallback: (url: string) => Promise<void>;
   signOut: () => Promise<void>;
   loadMe: () => Promise<void>;
+  startCheckout: (tier?: "pro" | "team") => Promise<void>;
+  openBillingPortal: () => Promise<void>;
 
   syncProjects: () => Promise<void>;
   syncSessions: (projectId: string) => Promise<void>;
@@ -538,6 +1032,8 @@ interface AppState {
     task: string,
     opts?: { sourceMessageId?: string; skipQueue?: boolean },
   ) => void;
+  /** Apply-after verify via orchestrator browser.verify_checklist (same CU path). */
+  startVerifyAfterApply: (url: string, checklist: string[]) => Promise<void>;
   stopBrowser: () => void;
   pauseBrowser: () => void;
   resumeBrowser: () => void;
@@ -549,12 +1045,20 @@ interface AppState {
   startRun: (
     goal: string,
     planTaskId?: string,
-    opts?: { sourceMessageId?: string; skipQueue?: boolean },
+    opts?: {
+      sourceMessageId?: string;
+      skipQueue?: boolean;
+      skills?: string[];
+      opsTaskId?: string;
+      mentions?: import("@shared/orchestration").Mention[];
+      guaranteedShip?: boolean;
+    },
   ) => Promise<void>;
   interruptRun: () => void;
   approveRun: (approvalId: string) => void;
   rejectRun: (approvalId: string) => void;
   applyRunChanges: (files: string[]) => Promise<void>;
+  applyRunHunks: (file: string, hunkIds: string[]) => Promise<void>;
   discardRunChanges: () => Promise<void>;
   discardRunSelection: (files: string[]) => Promise<void>;
   resetRunApplySelection: (files: string[]) => void;
@@ -653,18 +1157,28 @@ const SIDEBAR_TAB_KEY = "panel.sidebar.tab";
 const FEED_COLLAPSED_KEY = "panel.execution-feed.collapsed";
 const COMPOSER_MODE_KEY = "composer.mode";
 
-function syncRuntimeFromState(
+function syncCapabilityFromState(
   connection: ConnectionInfo,
   auth: AuthInfo,
   localOnlyMode: boolean,
-): RuntimeCapability {
-  return resolveRuntimeCapability({
+): { runtime: RuntimeCapability; capabilityMatrix: CapabilityMatrix } {
+  const capabilityMatrix = deriveMatrix({
     connectionState: connection.state,
     providers: connection.providers,
+    connectors: connection.connectors,
     authEnabled: auth.authEnabled,
     authState: auth.state,
     localOnly: localOnlyMode,
-  }).capability;
+  });
+  return {
+    capabilityMatrix,
+    runtime: capabilityMatrix.canAsk
+      ? "connected"
+      : capabilityMatrix.caps.backend.state === "ready" &&
+          capabilityMatrix.caps.anthropic.state === "unavailable"
+        ? "degraded"
+        : "local",
+  };
 }
 
 function previewFromThread(thread: SessionEvent[]): string | null {
@@ -713,6 +1227,260 @@ export const useApp = create<AppState>((set, get) => {
   };
 
   const CAMPAIGN_SESSION_LS = "campaign_session.v1";
+  const OPS_CADENCE_LS = "ops_cadence.v1";
+  const LANE_B_LS = "lane_b_workspace.v1";
+  const LANE_A_LS = "lane_a_workspace.v1";
+  const GROWTH_PLANE_LS = "growth_control_plane.v1";
+  const DISTRIBUTION_OPERATOR_LS = "distribution_operator.v1";
+  const INFLUENCER_OPERATOR_LS = "influencer_operator.v1";
+  const CMO_CONTINUOUS_LS = "cmo_continuous.v1";
+  const DELEGATE_LS = "lane_c_workspace.v1";
+  const DELEGATE_OPERATOR_LS = "delegate_operator.v1";
+  const GROWTH_MEMORY_LS = "growth_memory.v1";
+  const BUDGET_PLAN_LS = "budget_plan.v1";
+  const PRODUCT_ACTIVATION_LS = "product_activation.v1";
+  const LANE_D_LS = "lane_d_workspace.v1";
+  const REVENUE_PROFILE_LS = "revenue_profile.v1";
+  const MONETIZATION_WS_LS = "monetization_workspace.v1";
+  const FOUNDER_FIT_LS = "founder_fit.v1";
+  const GROWTH_NARRATIVE_LS = "growth_narrative.v1";
+  const STRATEGIC_DECISION_LS = "strategic_decision.v1";
+  const PUBLIC_PRESENCE_LS = "public_presence_policy.v1";
+  const GROWTH_MECHANISM_LS = "growth_mechanism_profile.v1";
+  const TURN_RECEIPTS_LS = "turn_receipts.v1";
+  const FIRST_SHIP_LS = "first_ship_at.v1";
+
+  const clearStrategicIntakeLocal = (projectId: string, keys: Array<"presence" | "mechanism" | "narrative" | "decision">) => {
+    try {
+      for (const key of keys) {
+        if (key === "presence") localStorage.removeItem(`${PUBLIC_PRESENCE_LS}.${projectId}`);
+        if (key === "mechanism") localStorage.removeItem(`${GROWTH_MECHANISM_LS}.${projectId}`);
+        if (key === "narrative") localStorage.removeItem(`${GROWTH_NARRATIVE_LS}.${projectId}`);
+        if (key === "decision") localStorage.removeItem(`${STRATEGIC_DECISION_LS}.${projectId}`);
+      }
+    } catch {
+      /* private mode */
+    }
+  };
+
+  const persistStrategicIntakeLocal = (
+    projectId: string,
+    data: {
+      founder_fit?: FounderFitProfile;
+      growth_narrative?: GrowthNarrative;
+      strategic_decision?: StrategicDecision;
+      public_presence_policy?: PublicPresencePolicy;
+      growth_mechanism_profile?: import("@shared/cmoGrowthEngine").GrowthMechanismProfile;
+    },
+  ) => {
+    try {
+      if (data.founder_fit) {
+        localStorage.setItem(`${FOUNDER_FIT_LS}.${projectId}`, JSON.stringify(data.founder_fit));
+      }
+      if (data.growth_narrative) {
+        localStorage.setItem(
+          `${GROWTH_NARRATIVE_LS}.${projectId}`,
+          JSON.stringify(data.growth_narrative),
+        );
+      }
+      if (data.strategic_decision) {
+        localStorage.setItem(
+          `${STRATEGIC_DECISION_LS}.${projectId}`,
+          JSON.stringify(data.strategic_decision),
+        );
+      }
+      if (data.public_presence_policy?.configured_at) {
+        localStorage.setItem(
+          `${PUBLIC_PRESENCE_LS}.${projectId}`,
+          JSON.stringify(data.public_presence_policy),
+        );
+      }
+      if (data.growth_mechanism_profile?.primary_mechanism_id) {
+        localStorage.setItem(
+          `${GROWTH_MECHANISM_LS}.${projectId}`,
+          JSON.stringify(data.growth_mechanism_profile),
+        );
+      }
+    } catch {
+      /* quota / private mode */
+    }
+  };
+
+  const hydrateStrategicIntakeLocal = (projectId: string) => {
+    try {
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      const founderFit =
+        profile.founder_fit ??
+        (JSON.parse(localStorage.getItem(`${FOUNDER_FIT_LS}.${projectId}`) ?? "null") as
+          | FounderFitProfile
+          | null);
+      const narrative =
+        profile.growth_narrative ??
+        (JSON.parse(localStorage.getItem(`${GROWTH_NARRATIVE_LS}.${projectId}`) ?? "null") as
+          | GrowthNarrative
+          | null);
+      let decision =
+        profile.strategic_decision ??
+        (JSON.parse(localStorage.getItem(`${STRATEGIC_DECISION_LS}.${projectId}`) ?? "null") as
+          | StrategicDecision
+          | null);
+      const presenceRaw =
+        profile.public_presence_policy ??
+        (JSON.parse(localStorage.getItem(`${PUBLIC_PRESENCE_LS}.${projectId}`) ?? "null") as
+          | PublicPresencePolicy
+          | null);
+      const presence =
+        presenceRaw?.configured_at ? presenceRaw : profile.public_presence_policy;
+      const mechanismRaw =
+        profile.growth_mechanism_profile ??
+        hydrateGrowthMechanismProfileFromJson(
+          JSON.parse(localStorage.getItem(`${GROWTH_MECHANISM_LS}.${projectId}`) ?? "null"),
+        ) ??
+        undefined;
+      if (profile.ops_cadence && decision && !decision.sealed_at) {
+        decision = {
+          ...decision,
+          selected_id: decision.selected_id ?? decision.recommended_id,
+          sealed_at: profile.ops_cadence.started_at,
+        };
+      }
+      const merged = {
+        ...profile,
+        ...(founderFit ? { founder_fit: founderFit } : {}),
+        ...(narrative ? { growth_narrative: narrative } : {}),
+        ...(decision ? { strategic_decision: decision } : {}),
+        ...(presence ? { public_presence_policy: presence } : {}),
+        ...(mechanismRaw ? { growth_mechanism_profile: mechanismRaw } : {}),
+      };
+      set({ marketingProfile: merged });
+      persistStrategicIntakeLocal(projectId, merged);
+    } catch {
+      /* corrupt cache */
+    }
+  };
+
+  const persistTurnReceipt = (projectId: string, receipt: TurnReceipt) => {
+    try {
+      const raw = localStorage.getItem(`${TURN_RECEIPTS_LS}.${projectId}`);
+      const list: TurnReceipt[] = raw ? (JSON.parse(raw) as TurnReceipt[]) : [];
+      localStorage.setItem(
+        `${TURN_RECEIPTS_LS}.${projectId}`,
+        JSON.stringify([receipt, ...list].slice(0, 24)),
+      );
+    } catch {
+      /* non-blocking */
+    }
+  };
+
+  const hydrateTurnReceiptLocal = (projectId: string) => {
+    try {
+      const raw = localStorage.getItem(`${TURN_RECEIPTS_LS}.${projectId}`);
+      if (!raw) return;
+      const list = JSON.parse(raw) as TurnReceipt[];
+      if (list[0]) set({ lastTurnReceipt: list[0] });
+    } catch {
+      /* corrupt cache */
+    }
+  };
+
+  const ensureChannelThesisAfterProfileLoad = () => {
+    const { marketingProfile, channelThesis, project } = get();
+    const thesis = channelThesis ?? marketingProfile?.channel_thesis;
+    if (thesis) {
+      if (!channelThesis) set({ channelThesis: thesis });
+      recomputeGrowthPlane();
+      return;
+    }
+    if (project) get().runCmoIntake();
+  };
+
+  const markFirstShip = (projectId: string) => {
+    const at = Date.now();
+    try {
+      localStorage.setItem(`${FIRST_SHIP_LS}.${projectId}`, String(at));
+    } catch {
+      /* non-blocking */
+    }
+    clearFirstHourAutoHandoff();
+    const metrics = get().executionMetrics;
+    if (metrics) {
+      const next = appendExecutionMetric(metrics, { event: "first_ship" });
+      persistExecutionMetricsLocal(projectId, next);
+      set({ executionMetrics: next });
+    }
+    set({
+      firstShipAt: at,
+      firstHourActive: false,
+      firstHourScoutPending: false,
+      wedgePhase: "shipped",
+      shipPipeline: nextShipPipelineStage(get().shipPipeline ?? initialShipPipelineState(), {
+        type: "first_ship",
+      }),
+    });
+    const profile = get().marketingProfile;
+    const project = get().project;
+    const baseline = assessMeasurementBaseline(profile, project);
+    if (!baseline.ready) {
+      const ga4 = hasGa4Connected(profile);
+      set({
+        workspaceHandoff: {
+          eyebrow: "Measure outcomes",
+          title: ga4 ? "Sync GA4 baseline" : "Log measurement baseline",
+          reason:
+            "You shipped — connect GA4 or log a manual KPI before scaling Week 1 ops.",
+          primaryLabel: ga4 ? "Open settings" : "Log baseline",
+          primaryAction: ga4 ? "home" : "home",
+          secondaryLabel: "Continue to Week 1 prep",
+          secondaryAction: "home",
+        },
+      });
+    }
+  };
+
+  const recordExecutionMetricEvent = (
+    event: import("@shared/executionMetrics").ExecutionMetricEvent,
+    extra?: Partial<import("@shared/executionMetrics").ExecutionMetricRow>,
+  ) => {
+    const projectId = get().activeProjectId ?? get().project?.id;
+    if (!projectId) return;
+    const base =
+      get().executionMetrics ??
+      ({
+        projectId,
+        projectOpenedAt: get().projectOpenedAt,
+        rows: [],
+      } satisfies ExecutionMetricsRollup);
+    const next = appendExecutionMetric(base, { event, ...extra });
+    persistExecutionMetricsLocal(projectId, next);
+    set({ executionMetrics: next });
+  };
+
+  const bumpShipPipeline = (
+    type: string,
+    extra?: { runId?: string; events?: import("@shared/types").RunEvent[]; error?: string },
+  ) => {
+    const prev = get().shipPipeline ?? initialShipPipelineState();
+    const next = nextShipPipelineStage(prev, { type, ...extra });
+    const patch: Record<string, unknown> = { shipPipeline: next };
+    const noPatches =
+      next.error === "NO_PATCHES" ||
+      extra?.error === "NO_PATCHES" ||
+      extra?.error?.includes("NO_PATCHES");
+    if (next.stage === "failed" && noPatches) {
+      const target = get().project ? resolveFirstShipTarget(get().project!) : undefined;
+      patch.shipRecovery = buildShipRecovery("no_patches", target);
+    }
+    set(patch);
+  };
+
+  const loadFirstShipAt = (projectId: string): number | undefined => {
+    try {
+      const raw = localStorage.getItem(`${FIRST_SHIP_LS}.${projectId}`);
+      return raw ? Number(raw) : undefined;
+    } catch {
+      return undefined;
+    }
+  };
 
   const persistCampaignSessionLocal = (projectId: string, session: CampaignSession) => {
     try {
@@ -735,6 +1503,1138 @@ export const useApp = create<AppState>((set, get) => {
     } catch {
       /* corrupt cache */
     }
+  };
+
+  const persistOpsCadenceLocal = (projectId: string, cadence: CmoOpsCadence) => {
+    try {
+      localStorage.setItem(`${OPS_CADENCE_LS}.${projectId}`, JSON.stringify(cadence));
+    } catch {
+      /* quota / private mode */
+    }
+  };
+
+  const hydrateOpsCadenceLocal = (projectId: string) => {
+    try {
+      const raw = localStorage.getItem(`${OPS_CADENCE_LS}.${projectId}`);
+      if (!raw) return;
+      const cadence = hydrateOpsCadenceFromJson(JSON.parse(raw));
+      if (!cadence) return;
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      if (!profile.ops_cadence) {
+        set({
+          opsCadence: cadence,
+          marketingProfile: { ...profile, ops_cadence: cadence },
+        });
+      } else if (!get().opsCadence) {
+        set({ opsCadence: profile.ops_cadence });
+      }
+    } catch {
+      /* corrupt cache */
+    }
+  };
+
+  const syncOpsCadenceState = (cadence: CmoOpsCadence) => {
+    const pid = get().activeProjectId;
+    if (pid) persistOpsCadenceLocal(pid, cadence);
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      opsCadence: cadence,
+      marketingProfile: { ...profile, ops_cadence: cadence },
+    });
+    void get().updateMarketingProfile({ ops_cadence: cadence });
+  };
+
+  const finalizeVerifyAfterApplyRun = async (input: {
+    runId: string;
+    report?: { validations?: Array<{ label: string; passed: boolean; detail?: string }>; evidence?: import("@shared/types").Finding[] };
+    failed?: boolean;
+    summary?: string;
+  }) => {
+    const ctx = pendingVerifyAfterApply;
+    pendingVerifyAfterApply = null;
+    if (!ctx) return;
+
+    const { browser, opsCadence, activeProjectId } = get();
+    const findings = browser.findings;
+    const frame = browser.frameHistory.find((f) => f.pngBase64) ?? browser.frameHistory.at(-1);
+    let screenshotPath: string | undefined;
+    if (frame?.pngBase64 && activeProjectId) {
+      try {
+        const saved = await window.api.evidence.saveScreenshot({
+          projectId: activeProjectId,
+          runId: input.runId,
+          base64: frame.pngBase64,
+        });
+        if (saved.ok && saved.path) screenshotPath = saved.path;
+      } catch {
+        /* best effort */
+      }
+    }
+
+    const verifyResult = mergeReportToVerifyResult({
+      url: ctx.url,
+      runId: input.runId,
+      report: input.report,
+      findings,
+    });
+    const evidence = toBrowserEvidenceProof(verifyResult, screenshotPath);
+    const passed = !input.failed && verifyPassed(verifyResult, 1);
+
+    if (passed) {
+      bumpShipPipeline("verify.completed");
+    } else {
+      bumpShipPipeline("verify.failed", { error: input.summary ?? "VERIFY_FAILED" });
+      const failing = verifyResult.validations.filter((v) => !v.passed);
+      set({
+        workspaceHandoff: {
+          eyebrow: "Verify failed",
+          title: "Fix and re-verify",
+          reason:
+            input.summary ??
+            `Failed: ${failing.map((v) => v.label).join(", ") || "checklist incomplete"}`,
+          primaryLabel: "Fix in IDE",
+          primaryAction: "execute_intent",
+          payload: {
+            intent: {
+              kind: "start_edit_run",
+              goal: buildVerifyFixGoal(failing, ctx.url),
+            },
+          },
+        },
+      });
+      get().appendFeedItem({
+        id: `verify-fix-${Date.now()}`,
+        ts: Date.now(),
+        source: "system",
+        category: "gate",
+        title: "Fix and re-verify",
+        summary:
+          input.summary ??
+          `Browser verify failed — ${verifyResult.validations.filter((v) => !v.passed).map((v) => v.label).join(", ") || "checklist incomplete"}`,
+        status: "waiting",
+        canvasTarget: { mode: "run", payload: { verifyFix: "1" } },
+      });
+    }
+
+    if (opsCadence) {
+      const { cadence: nextCadence, closed } = attachBrowserEvidenceToSystemTask(
+        opsCadence,
+        evidence,
+        { minPassRate: 1 },
+      );
+      syncOpsCadenceState(nextCadence);
+      if (closed) {
+        const laneA = get().laneAWorkspace;
+        if (laneA) {
+          const inProgress = nextCadence.tasks.find(
+            (t) => t.status === "done" && t.proof?.browser_evidence?.run_id === input.runId,
+          );
+          const laneItem = inProgress
+            ? laneA.items.find((i) => i.linked_ops_task_id === inProgress.id)
+            : laneA.items.find((i) => i.status === "in_progress");
+          if (laneItem && inProgress) {
+            syncLaneAState(
+              completeLaneAItemOnApply(laneA, inProgress.id, {
+                run_id: input.runId,
+                browser_evidence: evidence,
+              }),
+            );
+          }
+        }
+        notifyOpsProgress(nextCadence);
+      }
+    }
+
+    appendEvent({
+      role: "system",
+      kind: "status",
+      text: passed
+        ? `✓ Browser verify passed for ${ctx.url}`
+        : `Browser verify needs a fix — ${input.summary ?? "checklist failed"}`,
+    });
+    recomputeGrowthPlane();
+  };
+
+  const scheduleVerifyAfterApply = (url: string, checklist: string[]) => {
+    const last = lastVerifyAtByUrl[url];
+    if (last && Date.now() - last < 10 * 60_000) return;
+    lastVerifyAtByUrl[url] = Date.now();
+    void (async () => {
+      await new Promise((r) => setTimeout(r, 1500));
+      if (get().capabilityMatrix.canBrowse) {
+        void get().startVerifyAfterApply(url, checklist);
+      }
+    })();
+  };
+
+  const bindAndSyncHumanExecution = (input: {
+    cadence: CmoOpsCadence;
+    thesis: ChannelThesis;
+    laneB?: LaneBWorkspace | null;
+    distributionOperator?: DistributionOperatorWorkspace | null;
+    influencerOperator?: InfluencerOperatorWorkspace | null;
+    delegateOperator?: DelegateOperatorWorkspace | null;
+  }) => {
+    const result = bindHumanExecutionForCadence({
+      ...input,
+      strict: import.meta.env.DEV,
+    });
+    if (result.missingRefs.length > 0 && import.meta.env.DEV) {
+      console.warn(
+        "[cmo] human tasks missing execution ref:",
+        result.missingRefs.join(", "),
+      );
+    }
+    syncOpsCadenceState(result.cadence);
+    if (result.laneB) syncLaneBState(result.laneB);
+    if (result.distributionOperator) syncDistributionOperatorState(result.distributionOperator);
+    if (result.influencerOperator) syncInfluencerOperatorState(result.influencerOperator);
+    return result.cadence;
+  };
+
+  const laneBProofToOpsProof = (
+    proof: import("@shared/cmoLaneB").LaneBProofInput,
+  ): import("@shared/cmoOpsCadence").OpsProofInput => {
+    const metricNum = proof.metric?.trim() ? Number(proof.metric) : undefined;
+    return {
+      urls: proof.url?.trim() ? [proof.url.trim()] : undefined,
+      note: proof.note,
+      metric_snapshot: proof.metric,
+      kpi_value: Number.isFinite(metricNum) ? metricNum : undefined,
+    };
+  };
+
+  const bindAndSyncOpsCadence = (input: {
+    cadence: CmoOpsCadence;
+    thesis: ChannelThesis;
+    project: ProjectProfile;
+    laneAWorkspace?: LaneAWorkspace | null;
+    preferScoutForFirstSystem?: boolean;
+  }) => {
+    const { cadence, missingPlans } = bindExecutionPlansForCadence({
+      ...input,
+      strict: import.meta.env.DEV,
+    });
+    if (missingPlans.length > 0 && import.meta.env.DEV) {
+      console.warn("[cmo] system tasks missing execution plan:", missingPlans.join(", "));
+    }
+    syncOpsCadenceState(cadence);
+    return cadence;
+  };
+
+  const tryCompleteLinkedOpsFromHumanProof = (
+    opsTaskId: string | undefined,
+    proof: import("@shared/cmoOpsCadence").OpsProofInput,
+  ) => {
+    if (!opsTaskId) return;
+    const cadence = get().opsCadence;
+    if (!cadence) return;
+    const task = cadence.tasks.find((t) => t.id === opsTaskId);
+    if (!task || task.status === "done" || task.status === "skipped") return;
+    const err = get().completeOpsTask(opsTaskId, proof);
+    if (err) {
+      appendEvent({ role: "system", kind: "error", text: err });
+    }
+  };
+
+  const openHumanExecutionProof = (ref: HumanExecutionRef) => {
+    if (ref.export_kind === "outreach_csv") {
+      get().focusBackstageAnchor("lane-b-panel-wrap");
+      return;
+    }
+    if (ref.proof_surface === "lane_b_modal") {
+      set({ pendingLaneBProofItemId: ref.item_id });
+      return;
+    }
+    if (ref.proof_surface === "operator_modal") {
+      if (ref.source === "distribution") {
+        set({ pendingDistributionProofSlotId: ref.item_id });
+      } else if (ref.source === "influencer") {
+        set({ pendingInfluencerProofTouchId: ref.item_id });
+      } else {
+        set({ pendingDelegateRubricId: ref.item_id });
+      }
+      return;
+    }
+    set({ pendingOpsProofTaskId: ref.item_id });
+  };
+
+  const handoffForHumanOpsTask = (
+    task: import("@shared/cmoOpsCadence").CmoOpsTask,
+    week: number,
+  ): import("@shared/workspaceHandoff").WorkspaceHandoff => {
+    const ref = task.human_execution_ref;
+    const proofHint =
+      task.expected_proof_kind === "live_url"
+        ? "Submit live post URLs as proof."
+        : task.expected_proof_kind === "kpi"
+          ? "Log the KPI value as proof."
+          : "";
+    const baseReason = `${task.why} Done when: ${task.done_when}${proofHint ? ` · ${proofHint}` : ""}`;
+    if (!ref) {
+      return {
+        eyebrow: `Week ${week} · Your move`,
+        title: task.what,
+        reason: baseReason,
+        primaryLabel: task.expected_proof_kind === "live_url" ? "Submit proof" : "Mark done",
+        primaryAction: "ops_proof",
+        opsTaskId: task.id,
+      };
+    }
+    const proofMeta = resolveHumanProofAction(ref);
+    if (ref.export_kind === "outreach_csv") {
+      return {
+        eyebrow: `Week ${week} · Prepare`,
+        title: ref.label ?? task.what,
+        reason: baseReason,
+        primaryLabel: proofMeta.label,
+        primaryAction: "export_outreach",
+        opsTaskId: task.id,
+        humanRef: ref,
+      };
+    }
+    if (ref.proof_surface === "lane_b_modal") {
+      return {
+        eyebrow: `Week ${week} · Lane B`,
+        title: ref.label ?? task.what,
+        reason: baseReason,
+        primaryLabel: proofMeta.label,
+        primaryAction: "human_proof",
+        opsTaskId: task.id,
+        humanRef: ref,
+      };
+    }
+    if (ref.proof_surface === "operator_modal") {
+      return {
+        eyebrow: `Week ${week} · Operator`,
+        title: ref.label ?? task.what,
+        reason: baseReason,
+        primaryLabel: proofMeta.label,
+        primaryAction: "operator_proof",
+        opsTaskId: task.id,
+        humanRef: ref,
+      };
+    }
+    return {
+      eyebrow: `Week ${week} · Your move`,
+      title: task.what,
+      reason: baseReason,
+      primaryLabel: proofMeta.label,
+      primaryAction: "ops_proof",
+      opsTaskId: task.id,
+      humanRef: ref,
+    };
+  };
+
+  const autoCompleteBrowserResearchOps = (opts: { runId?: string; summary?: string }) => {
+    const cadence = get().opsCadence;
+    if (!cadence) return;
+    const inProgress = cadence.tasks.find(
+      (t) => t.status === "in_progress" && t.owner === "system",
+    );
+    if (inProgress?.execution_plan?.mode !== "browser_research") return;
+    const before = inProgress;
+    const next = tryAutoCompleteSystemTask(cadence, {
+      runId: opts.runId,
+      summaryNote: opts.summary?.trim() || "Browser research complete",
+    });
+    if (next === cadence) return;
+    syncOpsCadenceState(next);
+    const laneA = get().laneAWorkspace;
+    if (laneA && before.id) {
+      syncLaneAState(
+        completeLaneAItemOnApply(laneA, before.id, {
+          run_id: opts.runId,
+        }),
+      );
+    }
+    notifyOpsProgress(next, before.what);
+    recomputeGrowthPlane();
+  };
+
+  const notifyOpsProgress = (cadence: CmoOpsCadence, completedWhat?: string) => {
+    const week = cadence.week_index;
+    if (completedWhat) {
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `✓ Week ${week} ops: ${completedWhat}`,
+      });
+    }
+    const next = getNowTask(cadence);
+    if (next?.owner === "user" || next?.owner === "delegate") {
+      const proofHint =
+        next.expected_proof_kind === "live_url"
+          ? "Submit live post URLs as proof."
+          : next.expected_proof_kind === "kpi"
+            ? "Log the KPI value as proof."
+            : "";
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `Your move: ${next.what} — Done when: ${next.done_when}${proofHint ? ` · ${proofHint}` : ""}`,
+      });
+      set({
+        workspaceHandoff: handoffForHumanOpsTask(next, week),
+      });
+    }
+  };
+
+  const autoCompleteOpsOnApply = (opts: {
+    runId?: string;
+    commitSha?: string;
+    filesApplied?: number;
+  }) => {
+    const cadence = get().opsCadence;
+    if (!cadence) return;
+    const before = cadence.tasks.find((t) => t.status === "in_progress" && t.owner === "system");
+    if (before?.execution_plan?.mode === "browser_research") return;
+    if (before?.expected_proof_kind === "browser_evidence") return;
+    const next = tryAutoCompleteSystemTask(cadence, opts);
+    if (next === cadence) return;
+    syncOpsCadenceState(next);
+    if (before?.id) {
+      const laneA = get().laneAWorkspace;
+      if (laneA) {
+        const laneAItem = getLaneAItemForOpsTask(laneA, before.id);
+        syncLaneAState(
+          completeLaneAItemOnApply(laneA, before.id, {
+            commit_sha: opts.commitSha,
+            files_applied: opts.filesApplied,
+            run_id: opts.runId,
+          }),
+        );
+        const laneD = get().laneDWorkspace ?? get().marketingProfile?.lane_d_workspace;
+        if (laneD && laneAItem) {
+          syncLaneDState(
+            completeLinkedProductRequestOnApply(laneD, laneAItem.id, {
+              note: `Lane A applied ${opts.filesApplied ?? 0} file(s) for this P0 request.`,
+            }),
+          );
+        }
+        const monetization = get().monetizationWorkspace ?? get().marketingProfile?.monetization_workspace;
+        if (monetization && laneAItem) {
+          syncMonetizationWorkspaceState(
+            completeLinkedMonetizationTaskOnApply(monetization, laneAItem.id),
+          );
+        }
+      }
+    }
+    notifyOpsProgress(next, before?.what);
+    recomputeGrowthPlane();
+  };
+
+  const persistLaneBLocal = (projectId: string, workspace: LaneBWorkspace) => {
+    try {
+      localStorage.setItem(`${LANE_B_LS}.${projectId}`, JSON.stringify(workspace));
+    } catch {
+      /* quota */
+    }
+  };
+
+  const hydrateLaneBLocal = (projectId: string) => {
+    try {
+      const raw = localStorage.getItem(`${LANE_B_LS}.${projectId}`);
+      if (!raw) return;
+      const workspace = hydrateLaneBWorkspaceFromJson(JSON.parse(raw));
+      if (!workspace) return;
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      if (!profile.lane_b_workspace) {
+        set({
+          laneBWorkspace: workspace,
+          marketingProfile: { ...profile, lane_b_workspace: workspace },
+        });
+      } else if (!get().laneBWorkspace) {
+        set({ laneBWorkspace: profile.lane_b_workspace });
+      }
+    } catch {
+      /* corrupt */
+    }
+  };
+
+  const syncLaneBState = (workspace: LaneBWorkspace) => {
+    const pid = get().activeProjectId;
+    if (pid) persistLaneBLocal(pid, workspace);
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      laneBWorkspace: workspace,
+      marketingProfile: { ...profile, lane_b_workspace: workspace },
+    });
+    void get().updateMarketingProfile({ lane_b_workspace: workspace });
+  };
+
+  const persistLaneALocal = (projectId: string, workspace: LaneAWorkspace) => {
+    try {
+      localStorage.setItem(`${LANE_A_LS}.${projectId}`, JSON.stringify(workspace));
+    } catch {
+      /* quota */
+    }
+  };
+
+  const hydrateLaneALocal = (projectId: string) => {
+    try {
+      const raw = localStorage.getItem(`${LANE_A_LS}.${projectId}`);
+      if (!raw) return;
+      const workspace = hydrateLaneAWorkspaceFromJson(JSON.parse(raw));
+      if (!workspace) return;
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      if (!profile.lane_a_workspace) {
+        set({
+          laneAWorkspace: workspace,
+          marketingProfile: { ...profile, lane_a_workspace: workspace },
+        });
+      } else if (!get().laneAWorkspace) {
+        set({ laneAWorkspace: profile.lane_a_workspace });
+      }
+    } catch {
+      /* corrupt */
+    }
+  };
+
+  const syncLaneAState = (workspace: LaneAWorkspace) => {
+    const pid = get().activeProjectId;
+    if (pid) persistLaneALocal(pid, workspace);
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      laneAWorkspace: workspace,
+      marketingProfile: { ...profile, lane_a_workspace: workspace },
+    });
+    void get().updateMarketingProfile({ lane_a_workspace: workspace });
+  };
+
+  const persistProductActivationLocal = (
+    projectId: string,
+    profile: ProductActivationProfile,
+  ) => {
+    try {
+      localStorage.setItem(`${PRODUCT_ACTIVATION_LS}.${projectId}`, JSON.stringify(profile));
+    } catch {
+      /* quota */
+    }
+  };
+
+  const syncProductActivationState = (state: ProductActivationProfile) => {
+    const pid = get().activeProjectId ?? get().project?.id;
+    if (pid) persistProductActivationLocal(pid, state);
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      productActivation: state,
+      marketingProfile: { ...profile, product_activation: state },
+    });
+    void get().updateMarketingProfile({ product_activation: state });
+  };
+
+  const hydrateProductActivationLocal = (projectId: string) => {
+    try {
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      const raw = localStorage.getItem(`${PRODUCT_ACTIVATION_LS}.${projectId}`);
+      const saved = raw
+        ? (JSON.parse(raw) as Partial<ProductActivationProfile>)
+        : profile.product_activation;
+      if (!saved) return;
+      const state = buildProductActivationProfile({
+        founderFit: profile.founder_fit,
+        manualKpis: profile.manual_kpis,
+        scan: get().project,
+        existing: saved,
+      });
+      set({
+        productActivation: state,
+        marketingProfile: { ...profile, product_activation: state },
+      });
+    } catch {
+      /* corrupt */
+    }
+  };
+
+  const persistLaneDLocal = (projectId: string, workspace: LaneDWorkspace) => {
+    try {
+      localStorage.setItem(`${LANE_D_LS}.${projectId}`, JSON.stringify(workspace));
+    } catch {
+      /* quota */
+    }
+  };
+
+  const syncLaneDState = (workspace: LaneDWorkspace) => {
+    const pid = get().activeProjectId ?? get().project?.id;
+    if (pid) persistLaneDLocal(pid, workspace);
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      laneDWorkspace: workspace,
+      marketingProfile: { ...profile, lane_d_workspace: workspace },
+    });
+    void get().updateMarketingProfile({ lane_d_workspace: workspace });
+  };
+
+  const hydrateLaneDLocal = (projectId: string) => {
+    try {
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      const raw = localStorage.getItem(`${LANE_D_LS}.${projectId}`);
+      const workspace = hydrateLaneDWorkspaceFromJson(
+        raw ? JSON.parse(raw) : profile.lane_d_workspace,
+      );
+      if (!workspace) return;
+      set({
+        laneDWorkspace: workspace,
+        marketingProfile: { ...profile, lane_d_workspace: workspace },
+      });
+    } catch {
+      /* corrupt */
+    }
+  };
+
+  const persistRevenueProfileLocal = (projectId: string, profile: RevenueProfile) => {
+    try {
+      localStorage.setItem(`${REVENUE_PROFILE_LS}.${projectId}`, JSON.stringify(profile));
+    } catch {
+      /* quota */
+    }
+  };
+
+  const syncRevenueProfileState = (state: RevenueProfile) => {
+    const pid = get().activeProjectId ?? get().project?.id;
+    if (pid) persistRevenueProfileLocal(pid, state);
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      revenueProfile: state,
+      marketingProfile: { ...profile, revenue_profile: state },
+    });
+    void get().updateMarketingProfile({ revenue_profile: state });
+  };
+
+  const hydrateRevenueProfileLocal = (projectId: string) => {
+    try {
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      const raw = localStorage.getItem(`${REVENUE_PROFILE_LS}.${projectId}`);
+      const saved = hydrateRevenueProfileFromJson(
+        raw ? JSON.parse(raw) : profile.revenue_profile,
+      );
+      if (!saved) return;
+      set({
+        revenueProfile: saved,
+        marketingProfile: { ...profile, revenue_profile: saved },
+      });
+    } catch {
+      /* corrupt */
+    }
+  };
+
+  const persistMonetizationWorkspaceLocal = (
+    projectId: string,
+    workspace: MonetizationWorkspace,
+  ) => {
+    try {
+      localStorage.setItem(`${MONETIZATION_WS_LS}.${projectId}`, JSON.stringify(workspace));
+    } catch {
+      /* quota */
+    }
+  };
+
+  const syncMonetizationWorkspaceState = (workspace: MonetizationWorkspace) => {
+    const pid = get().activeProjectId ?? get().project?.id;
+    if (pid) persistMonetizationWorkspaceLocal(pid, workspace);
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      monetizationWorkspace: workspace,
+      marketingProfile: { ...profile, monetization_workspace: workspace },
+    });
+    void get().updateMarketingProfile({ monetization_workspace: workspace });
+  };
+
+  const hydrateMonetizationWorkspaceLocal = (projectId: string) => {
+    try {
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      const raw = localStorage.getItem(`${MONETIZATION_WS_LS}.${projectId}`);
+      const workspace = hydrateMonetizationWorkspaceFromJson(
+        raw ? JSON.parse(raw) : profile.monetization_workspace,
+      );
+      if (!workspace) return;
+      set({
+        monetizationWorkspace: workspace,
+        marketingProfile: { ...profile, monetization_workspace: workspace },
+      });
+    } catch {
+      /* corrupt */
+    }
+  };
+
+  let lastGrowthAlignmentNote: string | undefined;
+  let lastDistributionVerdictHeadline: string | undefined;
+  let pendingVerifyAfterApply: {
+    url: string;
+    checklist: string[];
+    startedAt: number;
+  } | null = null;
+  const lastVerifyAtByUrl: Record<string, number> = {};
+  let lastInfluencerVerdictHeadline: string | undefined;
+
+  const persistDistributionOperatorLocal = (
+    projectId: string,
+    workspace: DistributionOperatorWorkspace,
+  ) => {
+    try {
+      localStorage.setItem(`${DISTRIBUTION_OPERATOR_LS}.${projectId}`, JSON.stringify(workspace));
+    } catch {
+      /* quota */
+    }
+  };
+
+  const hydrateDistributionOperatorLocal = (projectId: string) => {
+    try {
+      const raw = localStorage.getItem(`${DISTRIBUTION_OPERATOR_LS}.${projectId}`);
+      if (!raw) return;
+      const workspace = hydrateDistributionOperatorFromJson(JSON.parse(raw));
+      if (!workspace) return;
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      if (!profile.distribution_operator) {
+        set({
+          distributionOperator: workspace,
+          marketingProfile: { ...profile, distribution_operator: workspace },
+        });
+      } else if (!get().distributionOperator) {
+        set({ distributionOperator: profile.distribution_operator });
+      }
+    } catch {
+      /* corrupt */
+    }
+  };
+
+  const syncDistributionOperatorState = (workspace: DistributionOperatorWorkspace) => {
+    const pid = get().activeProjectId;
+    if (pid) persistDistributionOperatorLocal(pid, workspace);
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      distributionOperator: workspace,
+      marketingProfile: { ...profile, distribution_operator: workspace },
+    });
+    void get().updateMarketingProfile({ distribution_operator: workspace });
+  };
+
+  const maybeCreateDistributionOperator = (opts?: {
+    doubleDown?: boolean;
+    winningHookId?: string;
+    week_index?: number;
+    character_mode?: boolean;
+  }) => {
+    if ((get().cmoContinuous ?? get().marketingProfile?.cmo_continuous)?.marketing_paused) {
+      return;
+    }
+    const { channelThesis, marketingProfile, opsCadence, growthControlPlane } = get();
+    const thesis = channelThesis ?? marketingProfile?.channel_thesis;
+    const cadence = opsCadence ?? marketingProfile?.ops_cadence;
+    if (!thesis || !cadence) return;
+    if (
+      !isDistributionOperatorGate({
+        thesis,
+        opsCadence: cadence,
+        growthPlane: growthControlPlane,
+      })
+    ) {
+      return;
+    }
+    const op = createDistributionOperatorFromThesis(thesis, {
+      opsCadence: cadence,
+      narrative: marketingProfile?.growth_narrative,
+      week_index: opts?.week_index ?? cadence.week_index,
+      doubleDown: opts?.doubleDown,
+      winningHookId: opts?.winningHookId,
+      character_mode: opts?.character_mode,
+    });
+    if (!op) return;
+    syncDistributionOperatorState(op);
+    const laneB = get().laneBWorkspace ?? marketingProfile?.lane_b_workspace;
+    if (laneB) {
+      const synced = syncLaneBFromOperator(op, laneB);
+      syncDistributionOperatorState(synced.workspace);
+      syncLaneBState(synced.laneB);
+    }
+  };
+
+  const persistInfluencerOperatorLocal = (
+    projectId: string,
+    workspace: InfluencerOperatorWorkspace,
+  ) => {
+    try {
+      localStorage.setItem(`${INFLUENCER_OPERATOR_LS}.${projectId}`, JSON.stringify(workspace));
+    } catch {
+      /* quota */
+    }
+  };
+
+  const hydrateInfluencerOperatorLocal = (projectId: string) => {
+    try {
+      const raw = localStorage.getItem(`${INFLUENCER_OPERATOR_LS}.${projectId}`);
+      if (!raw) return;
+      const workspace = hydrateInfluencerOperatorFromJson(JSON.parse(raw));
+      if (!workspace) return;
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      if (!profile.influencer_operator) {
+        set({
+          influencerOperator: workspace,
+          marketingProfile: { ...profile, influencer_operator: workspace },
+        });
+      } else if (!get().influencerOperator) {
+        set({ influencerOperator: profile.influencer_operator });
+      }
+    } catch {
+      /* corrupt */
+    }
+  };
+
+  const syncInfluencerOperatorState = (workspace: InfluencerOperatorWorkspace) => {
+    const pid = get().activeProjectId;
+    if (pid) persistInfluencerOperatorLocal(pid, workspace);
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      influencerOperator: workspace,
+      marketingProfile: { ...profile, influencer_operator: workspace },
+    });
+    void get().updateMarketingProfile({ influencer_operator: workspace });
+  };
+
+  const maybeCreateInfluencerOperator = (opts?: {
+    doubleDown?: boolean;
+    winningPitchId?: string;
+    week_index?: number;
+  }) => {
+    if ((get().cmoContinuous ?? get().marketingProfile?.cmo_continuous)?.marketing_paused) {
+      return;
+    }
+    const { channelThesis, marketingProfile, opsCadence, growthControlPlane, influencerOperator } =
+      get();
+    const thesis = channelThesis ?? marketingProfile?.channel_thesis;
+    const cadence = opsCadence ?? marketingProfile?.ops_cadence;
+    if (!thesis || !cadence) return;
+    if (
+      !isInfluencerOperatorGate({
+        thesis,
+        opsCadence: cadence,
+        growthPlane: growthControlPlane,
+      })
+    ) {
+      return;
+    }
+    const prior =
+      opts?.doubleDown
+        ? (influencerOperator ?? marketingProfile?.influencer_operator)
+        : undefined;
+    const op = createInfluencerOperatorFromThesis(thesis, {
+      opsCadence: cadence,
+      narrative: marketingProfile?.growth_narrative,
+      week_index: opts?.week_index ?? cadence.week_index,
+      doubleDown: opts?.doubleDown,
+      winningPitchId: opts?.winningPitchId,
+      priorWorkspace: prior ?? undefined,
+    });
+    if (!op) return;
+    syncInfluencerOperatorState(op);
+    const laneB = get().laneBWorkspace ?? marketingProfile?.lane_b_workspace;
+    if (laneB) {
+      const synced = syncLaneBFromInfluencerOperator(op, laneB);
+      syncInfluencerOperatorState(synced.workspace);
+      syncLaneBState(synced.laneB);
+    }
+  };
+
+  const persistGrowthPlaneLocal = (projectId: string, plane: GrowthControlPlane) => {
+    try {
+      localStorage.setItem(`${GROWTH_PLANE_LS}.${projectId}`, JSON.stringify(plane));
+    } catch {
+      /* quota */
+    }
+  };
+
+  const hydrateGrowthPlaneLocal = (projectId: string) => {
+    try {
+      const raw = localStorage.getItem(`${GROWTH_PLANE_LS}.${projectId}`);
+      if (!raw) return;
+      const plane = hydrateGrowthControlPlaneFromJson(JSON.parse(raw));
+      if (!plane) return;
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      if (!profile.growth_control_plane) {
+        set({
+          growthControlPlane: plane,
+          marketingProfile: { ...profile, growth_control_plane: plane },
+        });
+      } else if (!get().growthControlPlane) {
+        set({ growthControlPlane: profile.growth_control_plane });
+      }
+    } catch {
+      /* corrupt */
+    }
+  };
+
+  const syncGrowthPlaneState = (plane: GrowthControlPlane) => {
+    const pid = get().activeProjectId;
+    if (pid) persistGrowthPlaneLocal(pid, plane);
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      growthControlPlane: plane,
+      marketingProfile: { ...profile, growth_control_plane: plane },
+    });
+    void get().updateMarketingProfile({ growth_control_plane: plane });
+  };
+
+  const recomputeGrowthPlane = () => {
+    const {
+      project,
+      settings,
+      marketingProfile,
+      channelThesis,
+      opsCadence,
+      distributionOperator,
+      influencerOperator,
+    } = get();
+    if (!project) return;
+    const thesis = channelThesis ?? marketingProfile?.channel_thesis;
+    const cadence = opsCadence ?? marketingProfile?.ops_cadence ?? null;
+    const distOp = distributionOperator ?? marketingProfile?.distribution_operator ?? null;
+    const infOp = influencerOperator ?? marketingProfile?.influencer_operator ?? null;
+    const delOp = resolveDelegateOperator(
+      get().delegateOperator ??
+        get().delegateWorkspace ??
+        marketingProfile?.delegate_operator ??
+        marketingProfile?.lane_c_workspace,
+      thesis,
+    );
+    const plane = buildGrowthControlPlane({
+      project,
+      persona: settings.persona,
+      profile: marketingProfile,
+      thesis,
+      opsCadence: cadence,
+      distributionOperator: distOp,
+      influencerOperator: infOp,
+      delegateOperator: delOp,
+      growthMemory: get().growthMemory ?? marketingProfile?.growth_memory,
+      budgetPlan: get().budgetPlan ?? marketingProfile?.budget_plan,
+    });
+    syncGrowthPlaneState(plane);
+    if (
+      !plane.thesis_aligned &&
+      plane.alignment_note &&
+      plane.alignment_note !== lastGrowthAlignmentNote
+    ) {
+      lastGrowthAlignmentNote = plane.alignment_note;
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: plane.alignment_note,
+      });
+    }
+  };
+
+  const persistContinuousLocal = (projectId: string, state: CmoContinuousState) => {
+    try {
+      localStorage.setItem(`${CMO_CONTINUOUS_LS}.${projectId}`, JSON.stringify(state));
+    } catch {
+      /* quota */
+    }
+  };
+
+  const hydrateContinuousLocal = (projectId: string) => {
+    try {
+      const raw = localStorage.getItem(`${CMO_CONTINUOUS_LS}.${projectId}`);
+      if (!raw) return;
+      const state = hydrateContinuousStateFromJson(JSON.parse(raw));
+      if (!state) return;
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      if (!profile.cmo_continuous) {
+        set({
+          cmoContinuous: state,
+          marketingProfile: { ...profile, cmo_continuous: state },
+        });
+      } else if (!get().cmoContinuous) {
+        set({ cmoContinuous: profile.cmo_continuous });
+      }
+    } catch {
+      /* corrupt */
+    }
+  };
+
+  const syncContinuousState = (state: CmoContinuousState) => {
+    const pid = get().activeProjectId;
+    if (pid) persistContinuousLocal(pid, state);
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      cmoContinuous: state,
+      marketingProfile: { ...profile, cmo_continuous: state },
+    });
+    void get().updateMarketingProfile({ cmo_continuous: state });
+  };
+
+  const persistGrowthMemoryLocal = (projectId: string, state: GrowthMemoryState) => {
+    try {
+      localStorage.setItem(`${GROWTH_MEMORY_LS}.${projectId}`, JSON.stringify(state));
+    } catch {
+      /* quota */
+    }
+  };
+
+  const hydrateGrowthMemoryLocal = (projectId: string) => {
+    try {
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      const raw = localStorage.getItem(`${GROWTH_MEMORY_LS}.${projectId}`);
+      const state = hydrateGrowthMemoryFromJson(raw ? JSON.parse(raw) : profile.growth_memory, {
+        projectId,
+        thesisId: (get().channelThesis ?? profile.channel_thesis)?.id,
+        legacyExperiments: profile.previous_experiments,
+      });
+      if (!state) return;
+      if (!profile.growth_memory) {
+        set({
+          growthMemory: state,
+          marketingProfile: { ...profile, growth_memory: state },
+        });
+      } else if (!get().growthMemory) {
+        set({ growthMemory: state });
+      }
+    } catch {
+      /* corrupt */
+    }
+  };
+
+  const syncGrowthMemoryState = (state: GrowthMemoryState) => {
+    const pid = get().activeProjectId;
+    if (pid) persistGrowthMemoryLocal(pid, state);
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      growthMemory: state,
+      marketingProfile: { ...profile, growth_memory: state },
+    });
+    void get().updateMarketingProfile({ growth_memory: state });
+  };
+
+  const persistBudgetPlanLocal = (projectId: string, state: BudgetPlan) => {
+    try {
+      localStorage.setItem(`${BUDGET_PLAN_LS}.${projectId}`, JSON.stringify(state));
+    } catch {
+      /* quota */
+    }
+  };
+
+  const hydrateBudgetPlanLocal = (projectId: string) => {
+    try {
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      const raw = localStorage.getItem(`${BUDGET_PLAN_LS}.${projectId}`);
+      const state = hydrateBudgetPlanFromJson(raw ? JSON.parse(raw) : profile.budget_plan);
+      if (!state) return;
+      set({
+        budgetPlan: state,
+        marketingProfile: { ...profile, budget_plan: state },
+      });
+    } catch {
+      /* corrupt */
+    }
+  };
+
+  const syncBudgetPlanState = (state: BudgetPlan) => {
+    const pid = get().activeProjectId ?? get().project?.id;
+    if (pid) persistBudgetPlanLocal(pid, state);
+    const mirrored = applyActionCostEstimates(state, {
+      laneB: get().laneBWorkspace,
+      laneC: get().marketingProfile?.lane_c_workspace,
+      distribution: get().distributionOperator,
+      influencer: get().influencerOperator,
+      delegate: get().delegateOperator,
+      cadence: get().opsCadence,
+    });
+    if (mirrored.laneB) syncLaneBState(mirrored.laneB);
+    if (mirrored.delegate) syncDelegateState(mirrored.delegate);
+    if (mirrored.distribution) syncDistributionOperatorState(mirrored.distribution);
+    if (mirrored.influencer) syncInfluencerOperatorState(mirrored.influencer);
+    if (mirrored.cadence) syncOpsCadenceState(mirrored.cadence);
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      budgetPlan: state,
+      marketingProfile: { ...profile, budget_plan: state },
+    });
+    void get().updateMarketingProfile({ budget_plan: state });
+  };
+
+  const persistDelegateLocal = (projectId: string, workspace: DelegateOperatorWorkspace) => {
+    try {
+      localStorage.setItem(`${DELEGATE_LS}.${projectId}`, JSON.stringify(workspace));
+      localStorage.setItem(`${DELEGATE_OPERATOR_LS}.${projectId}`, JSON.stringify(workspace));
+    } catch {
+      /* quota */
+    }
+  };
+
+  const hydrateDelegateLocal = (projectId: string) => {
+    try {
+      const thesis = get().channelThesis ?? get().marketingProfile?.channel_thesis;
+      const rawOp = localStorage.getItem(`${DELEGATE_OPERATOR_LS}.${projectId}`);
+      const rawLegacy = localStorage.getItem(`${DELEGATE_LS}.${projectId}`);
+      const raw = rawOp ?? rawLegacy;
+      if (!raw) return;
+      const workspace =
+        hydrateDelegateOperatorFromJson(JSON.parse(raw), thesis) ??
+        (thesis ? migrateToOperatorWorkspace(hydrateDelegateWorkspaceFromJson(JSON.parse(raw))!, thesis) : null);
+      if (!workspace) return;
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      if (!profile.delegate_operator && !profile.lane_c_workspace) {
+        set({
+          delegateWorkspace: workspace,
+          delegateOperator: workspace,
+          marketingProfile: {
+            ...profile,
+            lane_c_workspace: workspace,
+            delegate_operator: workspace,
+          },
+        });
+      } else if (!get().delegateOperator) {
+        const op = resolveDelegateOperator(
+          profile.delegate_operator ?? profile.lane_c_workspace,
+          thesis,
+        );
+        if (op) set({ delegateWorkspace: op, delegateOperator: op });
+      }
+    } catch {
+      /* corrupt */
+    }
+  };
+
+  const syncDelegateState = (workspace: DelegateOperatorWorkspace) => {
+    const pid = get().activeProjectId;
+    if (pid) persistDelegateLocal(pid, workspace);
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      delegateWorkspace: workspace,
+      delegateOperator: workspace,
+      marketingProfile: {
+        ...profile,
+        lane_c_workspace: workspace,
+        delegate_operator: workspace,
+      },
+    });
+    void get().updateMarketingProfile({
+      lane_c_workspace: workspace,
+      delegate_operator: workspace,
+    });
+  };
+
+  const maybeSyncGa4OnCycleStart = (weekIndex: number) => {
+    const profile = get().marketingProfile;
+    const plan = planGa4SyncOnCycleStart(profile, { week_index: weekIndex });
+    appendEvent({ role: "system", kind: "status", text: plan.reason });
+    if (!plan.shouldSync || get().runtime !== "connected") return;
+    void get()
+      .syncGa4Metrics()
+      .then(() => {
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: ga4SyncStatusMessage(true, weekIndex),
+        });
+      })
+      .catch(() => {
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: ga4SyncStatusMessage(false, weekIndex),
+        });
+      });
   };
 
   const notifyCampaignTaskDone = (taskId: string) => {
@@ -1141,12 +3041,167 @@ export const useApp = create<AppState>((set, get) => {
     });
   };
 
+  const clearFirstHourAutoHandoff = () => {
+    if (firstHourAutoHandoffTimer) {
+      clearTimeout(firstHourAutoHandoffTimer);
+      firstHourAutoHandoffTimer = null;
+    }
+  };
+
+  const scheduleFirstHourAutoHandoff = (receipt: TurnReceipt, answerText?: string) => {
+    clearFirstHourAutoHandoff();
+    firstHourAutoHandoffTimer = window.setTimeout(() => {
+      firstHourAutoHandoffTimer = null;
+      const snap = get();
+      if (!snap.firstHourActive || !snap.project) return;
+      const intent = resolveFirstHourAutoHandoff({
+        project: snap.project,
+        receipt,
+        answerText,
+      });
+      if (!intent || isExecutionActive()) return;
+      track("first_hour_auto_handoff");
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: "Starting patch run from scout answer…",
+      });
+      get().executeIntent(intent, { skipConfirm: true, sourceMessageId: receipt.turnId });
+      get().setActiveCanvas("run");
+    }, FIRST_HOUR_AUTO_HANDOFF_DELAY_MS);
+  };
+
+  const buildAskFoldDeps = (): AskFoldDeps => ({
+    appendEvent: (e) => appendEvent(e as Parameters<typeof appendEvent>[0]),
+    patchEvent: (id, patch) => patchEvent(id, patch as Partial<SessionEvent>),
+    getEventText: (id) => get().thread.find((x) => x.id === id)?.text ?? "",
+    removeEventIds: (ids) =>
+      set((s) => ({ thread: s.thread.filter((e) => !ids.includes(e.id)) })),
+    appendPresentedError,
+    setSuggestedMode: (mode, reason) => {
+      const snap = get();
+      const suite = snap.plan ? normalizePlan(snap.plan) : null;
+      const resolved = resolveIntent({
+        suggestedMode: mode,
+        suggestedModeReason: reason,
+        message: snap.lastAgentUserMessage,
+        plan: suite,
+        planProgress: snap.planProgress,
+        activeRunId: snap.run?.runId,
+        planTaskId: snap.activePlanTaskId,
+      });
+      const handoff = resolved ? handoffFromResolved(resolved) : null;
+      set({
+        suggestedComposerMode: { mode, reason: reason ?? "" },
+        ...(handoff ? { workspaceHandoff: handoff } : {}),
+      });
+    },
+    applyPlanRevision: ({ plan, summary, diff, sourcePlanId }) => {
+      const currentPlan = get().plan;
+      const prevProgress = get().planProgress?.byTaskId;
+      const revised = normalizePlan(plan) ?? plan;
+      const resolvedDiff =
+        (diff as ReturnType<typeof diffPlanVersions> | undefined) ??
+        (currentPlan ? diffPlanVersions(currentPlan, revised, summary) : undefined);
+      setPlanFromSuite(
+        revised,
+        undefined,
+        currentPlan && prevProgress
+          ? { carryFrom: { plan: currentPlan, byTaskId: prevProgress } }
+          : undefined,
+      );
+      appendEvent({
+        role: "agent",
+        kind: "plan_revision",
+        text: summary,
+        planRevisionSummary: summary,
+        planRevisionDiff: resolvedDiff,
+        sourcePlanId,
+      });
+      hintWorkSurface("campaign-plan");
+      void get().loadPlanHistory().then(() => {
+        const row = get().planHistory[0];
+        if (!row) return;
+        set({ activePlanRowId: row.id });
+        const snap = get().planProgress;
+        if (snap && snap.planId !== row.id) {
+          const updated = { ...snap, planId: row.id };
+          applyProgressSnapshot(updated);
+          void persistProgressSnapshot(updated);
+        }
+        void get().loadPlanProgress(row.id);
+      });
+    },
+    onAsset: (asset) => {
+      get().recordSessionOutcome({
+        kind: "asset",
+        label: `${asset.type} draft ready`,
+        channel: asset.type,
+      });
+    },
+    onUsage: (u) => {
+      set((s) => {
+        if (!s.auth.usage) return s;
+        return {
+          auth: {
+            ...s.auth,
+            usage: {
+              ...s.auth.usage,
+              agent: s.auth.usage.agent + 1,
+              tokens_in: s.auth.usage.tokens_in + u.tokens_in,
+              tokens_out: s.auth.usage.tokens_out + u.tokens_out,
+              cost_cents: s.auth.usage.cost_cents + u.cost_cents,
+            },
+          },
+        };
+      });
+    },
+    hintWorkSurface: (surface) => hintWorkSurface(surface as WorkSurface),
+    strategyContextSummary,
+    onTurnComplete: (receipt) => {
+      const snap = get();
+      const answerText = askFoldSession?.agentTextEventId
+        ? snap.thread.find((x) => x.id === askFoldSession?.agentTextEventId)?.text
+        : askFoldSession?.trimmed;
+      set({
+        lastTurnReceipt: receipt,
+        lastAskAssets: askFoldSession?.collectedAssets ?? [],
+        lastAnswerText: answerText,
+      });
+      const pid = snap.activeProjectId;
+      if (pid) persistTurnReceipt(pid, receipt);
+      get().recordSessionOutcome({
+        kind: "copy",
+        label: receipt.summaryLine,
+        turnId: receipt.turnId,
+        costCents: receipt.deliverables.costCents,
+        ref: receipt.turnId,
+      });
+
+      const after = get();
+      if (after.firstHourScoutPending && after.firstHourActive && after.project) {
+        set({ firstHourScoutPending: false });
+        scheduleFirstHourAutoHandoff(receipt, answerText);
+      }
+    },
+  });
+
   /** Fold a RunEvent from the Local Agent Host into run + canvas + thread. */
   const ingestRunEvent = (event: RunEvent) => {
     const current = get().run;
     if (!current) return;
     // Ignore stale/out-of-run events.
     if (current.runId && event.runId && current.runId !== event.runId) return;
+
+    const streamEvent = event.payload?.streamEvent as AgentStreamEvent | undefined;
+    if (
+      streamEvent &&
+      askFoldSession &&
+      (current.kind === "ask" || !askFoldSession.runId || askFoldSession.runId === event.runId)
+    ) {
+      if (event.runId) askFoldSession.runId = event.runId;
+      foldAskStreamEvent(askFoldSession, streamEvent, buildAskFoldDeps());
+    }
 
     const { run, canvas } = applyRunEvent(current, event);
     set((s) => ({
@@ -1156,19 +3211,178 @@ export const useApp = create<AppState>((set, get) => {
 
     appendFeedFromRunEvent(event);
 
-    // Mirror narration into conversation — tool/file steps live in execution feed.
-    if (event.type === "agent.message" && event.summary) {
-      appendEvent({ role: "agent", kind: "text", text: event.summary });
-    } else if (event.type === "run.failed") {
-      appendEvent({ role: "agent", kind: "error", text: event.summary ?? "Run failed." });
-      const taskId = get().activePlanTaskId ?? current.planTaskId;
-      if (taskId) {
-        set({ activePlanTaskId: taskId });
-        finalizeActivePlanTask("failed", { lastRunId: get().run?.serverRunId });
+    // Orchestrator-owned browse: mirror frames/status into Operator UI.
+    if (current.kind === "browse" || get().browser.running) {
+      if (event.type === "browser.frame") {
+        const png = event.payload?.pngBase64 as string | undefined;
+        const action = (event.payload?.action as string | undefined) ?? event.title;
+        const url = event.payload?.url as string | undefined;
+        if (png) {
+          pushFrameHistory({
+            pngBase64: png,
+            url,
+            action,
+            ts: event.timestamp || new Date().toISOString(),
+          });
+          set((s) => ({
+            browser: {
+              ...s.browser,
+              prevFrame: s.browser.frame,
+              frame: png,
+              lastAction: action ?? s.browser.lastAction,
+              url: url ?? s.browser.url,
+              phase: s.browser.phase ?? "acting",
+            },
+            canvas: { mode: "browser" as const },
+            route: "workspace" as const,
+          }));
+          maybeAppendThreadFrame({ pngBase64: png, label: action || "Browser frame" });
+        }
+      } else if (event.type === "browser.navigated") {
+        set((s) => ({
+          browser: {
+            ...s.browser,
+            url: (event.payload?.url as string) ?? s.browser.url,
+            title: (event.payload?.title as string) ?? event.title,
+          },
+        }));
+      } else if (event.type === "agent.status") {
+        set((s) => ({
+          browser: {
+            ...s.browser,
+            lastStatus: event.title,
+            phase: (event.payload?.phase as typeof s.browser.phase) ?? s.browser.phase,
+            step: (event.payload?.step as number | undefined) ?? s.browser.step,
+            stepMax: (event.payload?.stepMax as number | undefined) ?? s.browser.stepMax,
+          },
+        }));
+      } else if (event.type === "evidence.captured" && event.payload?.finding) {
+        const finding = event.payload.finding as Finding;
+        set((s) => ({
+          browser: {
+            ...s.browser,
+            findings: [...s.browser.findings, finding],
+          },
+        }));
+      } else if (event.type === "approval.required") {
+        set((s) => ({
+          browser: {
+            ...s.browser,
+            pendingApprovalId: (event.payload?.approvalId as string) ?? undefined,
+            pendingSummary: event.summary,
+            paused: true,
+          },
+        }));
+      } else if (event.type === "run.completed" && current.kind === "browse") {
+        set((s) => ({
+          browser: { ...s.browser, running: false, phase: undefined, paused: false },
+        }));
+        const report = event.payload?.report as
+          | { validations?: Array<{ label: string; passed: boolean; detail?: string }>; evidence?: Finding[] }
+          | undefined;
+        if (pendingVerifyAfterApply) {
+          void finalizeVerifyAfterApplyRun({
+            runId: event.runId,
+            report,
+            summary: event.summary,
+          });
+        } else {
+          archiveBrowseRun("completed");
+          autoCompleteBrowserResearchOps({ runId: event.runId, summary: event.summary });
+        }
+        drainExecutionQueueWhenIdle();
+      } else if (event.type === "run.failed" && current.kind === "browse") {
+        if (pendingVerifyAfterApply) {
+          void finalizeVerifyAfterApplyRun({
+            runId: event.runId,
+            failed: true,
+            summary: event.summary,
+          });
+        }
+        set((s) => ({
+          browser: {
+            ...s.browser,
+            running: false,
+            lastError: event.summary,
+            phase: undefined,
+          },
+        }));
+        archiveBrowseRun("failed");
+        drainExecutionQueueWhenIdle();
       }
-      void get().loadRunsArchive();
-      drainExecutionQueueWhenIdle();
+    }
+
+    // Ask terminal: finalize fold + clear streaming (Ask lives on the RunEvent bus).
+    if (
+      (event.type === "run.completed" ||
+        event.type === "run.failed" ||
+        event.type === "run.paused") &&
+      (current.kind === "ask" || askFoldSession)
+    ) {
+      finalizeAskFold(askFoldSession, buildAskFoldDeps());
+      askFoldSession = null;
+      set({ agentStreaming: false });
+      if (event.type === "run.failed") {
+        clearFirstHourAutoHandoff();
+        set({ firstHourScoutPending: false });
+      }
+      if (event.type === "run.completed") {
+        swallowBackground("loadMe", get().loadMe());
+        const pid = get().activeProjectId;
+        if (pid) {
+          void apiListAssets(get().settings, get().auth.authEnabled, pid)
+            .then(({ assets }) => set({ serverAssets: assets }))
+            .catch((err) => reportBackgroundError("apiListAssets", err, "debug"));
+        }
+      } else if (event.type === "run.paused") {
+        appendEvent({ role: "system", kind: "status", text: "Stopped." });
+      }
+      if (current.kind === "ask") return;
+    }
+
+    // Mirror narration into conversation — tool/file steps live in execution feed.
+    // Ask cards/tokens already folded from payload.streamEvent — skip duplicates.
+    if (streamEvent && current.kind === "ask") {
+      /* folded above */
+    } else if (event.type === "agent.message" && event.summary) {
+      const delta =
+        typeof event.payload?.delta === "string" ? event.payload.delta : event.summary;
+      const isStream = event.payload?.stream === true;
+      if (isStream && (current.kind === "edit" || !current.kind)) {
+        if (editStreamRunId !== event.runId) {
+          editStreamRunId = event.runId;
+          editStreamBubbleId = null;
+        }
+        if (!editStreamBubbleId) {
+          editStreamBubbleId = appendEvent({ role: "agent", kind: "text", text: delta });
+        } else {
+          const prev = get().thread.find((x) => x.id === editStreamBubbleId)?.text ?? "";
+          const next =
+            delta.startsWith(prev) && delta.length > prev.length ? delta : prev + delta;
+          patchEvent(editStreamBubbleId, { text: next });
+        }
+      } else {
+        appendEvent({ role: "agent", kind: "text", text: event.summary });
+      }
     } else if (event.type === "run.completed") {
+      editStreamBubbleId = null;
+      editStreamRunId = null;
+      if (current.kind === "browse") {
+        drainExecutionQueueWhenIdle();
+      } else {
+      const finishedEvents = get().run?.events ?? run.events;
+      const patchCount = patchCountFromEvents(finishedEvents);
+      if (get().wedgePhase === "ship" || get().firstHourActive) {
+        recordExecutionMetricEvent("run_completed", {
+          runId: event.runId,
+          patchCount,
+          success: patchCount > 0,
+        });
+        bumpShipPipeline("run.completed", { runId: event.runId, events: finishedEvents });
+        if (patchCount > 0) {
+          set({ canvas: { mode: "preview" } });
+        }
+      }
       const taskId = get().activePlanTaskId ?? current.planTaskId;
       if (taskId) {
         set({ activePlanTaskId: taskId });
@@ -1197,13 +3411,36 @@ export const useApp = create<AppState>((set, get) => {
             source: "system",
             category: "gate",
             title: "Verify in browser",
-            summary: "Local preview is ready — run a browser check on the live page.",
+            summary: "Local preview is ready — open Computer Use to check the live page.",
             status: "waiting",
-            canvasTarget: { mode: "browser" },
+            canvasTarget: { mode: "browser", payload: { verify: "1" } },
           });
         }
       }
       drainExecutionQueueWhenIdle();
+      }
+    } else if (event.type === "run.failed") {
+      editStreamBubbleId = null;
+      editStreamRunId = null;
+      if (get().wedgePhase === "ship" || get().firstHourActive) {
+        const code = (event.payload as { code?: string } | undefined)?.code;
+        const err =
+          code ??
+          (event.summary?.includes("NO_PATCHES") ? "NO_PATCHES" : event.summary ?? "FAILED");
+        bumpShipPipeline("run.failed", { error: err });
+      }
+      if (current.kind === "browse") {
+        /* handled in browse mirror block */
+      } else {
+      appendEvent({ role: "agent", kind: "error", text: event.summary ?? "Run failed." });
+      const taskId = get().activePlanTaskId ?? current.planTaskId;
+      if (taskId) {
+        set({ activePlanTaskId: taskId });
+        finalizeActivePlanTask("failed", { lastRunId: get().run?.serverRunId });
+      }
+      void get().loadRunsArchive();
+      drainExecutionQueueWhenIdle();
+      }
     } else if (event.type === "approval.required") {
       const p = event.payload as { approvalId?: string; intent?: string } | undefined;
       if (p?.approvalId && !hasThreadApproval(p.approvalId)) {
@@ -1220,6 +3457,19 @@ export const useApp = create<AppState>((set, get) => {
       event.type === "file.patch_updated" ||
       event.type === "preview.ready"
     ) {
+      if (
+        (event.type === "file.patch_created" || event.type === "file.patch_updated") &&
+        (get().wedgePhase === "ship" || get().firstHourActive)
+      ) {
+        bumpShipPipeline("file.patch_created", {
+          runId: event.runId,
+          events: get().run?.events,
+        });
+      }
+      if (event.type === "preview.ready" && (get().wedgePhase === "ship" || get().firstShipAt)) {
+        recordExecutionMetricEvent("preview_ready");
+        bumpShipPipeline("preview.ready");
+      }
       const feedItem = runEventToFeedItem(event);
       if (feedItem) {
         appendEvent({
@@ -1259,6 +3509,7 @@ export const useApp = create<AppState>((set, get) => {
 
   const FRAME_CAP = 24;
   const FRAME_KEEP_BASE64 = 8;
+  let lastThreadFrameAt = 0;
   const pushFrameHistory = (entry: FrameHistoryEntry) =>
     set((s) => {
       const next = [...s.browser.frameHistory, entry];
@@ -1269,9 +3520,27 @@ export const useApp = create<AppState>((set, get) => {
       return { browser: { ...s.browser, frameHistory: next } };
     });
 
+  const maybeAppendThreadFrame = (opts: {
+    pngBase64: string;
+    label: string;
+    force?: boolean;
+  }) => {
+    const now = Date.now();
+    if (!opts.force && now - lastThreadFrameAt < 3500) return;
+    lastThreadFrameAt = now;
+    // Keep thread light: store a downsized-feeling card (full PNG is fine for a few).
+    appendEvent({
+      role: "agent",
+      kind: "browser_frame",
+      text: opts.label,
+      frame: opts.pngBase64,
+    });
+  };
+
   const browserSocket = new BrowserSocket((e) => {
     if (e.type === "frame") {
       pushFrameHistory({ pngBase64: e.pngBase64, url: e.url, action: e.action, ts: e.timestamp });
+      const isFirstFrame = !get().browser.frame;
       set((s) => ({
         browser: {
           ...s.browser,
@@ -1287,14 +3556,26 @@ export const useApp = create<AppState>((set, get) => {
           stepMax: e.stepMax ?? s.browser.stepMax,
           phase: e.phase ?? s.browser.phase,
         },
+        // Keep browse runs on the Operator stage (don't drift to plan/research surfaces).
+        ...(s.run?.kind === "browse" || s.browser.running
+          ? { canvas: { mode: "browser" as const }, route: "workspace" as const }
+          : {}),
       }));
-      if (e.action) {
-        foldBrowserIntoRun({
-          type: "browser.frame",
-          title: e.action ?? "Browser frame",
-          payload: { pngBase64: e.pngBase64, action: e.action, cursor: e.cursor },
-        });
-      }
+      foldBrowserIntoRun({
+        type: "browser.frame",
+        title: e.action ?? e.url ?? "Browser frame",
+        payload: {
+          pngBase64: e.pngBase64,
+          action: e.action,
+          cursor: e.cursor,
+          url: e.url,
+        },
+      });
+      maybeAppendThreadFrame({
+        pngBase64: e.pngBase64,
+        label: e.action ?? (isFirstFrame ? "Live browser opened" : e.url ?? "Browser step"),
+        force: isFirstFrame || !!e.action,
+      });
     } else if (e.type === "status") {
       set((s) => ({
         browser: {
@@ -1316,6 +3597,11 @@ export const useApp = create<AppState>((set, get) => {
         title: `Navigated to ${e.title || e.url}`,
         payload: { url: e.url, title: e.title },
       });
+      appendEvent({
+        role: "agent",
+        kind: "status",
+        text: `Navigated to ${e.title || e.url}`,
+      });
     } else if (e.type === "finding") {
       set((s) => ({
         browser: { ...s.browser, findings: [...s.browser.findings, e.finding].slice(-50) },
@@ -1329,7 +3615,7 @@ export const useApp = create<AppState>((set, get) => {
         summary: e.finding.evidence,
         payload: { finding: e.finding },
       });
-      if (get().browser.findings.length >= 2) hintWorkSurface("research-map");
+      // Keep user on Operator during live CU — Research Map after the run ends.
       get().recordSessionOutcome({
         kind: "research",
         label: e.finding.title,
@@ -1340,6 +3626,9 @@ export const useApp = create<AppState>((set, get) => {
     } else if (e.type === "approval_request") {
       set((s) => ({
         browser: { ...s.browser, pendingApprovalId: e.id, pendingSummary: e.summary },
+        canvas: { mode: "browser" },
+        route: "workspace",
+        focusMode: true,
       }));
       if (!hasThreadApproval(e.id)) {
         appendEvent({ role: "agent", kind: "approval", approvalId: e.id, summary: e.summary });
@@ -1368,6 +3657,9 @@ export const useApp = create<AppState>((set, get) => {
         channel: "browser",
         ref: `browser-task-${goal.slice(0, 48)}`,
       });
+      if (get().browser.findings.length >= 2) {
+        hintWorkSurface("research-map");
+      }
       archiveBrowseRun("completed");
       drainExecutionQueueWhenIdle();
     } else if (e.type === "error") {
@@ -1375,6 +3667,7 @@ export const useApp = create<AppState>((set, get) => {
       // the feed records it — no duplicate red row in chat.
       set((s) => ({
         browser: { ...s.browser, running: false, lastError: e.message },
+        canvas: { mode: "browser" },
       }));
       foldBrowserIntoRun({
         type: "issue.detected",
@@ -1399,6 +3692,12 @@ export const useApp = create<AppState>((set, get) => {
 
     connection: { state: "unknown" },
     runtime: "local",
+    capabilityMatrix: deriveMatrix({
+      connectionState: "unknown",
+      authEnabled: false,
+      authState: "unknown",
+    }),
+    ideNotifications: [],
     localOnlyMode: false,
     planPreviewMode: false,
     settings: DEFAULT_SETTINGS,
@@ -1485,8 +3784,17 @@ export const useApp = create<AppState>((set, get) => {
     composerDraft: "",
     composerFocusTick: 0,
     suggestedComposerMode: undefined,
+    lastTurnReceipt: undefined,
+    lastAskAssets: [],
+    lastAnswerText: undefined,
+    firstShipAt: undefined,
+    firstHourActive: undefined,
+    firstHourScoutPending: undefined,
     lastAgentUserMessage: undefined,
     pendingHandoffConfirm: undefined,
+    warRoomExpanded: false,
+    strategicIntakeOpen: false,
+    measurementIntakeOpen: false,
 
     feedItems: [],
     feedFilter: "all",
@@ -1582,6 +3890,11 @@ export const useApp = create<AppState>((set, get) => {
         });
       }
 
+      window.api.notifications.onUpdated((items) => {
+        set({ ideNotifications: items });
+      });
+      void window.api.notifications.list().then((items) => set({ ideNotifications: items }));
+
       set({ initPhase: "connecting" });
       try {
         await withTimeout(get().initAuth(), INIT_TIMEOUT_MS, "Connecting");
@@ -1651,9 +3964,14 @@ export const useApp = create<AppState>((set, get) => {
           id: crypto.randomUUID(),
           at: Date.now(),
         };
-        return { sessionOutcomes: [...s.sessionOutcomes, row].slice(-24) };
+        const sessionOutcomes = [...s.sessionOutcomes, row].slice(-24);
+        const projectId = s.activeProjectId ?? s.project?.id;
+        if (projectId) persistSessionOutcomesLocal(projectId, sessionOutcomes);
+        return { sessionOutcomes };
       });
     },
+
+    appendEvent: (event) => appendEvent(event as Parameters<typeof appendEvent>[0]),
 
     initAuth: async () => {
       const { settings } = get();
@@ -1670,7 +3988,7 @@ export const useApp = create<AppState>((set, get) => {
             auth,
             // Let Connect onboarding offer preview-only — don't auto-skip setup.
             localOnlyMode: false,
-            runtime: syncRuntimeFromState(connection, auth, false),
+            ...syncCapabilityFromState(connection, auth, false),
           };
         });
         return;
@@ -1679,15 +3997,19 @@ export const useApp = create<AppState>((set, get) => {
 
       if (!config.authEnabled) {
         const signedIn = connection.state === "connected";
-        set((s) => ({
-          auth: { ...s.auth, state: signedIn ? "signed-in" : "signed-out", authEnabled: false },
-          localOnlyMode: !signedIn,
-          runtime: syncRuntimeFromState(
-            connection,
-            { ...s.auth, state: signedIn ? "signed-in" : "signed-out", authEnabled: false },
-            !signedIn,
-          ),
-        }));
+        set((s) => {
+          const auth = {
+            ...s.auth,
+            state: signedIn ? ("signed-in" as const) : ("signed-out" as const),
+            authEnabled: false,
+          };
+          const localOnlyMode = !signedIn;
+          return {
+            auth,
+            localOnlyMode,
+            ...syncCapabilityFromState(connection, auth, localOnlyMode),
+          };
+        });
         if (signedIn) swallowBackground("syncProjects", get().syncProjects());
         return;
       }
@@ -1857,14 +4179,66 @@ export const useApp = create<AppState>((set, get) => {
       const { settings, auth } = get();
       try {
         const me = await apiGetMe(settings, auth.authEnabled);
+        const usage = {
+          plan: me.usage?.plan ?? 0,
+          agent: me.usage?.agent ?? 0,
+          browser_min: me.usage?.browser_min ?? 0,
+          tokens_in: me.usage?.tokens_in ?? 0,
+          tokens_out: me.usage?.tokens_out ?? 0,
+          cost_cents: me.usage?.cost_cents ?? 0,
+        };
         set((s) => ({
-          auth: { ...s.auth, user: me.user, usage: me.usage, quota: me.quota },
+          auth: {
+            ...s.auth,
+            user: me.user,
+            usage,
+            quota: me.quota,
+            billingConfigured: me.billingConfigured ?? false,
+          },
           tierFeatures: me.features,
           tierLabel: me.tierLabel,
         }));
         void window.api.cache.set("me", me);
       } catch (err) {
         reportBackgroundError("loadMe", err, "warn");
+        throw err;
+      }
+    },
+
+    startCheckout: async (tier = "pro") => {
+      const { settings, auth } = get();
+      try {
+        const { url } = await apiBillingCheckout(settings, auth.authEnabled, tier);
+        await window.api.shell.openExternal(url);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("billing_not_configured")) {
+          appendPresentedError(
+            "Billing is not configured on this server. Add Stripe keys to server/.env.",
+          );
+        } else {
+          appendPresentedError(msg);
+        }
+        throw err;
+      }
+    },
+
+    openBillingPortal: async () => {
+      const { settings, auth } = get();
+      try {
+        const { url } = await apiBillingPortal(settings, auth.authEnabled);
+        await window.api.shell.openExternal(url);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("billing_not_configured") || msg.includes("no_stripe_customer")) {
+          appendPresentedError(
+            msg.includes("no_stripe_customer")
+              ? "No billing account yet — upgrade to Pro first."
+              : "Billing is not configured on this server.",
+          );
+        } else {
+          appendPresentedError(msg);
+        }
         throw err;
       }
     },
@@ -2001,16 +4375,150 @@ export const useApp = create<AppState>((set, get) => {
         );
         if (!res.ok) {
           hydrateCampaignSessionLocal(projectId);
+          hydrateOpsCadenceLocal(projectId);
+          hydrateLaneBLocal(projectId);
+          hydrateLaneALocal(projectId);
+          hydrateContinuousLocal(projectId);
+          hydrateGrowthMemoryLocal(projectId);
+          hydrateBudgetPlanLocal(projectId);
+          hydrateProductActivationLocal(projectId);
+          hydrateLaneDLocal(projectId);
+          hydrateRevenueProfileLocal(projectId);
+          hydrateMonetizationWorkspaceLocal(projectId);
+          hydrateStrategicIntakeLocal(projectId);
+          hydrateDelegateLocal(projectId);
+          hydrateGrowthPlaneLocal(projectId);
+          hydrateDistributionOperatorLocal(projectId);
+          hydrateInfluencerOperatorLocal(projectId);
+          recomputeGrowthPlane();
+          ensureChannelThesisAfterProfileLoad();
           return;
         }
         const profile = (await res.json()) as MarketingProfile;
-        set({ marketingProfile: profile });
-        if (profile.campaign_session) {
-          persistCampaignSessionLocal(projectId, profile.campaign_session);
+        const { project } = get();
+        let merged =
+          project && (project.id === projectId || get().activeProjectId === projectId)
+            ? profileFromProjectScan(project, profile)
+            : profile;
+        const hydratedMechanism = hydrateGrowthMechanismProfileFromJson(
+          merged.growth_mechanism_profile,
+        );
+        if (hydratedMechanism) {
+          merged = { ...merged, growth_mechanism_profile: hydratedMechanism };
+        }
+        const delResolved = resolveDelegateOperator(
+          merged.delegate_operator ?? merged.lane_c_workspace,
+          merged.channel_thesis,
+        );
+        set({
+          marketingProfile: merged,
+          channelThesis: merged.channel_thesis,
+          opsCadence: merged.ops_cadence,
+          laneAWorkspace: merged.lane_a_workspace,
+          laneBWorkspace: merged.lane_b_workspace,
+          cmoContinuous: merged.cmo_continuous,
+          growthMemory: hydrateGrowthMemoryFromJson(merged.growth_memory, {
+            projectId,
+            thesisId: merged.channel_thesis?.id,
+            legacyExperiments: merged.previous_experiments,
+          }) ?? undefined,
+          budgetPlan: hydrateBudgetPlanFromJson(merged.budget_plan) ?? undefined,
+          productActivation: merged.product_activation,
+          laneDWorkspace: hydrateLaneDWorkspaceFromJson(merged.lane_d_workspace) ?? undefined,
+          revenueProfile: hydrateRevenueProfileFromJson(merged.revenue_profile) ?? undefined,
+          monetizationWorkspace:
+            hydrateMonetizationWorkspaceFromJson(merged.monetization_workspace) ?? undefined,
+          delegateWorkspace: delResolved ?? undefined,
+          delegateOperator: delResolved ?? undefined,
+          growthControlPlane: merged.growth_control_plane,
+          distributionOperator: merged.distribution_operator,
+          influencerOperator: merged.influencer_operator,
+        });
+        persistStrategicIntakeLocal(projectId, merged);
+        hydrateStrategicIntakeLocal(projectId);
+        if (merged.campaign_session) {
+          persistCampaignSessionLocal(projectId, merged.campaign_session);
         } else {
           hydrateCampaignSessionLocal(projectId);
         }
-        const oi = profile.outreach_integrations;
+        if (merged.ops_cadence) {
+          persistOpsCadenceLocal(projectId, merged.ops_cadence);
+        } else {
+          hydrateOpsCadenceLocal(projectId);
+        }
+        if (merged.lane_b_workspace) {
+          persistLaneBLocal(projectId, merged.lane_b_workspace);
+        } else {
+          hydrateLaneBLocal(projectId);
+        }
+        if (merged.lane_a_workspace) {
+          persistLaneALocal(projectId, merged.lane_a_workspace);
+        } else {
+          hydrateLaneALocal(projectId);
+        }
+        if (merged.cmo_continuous) {
+          persistContinuousLocal(projectId, merged.cmo_continuous);
+        } else {
+          hydrateContinuousLocal(projectId);
+        }
+        const loadedMemory = hydrateGrowthMemoryFromJson(merged.growth_memory, {
+          projectId,
+          thesisId: merged.channel_thesis?.id,
+          legacyExperiments: merged.previous_experiments,
+        });
+        if (loadedMemory) {
+          persistGrowthMemoryLocal(projectId, loadedMemory);
+        } else {
+          hydrateGrowthMemoryLocal(projectId);
+        }
+        if (merged.budget_plan) {
+          persistBudgetPlanLocal(projectId, merged.budget_plan);
+        } else {
+          hydrateBudgetPlanLocal(projectId);
+        }
+        if (merged.product_activation) {
+          persistProductActivationLocal(projectId, merged.product_activation);
+        } else {
+          hydrateProductActivationLocal(projectId);
+        }
+        if (merged.lane_d_workspace) {
+          persistLaneDLocal(projectId, merged.lane_d_workspace);
+        } else {
+          hydrateLaneDLocal(projectId);
+        }
+        if (merged.revenue_profile) {
+          persistRevenueProfileLocal(projectId, merged.revenue_profile);
+        } else {
+          hydrateRevenueProfileLocal(projectId);
+        }
+        if (merged.monetization_workspace) {
+          persistMonetizationWorkspaceLocal(projectId, merged.monetization_workspace);
+        } else {
+          hydrateMonetizationWorkspaceLocal(projectId);
+        }
+        if (delResolved) {
+          persistDelegateLocal(projectId, delResolved);
+        } else {
+          hydrateDelegateLocal(projectId);
+        }
+        if (merged.growth_control_plane) {
+          persistGrowthPlaneLocal(projectId, merged.growth_control_plane);
+        } else {
+          hydrateGrowthPlaneLocal(projectId);
+        }
+        if (merged.distribution_operator) {
+          persistDistributionOperatorLocal(projectId, merged.distribution_operator);
+        } else {
+          hydrateDistributionOperatorLocal(projectId);
+        }
+        if (merged.influencer_operator) {
+          persistInfluencerOperatorLocal(projectId, merged.influencer_operator);
+        } else {
+          hydrateInfluencerOperatorLocal(projectId);
+        }
+        recomputeGrowthPlane();
+        ensureChannelThesisAfterProfileLoad();
+        const oi = merged.outreach_integrations;
         if (oi && (oi.webhook_url || oi.webhook_provider)) {
           const { settings } = get();
           void get().updateSettings({
@@ -2021,6 +4529,23 @@ export const useApp = create<AppState>((set, get) => {
         get().refreshConnectorFeed();
       } catch {
         hydrateCampaignSessionLocal(projectId);
+        hydrateOpsCadenceLocal(projectId);
+        hydrateLaneBLocal(projectId);
+        hydrateLaneALocal(projectId);
+        hydrateContinuousLocal(projectId);
+        hydrateGrowthMemoryLocal(projectId);
+        hydrateBudgetPlanLocal(projectId);
+        hydrateProductActivationLocal(projectId);
+        hydrateLaneDLocal(projectId);
+        hydrateRevenueProfileLocal(projectId);
+        hydrateMonetizationWorkspaceLocal(projectId);
+        hydrateStrategicIntakeLocal(projectId);
+        hydrateDelegateLocal(projectId);
+        hydrateGrowthPlaneLocal(projectId);
+        hydrateDistributionOperatorLocal(projectId);
+        hydrateInfluencerOperatorLocal(projectId);
+        recomputeGrowthPlane();
+        ensureChannelThesisAfterProfileLoad();
         /* offline / persistence off — UI just shows defaults */
       }
     },
@@ -2044,7 +4569,17 @@ export const useApp = create<AppState>((set, get) => {
         );
         if (res.ok) {
           const profile = (await res.json()) as MarketingProfile;
-          set({ marketingProfile: profile });
+          const hydratedMechanism = hydrateGrowthMechanismProfileFromJson(
+            profile.growth_mechanism_profile,
+          );
+          const merged = hydratedMechanism
+            ? { ...profile, growth_mechanism_profile: hydratedMechanism }
+            : profile;
+          set({ marketingProfile: merged });
+          if (merged.channel_thesis) {
+            set({ channelThesis: merged.channel_thesis });
+          }
+          recomputeGrowthPlane();
           if (profile.campaign_session) {
             persistCampaignSessionLocal(activeProjectId, profile.campaign_session);
           }
@@ -2248,6 +4783,7 @@ export const useApp = create<AppState>((set, get) => {
       } catch {
         /* keep optimistic local entry */
       }
+      recomputeGrowthPlane();
       return true;
     },
 
@@ -2296,21 +4832,35 @@ export const useApp = create<AppState>((set, get) => {
 
     syncRuntimeCapability: () => {
       const { connection, auth, localOnlyMode } = get();
-      set({
-        runtime: syncRuntimeFromState(connection, auth, localOnlyMode),
-      });
+      set(syncCapabilityFromState(connection, auth, localOnlyMode));
     },
 
     openConnectFlow: () => {
-      const { auth, phase, settingsOpen } = get();
+      const { auth, phase, settingsOpen, capabilityMatrix } = get();
       if (settingsOpen) get().toggleSettings(false);
 
+      const fix =
+        capabilityMatrix.caps.auth.fix?.action === "signin"
+          ? capabilityMatrix.caps.auth.fix
+          : capabilityMatrix.caps.anthropic.state !== "ready"
+            ? capabilityMatrix.caps.anthropic.fix
+            : capabilityMatrix.caps.backend.fix;
+
+      // During onboarding/reveal, open connection setup without discarding scan progress.
       if (phase !== "workspace") {
-        set({ phase: "onboarding" });
+        set({ settingsSection: "connection" });
+        get().toggleSettings(true);
+        if (fix?.action === "signin" || (auth.authEnabled && auth.state !== "signed-in")) {
+          appendEvent({
+            role: "system",
+            kind: "status",
+            text: "Sign in from Connection to enable AI features.",
+          });
+        }
         return;
       }
 
-      if (auth.authEnabled && auth.state !== "signed-in") {
+      if (fix?.action === "signin" || (auth.authEnabled && auth.state !== "signed-in")) {
         get().navigate("settings", "connection");
         appendEvent({
           role: "system",
@@ -2320,6 +4870,2167 @@ export const useApp = create<AppState>((set, get) => {
         return;
       }
       get().navigate("settings", "connection");
+    },
+
+    dismissIdeNotification: (id) => {
+      void window.api.notifications.dismiss(id);
+      set((s) => ({
+        ideNotifications: s.ideNotifications.filter((n) => n.id !== id),
+      }));
+    },
+
+    beginFirstHour: () => {
+      const { project, runtime } = get();
+      if (!project) return;
+      clearFirstHourAutoHandoff();
+      track("begin_first_hour");
+      set({
+        phase: "workspace",
+        route: "workspace",
+        workspaceHandoff: undefined,
+        firstHourScoutPending: false,
+      });
+      get().setWorkSurface("campaign-plan");
+      get().setActiveCanvas("campaign-plan");
+      if (runtime === "connected") {
+        void get().generatePlan();
+      } else {
+        get().previewPlanOutline();
+      }
+    },
+
+    beginFirstHourWow: () => {
+      const { project, runtime } = get();
+      if (!project) return;
+      const target = resolveFirstShipTarget(project);
+      clearFirstHourAutoHandoff();
+      track("begin_first_hour_wow");
+      const scout = canRunAgent(runtime);
+      set({
+        phase: "workspace",
+        route: "workspace",
+        workspaceHandoff: undefined,
+        firstHourActive: true,
+        firstHourScoutPending: scout,
+      });
+      get().setActiveCanvas("run");
+
+      if (scout) {
+        void get().sendMessage(target.scoutPrompt);
+        return;
+      }
+
+      const resolved = resolveIntent({
+        uiIntent: { kind: "start_edit_run", goal: target.editGoal },
+        message: target.editGoal,
+        plan: get().plan ? normalizePlan(get().plan) : null,
+        planProgress: get().planProgress,
+      });
+      if (resolved) {
+        get().executeIntent(resolved.intent, { skipConfirm: true });
+      } else {
+        void get().startRun(target.editGoal);
+      }
+    },
+
+    setOnboardingTrack: (onboardingTrack) => {
+      const projectId = get().activeProjectId ?? get().project?.id;
+      if (projectId) persistOnboardingTrack(projectId, onboardingTrack);
+      set({ onboardingTrack });
+      track("onboarding_track_set", { track: onboardingTrack });
+    },
+
+    beginQuickStartShip: (opts) => {
+      const { project } = get();
+      if (!project) return;
+      const target = resolveFirstShipTarget(project);
+      const skipScout = opts?.skipScout ?? get().onboardingTrack !== "full_cmo";
+
+      void (async () => {
+        let snapshot = get().firstShipSnapshot;
+        if (!snapshot) {
+          try {
+            const cwd =
+              project.source.kind === "folder" ? project.source.path : project.localPath;
+            snapshot = await captureFirstShipSnapshotFromProject(project, async (relPath) => {
+              if (!cwd) throw new Error("no cwd");
+              return window.api.fs.read(cwd, relPath);
+            });
+            set({ firstShipSnapshot: snapshot });
+          } catch {
+            snapshot = { capturedAt: Date.now(), heroPath: target.heroPath };
+            set({ firstShipSnapshot: snapshot });
+          }
+        }
+
+        recordExecutionMetricEvent("quick_start_begin");
+        bumpShipPipeline("run.started");
+
+        set({
+          onboardingTrack: get().onboardingTrack ?? "quick_start",
+          wedgePhase: "ship",
+          shipRecovery: undefined,
+          shipPipeline: { stage: "run", patchCount: 0, updatedAt: Date.now() },
+        });
+
+        track("quick_start_ship_begin", { heroPath: target.heroPath });
+
+        if (skipScout && canRunAgent(get().runtime)) {
+          clearFirstHourAutoHandoff();
+          const goal = opts?.goalOverride ?? target.editGoal;
+          set({
+            phase: "workspace",
+            route: "workspace",
+            workspaceHandoff: undefined,
+            firstHourActive: true,
+            firstHourScoutPending: false,
+          });
+          get().setActiveCanvas("run");
+          recordExecutionMetricEvent("run_started");
+          const resolved = resolveIntent({
+            uiIntent: { kind: "start_edit_run", goal },
+            message: goal,
+            plan: get().plan ? normalizePlan(get().plan) : null,
+            planProgress: get().planProgress,
+          });
+          if (resolved) {
+            get().executeIntent(resolved.intent, { skipConfirm: true });
+          } else {
+            void get().startRun(goal, undefined, {
+              skills: ["landing-page-conversion", "seo-content-engine"],
+              guaranteedShip: true,
+            });
+          }
+          return;
+        }
+
+        get().beginFirstHourWow();
+      })();
+    },
+
+    retryQuickStartShip: (goalOverride) => {
+      set({ shipRecovery: undefined, shipPipeline: initialShipPipelineState() });
+      get().beginQuickStartShip({ skipScout: true, goalOverride });
+    },
+
+    promptApplyFirstChange: () => {
+      const { run } = get();
+      if (!run?.runId) {
+        get().beginQuickStartShip({ skipScout: true });
+        return;
+      }
+      const files = runChangedFiles(run.events);
+      if (files.length === 0) return;
+      set({ canvas: { mode: "preview" }, shipPipeline: { ...get().shipPipeline!, stage: "apply" } });
+      void get().applyRunChanges(files);
+    },
+
+    beginFirstShip: () => {
+      const { project } = get();
+      if (!project) return;
+      const target = resolveFirstShipTarget(project);
+      track("begin_first_ship");
+      set({
+        phase: "workspace",
+        route: "workspace",
+        workspaceHandoff: undefined,
+        firstHourActive: true,
+        warRoomExpanded: false,
+      });
+      get().setActiveCanvas("run");
+      const resolved = resolveIntent({
+        uiIntent: { kind: "start_edit_run", goal: target.editGoal },
+        message: target.editGoal,
+        plan: get().plan ? normalizePlan(get().plan) : null,
+        planProgress: get().planProgress,
+      });
+      if (resolved) {
+        get().executeIntent(resolved.intent, { skipConfirm: true });
+      } else {
+        void get().startRun(target.editGoal);
+      }
+    },
+
+    runCmoIntake: () => {
+      const { project, settings, marketingProfile } = get();
+      if (!project) return null;
+      const profile = marketingProfile ?? emptyMarketingProfile();
+      const lockedThesis =
+        isStrategicDecisionSealed(profile) ||
+        Boolean(profile.ops_cadence) ||
+        (profile.channel_thesis && profile.channel_thesis.draft === false);
+      if (lockedThesis && profile.channel_thesis) {
+        set({
+          channelThesis: profile.channel_thesis,
+          marketingProfile: { ...profile, channel_thesis: profile.channel_thesis },
+        });
+        recomputeGrowthPlane();
+        return profile.channel_thesis;
+      }
+      const thesis = buildCmoIntake({
+        project,
+        persona: settings.persona,
+        profile,
+        draft: true,
+      });
+      track("cmo_intake", { thesis_id: thesis.id, verdict: thesis.verdict });
+      set({
+        channelThesis: thesis,
+        marketingProfile: { ...profile, channel_thesis: thesis },
+      });
+      if (!isStrategicDecisionSealed(profile) && !profile.ops_cadence) {
+        void get().updateMarketingProfile({ channel_thesis: thesis });
+      }
+      recomputeGrowthPlane();
+      return thesis;
+    },
+
+    saveFounderFit: (founderFit) => {
+      const error = validateFounderFit(founderFit);
+      if (error) {
+        appendEvent({ role: "system", kind: "status", text: error });
+        return;
+      }
+      const projectId = get().activeProjectId ?? get().project?.id;
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      const next = {
+        ...profile,
+        founder_fit: founderFit,
+        public_presence_policy: undefined,
+        growth_mechanism_profile: undefined,
+        growth_narrative: undefined,
+        strategic_decision: undefined,
+      };
+      set({ marketingProfile: next, strategicIntakeOpen: true });
+      if (projectId) {
+        clearStrategicIntakeLocal(projectId, ["presence", "mechanism", "narrative", "decision"]);
+        persistStrategicIntakeLocal(projectId, next);
+      }
+      void get().updateMarketingProfile({
+        founder_fit: founderFit,
+        public_presence_policy: undefined,
+        growth_mechanism_profile: undefined,
+        growth_narrative: undefined,
+        strategic_decision: undefined,
+      });
+      track("founder_fit_complete", {
+        brand_face_readiness: founderFit.brand_face_readiness,
+        weekly_marketing_hours: founderFit.weekly_marketing_hours,
+      });
+    },
+
+    savePublicPresencePolicy: (policy) => {
+      const { project, marketingProfile } = get();
+      const founderFit = marketingProfile?.founder_fit;
+      if (!project || !founderFit) return;
+      const growthMechanismProfile = buildGrowthMechanismProfile({
+        project,
+        profile: marketingProfile,
+        founderFit,
+        presence: policy,
+      });
+      const next = {
+        ...(marketingProfile ?? emptyMarketingProfile()),
+        public_presence_policy: policy,
+        growth_mechanism_profile: growthMechanismProfile,
+        strategic_decision: undefined,
+        growth_narrative: undefined,
+      };
+      set({ marketingProfile: next, strategicIntakeOpen: true });
+      const projectId = get().activeProjectId ?? project.id;
+      clearStrategicIntakeLocal(projectId, ["narrative", "decision"]);
+      persistStrategicIntakeLocal(projectId, next);
+      void get().updateMarketingProfile({
+        public_presence_policy: policy,
+        growth_mechanism_profile: growthMechanismProfile,
+        strategic_decision: undefined,
+        growth_narrative: undefined,
+      });
+      track("public_presence_saved", {
+        reputational_risk: policy.reputational_risk,
+        founder_allowed: policy.founder.allowed,
+      });
+      get().runStrategicIntake();
+    },
+
+    runStrategicIntake: () => {
+      const { project, marketingProfile, channelThesis } = get();
+      const founderFit = marketingProfile?.founder_fit;
+      const presence = marketingProfile?.public_presence_policy;
+      const baseline = channelThesis ?? marketingProfile?.channel_thesis;
+      if (
+        !project ||
+        !founderFit ||
+        !baseline ||
+        !presence?.configured_at ||
+        validateFounderFit(founderFit)
+      ) {
+        return null;
+      }
+      const narrative = synthesizeGrowthNarrative({
+        project,
+        profile: marketingProfile,
+        founderFit,
+      });
+      const growthMechanismProfile =
+        marketingProfile?.growth_mechanism_profile ??
+        buildGrowthMechanismProfile({
+          project,
+          profile: marketingProfile,
+          founderFit,
+          presence,
+        });
+      const decision = buildStrategicDecision({
+        project,
+        profile: { ...marketingProfile, public_presence_policy: presence },
+        founderFit,
+        narrative,
+        baselineThesis: baseline,
+      });
+      const profile = marketingProfile ?? emptyMarketingProfile();
+      const next = {
+        ...profile,
+        founder_fit: founderFit,
+        public_presence_policy: presence,
+        growth_mechanism_profile: growthMechanismProfile,
+        growth_narrative: narrative,
+        strategic_decision: decision,
+      };
+      set({ marketingProfile: next, strategicIntakeOpen: true });
+      const projectId = get().activeProjectId ?? project.id;
+      persistStrategicIntakeLocal(projectId, next);
+      void get().updateMarketingProfile({
+        founder_fit: founderFit,
+        public_presence_policy: presence,
+        growth_mechanism_profile: growthMechanismProfile,
+        growth_narrative: narrative,
+        strategic_decision: decision,
+      });
+      track("strategic_intake_generated", {
+        baseline_thesis_id: baseline.id,
+        recommended_option_id: decision.recommended_id,
+      });
+      return decision;
+    },
+
+    selectStrategicOption: (id) => {
+      const profile = get().marketingProfile;
+      const decision = profile?.strategic_decision;
+      const selected = decision?.options.find((option) => option.id === id);
+      if (!profile || !decision || !selected?.eligible || decision.sealed_at) return;
+      const nextDecision = { ...decision, selected_id: id };
+      const next = { ...profile, strategic_decision: nextDecision };
+      set({ marketingProfile: next });
+      const projectId = get().activeProjectId ?? get().project?.id;
+      if (projectId) persistStrategicIntakeLocal(projectId, next);
+      void get().updateMarketingProfile({ strategic_decision: nextDecision });
+    },
+
+    sealStrategicDecision: (selectedId) => {
+      const { project, settings, marketingProfile } = get();
+      const decision = marketingProfile?.strategic_decision;
+      const founderFit = marketingProfile?.founder_fit;
+      const narrative = marketingProfile?.growth_narrative;
+      if (!project || !marketingProfile || !decision || !founderFit || !narrative) return false;
+      const id = selectedId ?? decision.selected_id ?? decision.recommended_id;
+      const sealed = sealStrategicDecisionCore(decision, id);
+      if (!sealed.sealed_at) return false;
+      const selected = sealed.options.find((option) => option.id === sealed.selected_id);
+      if (!selected) return false;
+      const mechanismId = selected.primary_mechanism_id;
+      const growthMechanismProfile =
+        marketingProfile.growth_mechanism_profile ??
+        (mechanismId
+          ? buildGrowthMechanismProfile({
+              project,
+              profile: marketingProfile,
+              founderFit,
+              presence: marketingProfile.public_presence_policy,
+            })
+          : undefined);
+      const sealedSecondary =
+        growthMechanismProfile?.secondary_mechanism_id ??
+        growthMechanismProfile?.assessment.secondary;
+      const thesis = buildFinalChannelThesis({
+        project,
+        persona: settings.persona,
+        profile: marketingProfile,
+        founder_fit: founderFit,
+        selected_option: selected,
+        narrative,
+        primary_mechanism_id: mechanismId,
+        secondary_mechanism_id: sealedSecondary,
+      });
+      const syncedMechanismProfile = growthMechanismProfile
+        ? {
+            ...growthMechanismProfile,
+            primary_mechanism_id: mechanismId ?? growthMechanismProfile.primary_mechanism_id,
+            secondary_mechanism_id: sealedSecondary,
+            assessment: {
+              ...growthMechanismProfile.assessment,
+              primary: mechanismId ?? growthMechanismProfile.assessment.primary,
+              secondary: sealedSecondary,
+            },
+          }
+        : undefined;
+      const next = {
+        ...marketingProfile,
+        strategic_decision: sealed,
+        channel_thesis: thesis,
+        growth_mechanism_profile: syncedMechanismProfile,
+      };
+      set({
+        marketingProfile: next,
+        channelThesis: thesis,
+        strategicIntakeOpen: false,
+      });
+      const projectId = get().activeProjectId ?? project.id;
+      persistStrategicIntakeLocal(projectId, next);
+      void get().updateMarketingProfile({
+        strategic_decision: sealed,
+        channel_thesis: thesis,
+        growth_mechanism_profile: next.growth_mechanism_profile,
+      });
+      track("strategic_decision_sealed", {
+        option_id: selected.id,
+        thesis_id: selected.thesis_id,
+      });
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `Strategic contract sealed — Option ${selected.id}. Complete setup, then start Week 1.`,
+      });
+      recomputeGrowthPlane();
+      return true;
+    },
+
+    openStrategicIntake: () => set({ strategicIntakeOpen: true }),
+    closeStrategicIntake: () => set({ strategicIntakeOpen: false }),
+    openMeasurementIntake: () => set({ measurementIntakeOpen: true }),
+    closeMeasurementIntake: () => set({ measurementIntakeOpen: false }),
+    acknowledgeMeasurementBaseline: (note) => {
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      const next = {
+        ...profile,
+        measurement_ack: {
+          acknowledged_at: new Date().toISOString(),
+          note: note?.trim() || undefined,
+        },
+      };
+      set({ marketingProfile: next, measurementIntakeOpen: false });
+      void get().updateMarketingProfile({ measurement_ack: next.measurement_ack });
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: "Manual KPI logging acknowledged — log outcomes in week review.",
+      });
+    },
+
+    saveBudgetPlan: (monthlyAmountUsd, cpaCeilingUsd) => {
+      const profile = get().marketingProfile;
+      const thesis = get().channelThesis ?? profile?.channel_thesis;
+      const founderFit = profile?.founder_fit;
+      if (!thesis || !founderFit) return false;
+      if (monthlyAmountUsd != null && (!Number.isFinite(monthlyAmountUsd) || monthlyAmountUsd < 0)) {
+        return false;
+      }
+      const built = buildBudgetAllocation(thesis, founderFit, {
+        monthlyAmountUsd,
+        cpaCeilingUsd,
+      });
+      const seeded = seedActionCosts(built, {
+        laneB: get().laneBWorkspace ?? profile?.lane_b_workspace,
+        laneC: profile?.lane_c_workspace,
+        distribution: get().distributionOperator ?? profile?.distribution_operator,
+        influencer: get().influencerOperator ?? profile?.influencer_operator,
+        delegate: get().delegateOperator ?? profile?.delegate_operator,
+        cadence: get().opsCadence ?? profile?.ops_cadence,
+      });
+      syncBudgetPlanState(seeded);
+      track("budget_plan_saved", {
+        monthly_amount_usd: seeded.monthly_amount_usd,
+        amount_confidence: seeded.amount_confidence,
+      });
+      return true;
+    },
+
+    saveProductActivation: (input) => {
+      const { project, marketingProfile } = get();
+      if (!project) return false;
+      if (!input.activation_event_label?.trim() && !marketingProfile?.founder_fit?.magic_moment) {
+        return false;
+      }
+      const built = buildProductActivationProfile({
+        founderFit: marketingProfile?.founder_fit,
+        manualKpis: marketingProfile?.manual_kpis,
+        scan: project,
+        existing: {
+          ...(get().productActivation ?? marketingProfile?.product_activation),
+          ...input,
+        },
+      });
+      syncProductActivationState(built);
+      track("product_activation_saved", {
+        confidence: built.confidence,
+        has_activation_rate: built.activation_rate_pct != null,
+        has_ttfv: built.ttfv_hours != null,
+      });
+      return true;
+    },
+
+    openProductRequestModal: (requestId) => set({ pendingProductRequestId: requestId }),
+    dismissProductRequestModal: () => set({ pendingProductRequestId: undefined }),
+    openProductIssueModal: (requestId) => set({ pendingProductIssueRequestId: requestId }),
+    dismissProductIssueModal: () => set({ pendingProductIssueRequestId: undefined }),
+
+    completeProductRequest: (requestId, proof) => {
+      const workspace = get().laneDWorkspace ?? get().marketingProfile?.lane_d_workspace;
+      if (!workspace) return "No product loop is active.";
+      const result = completeProductRequestCore(workspace, requestId, proof);
+      if (result.error) return result.error;
+      syncLaneDState(result.workspace);
+      set({ pendingProductRequestId: undefined });
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `P0 PRODUCT REQUEST shipped — ${result.workspace.requests.find((item) => item.id === requestId)?.title ?? requestId}.`,
+      });
+      return null;
+    },
+
+    skipProductRequest: (requestId, reason) => {
+      const workspace = get().laneDWorkspace ?? get().marketingProfile?.lane_d_workspace;
+      if (!workspace) return;
+      syncLaneDState(skipProductRequestCore(workspace, requestId, reason ?? "Founder decision"));
+    },
+
+    resumeMarketingAfterProductLoop: () => {
+      const workspace = get().laneDWorkspace ?? get().marketingProfile?.lane_d_workspace;
+      if (!workspace) return "No product loop is active.";
+      if (!canResumeMarketing(workspace)) {
+        return "Ship or explicitly skip every P0 PRODUCT REQUEST before resuming marketing.";
+      }
+      syncLaneDState(resumeMarketing(workspace));
+      const continuous = get().cmoContinuous ?? get().marketingProfile?.cmo_continuous;
+      if (continuous) {
+        syncContinuousState({
+          ...continuous,
+          marketing_paused: false,
+          marketing_resumed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      }
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: "Product loop cleared — marketing can resume on the next CMO cycle.",
+      });
+      return null;
+    },
+
+    saveRevenueProfile: (input) => {
+      const { project, marketingProfile, settings } = get();
+      if (!project || !marketingProfile?.founder_fit) return false;
+      const built = buildRevenueProfile({
+        scan: buildRevenueScanSignals(project, marketingProfile.gaps),
+        founderFit: marketingProfile.founder_fit,
+        strategicDecision: marketingProfile.strategic_decision,
+        persona: settings.persona,
+        manualKpis: marketingProfile.manual_kpis,
+        salesPipelineEmpty: marketingProfile.sales_pipeline_empty,
+        existing: get().revenueProfile ?? marketingProfile.revenue_profile,
+        intake: input,
+      });
+      syncRevenueProfileState(built);
+      track("revenue_profile_saved", {
+        model: built.pricing_thesis.model,
+        target: built.revenue_target.target,
+        confidence: built.revenue_target.confidence,
+      });
+      return true;
+    },
+
+    logRevenueAttributionForSource: (sourceId, paidCustomers, note) => {
+      const profile = get().revenueProfile ?? get().marketingProfile?.revenue_profile;
+      if (!profile) return "Save revenue intake before logging attribution.";
+      const existing = profile.attributions.find((row) => row.source_id === sourceId);
+      const next = logRevenueAttribution(profile, {
+        source_id: sourceId,
+        source_label: existing?.source_label ?? sourceId.replace(/_/g, " "),
+        channel_kind: existing?.channel_kind ?? "organic",
+        spend_usd: existing?.spend_usd,
+        spend_confidence: existing?.spend_confidence ?? "missing",
+        paid_customers: paidCustomers,
+        attribution_confidence: "measured",
+      });
+      syncRevenueProfileState(next);
+      set({ pendingRevenueAttributionSourceId: undefined });
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `Revenue attribution logged — ${paidCustomers} paid customer(s) for ${sourceId}.${note ? ` ${note}` : ""}`,
+      });
+      return null;
+    },
+
+    openMonetizationTaskModal: (taskId) => set({ pendingMonetizationTaskId: taskId }),
+    dismissMonetizationTaskModal: () => set({ pendingMonetizationTaskId: undefined }),
+    openMonetizationIssueModal: (taskId) => set({ pendingMonetizationIssueTaskId: taskId }),
+    dismissMonetizationIssueModal: () => set({ pendingMonetizationIssueTaskId: undefined }),
+    openRevenueAttributionModal: (sourceId) =>
+      set({ pendingRevenueAttributionSourceId: sourceId }),
+    dismissRevenueAttributionModal: () => set({ pendingRevenueAttributionSourceId: undefined }),
+
+    completeMonetizationTask: (taskId, proof) => {
+      const workspace =
+        get().monetizationWorkspace ?? get().marketingProfile?.monetization_workspace;
+      if (!workspace) return "No monetization workspace is active.";
+      const result = completeMonetizationTaskCore(workspace, taskId, proof);
+      if (result.error) return result.error;
+      syncMonetizationWorkspaceState(result.workspace);
+      set({ pendingMonetizationTaskId: undefined, pendingMonetizationIssueTaskId: undefined });
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `Monetization task shipped — ${result.workspace.tasks.find((item) => item.id === taskId)?.title ?? taskId}.`,
+      });
+      return null;
+    },
+
+    skipMonetizationTask: (taskId, reason) => {
+      const workspace =
+        get().monetizationWorkspace ?? get().marketingProfile?.monetization_workspace;
+      if (!workspace) return;
+      syncMonetizationWorkspaceState(
+        skipMonetizationTaskCore(workspace, taskId, reason ?? "Founder decision"),
+      );
+    },
+
+    toggleWarRoomExpanded: () =>
+      set((s) => ({
+        warRoomExpanded: !s.warRoomExpanded,
+        week1FocusMode: !s.warRoomExpanded ? false : s.week1FocusMode,
+      })),
+    focusBackstageAnchor: (anchorId) => {
+      if (!get().warRoomExpanded) get().toggleWarRoomExpanded();
+      requestAnimationFrame(() => {
+        document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    },
+
+    openDistributionProofModal: (slotId) =>
+      set({ pendingDistributionProofSlotId: slotId }),
+    dismissDistributionProofModal: () =>
+      set({ pendingDistributionProofSlotId: undefined }),
+
+    completeDistributionSlot: (slotId, proof) => {
+      const op = get().distributionOperator ?? get().marketingProfile?.distribution_operator;
+      if (!op) return "No distribution operator active.";
+      const slotBefore = op.slots.find((s) => s.id === slotId);
+      const { workspace, error } = completeDistributionSlot(op, slotId, proof);
+      if (error) return error;
+
+      const { channelThesis, marketingProfile, opsCadence } = get();
+      const thesis = channelThesis ?? marketingProfile?.channel_thesis;
+      const cadence = opsCadence ?? marketingProfile?.ops_cadence;
+      let next = workspace;
+      if (thesis && cadence) {
+        next = {
+          ...next,
+          verdict: evaluateHookPerformanceWithProfile(next, cadence, marketingProfile, thesis),
+        };
+      }
+
+      const laneB = get().laneBWorkspace ?? marketingProfile?.lane_b_workspace;
+      if (laneB) {
+        const synced = syncLaneBFromOperator(next, laneB);
+        next = synced.workspace;
+        syncLaneBState(synced.laneB);
+      }
+      syncDistributionOperatorState(next);
+
+      const linkedOpsId =
+        next.slots.find((s) => s.id === slotId)?.linked_ops_task_id ??
+        slotBefore?.linked_ops_task_id;
+      tryCompleteLinkedOpsFromHumanProof(linkedOpsId, {
+        urls: proof.post_url?.trim() ? [proof.post_url.trim()] : undefined,
+        note: proof.note,
+        metric_snapshot:
+          proof.views_24h != null
+            ? String(proof.views_24h)
+            : proof.impressions != null
+              ? String(proof.impressions)
+              : proof.replies != null
+                ? String(proof.replies)
+                : undefined,
+        kpi_value: proof.views_24h ?? proof.impressions ?? proof.replies,
+      });
+
+      for (const kpi of rollupOperatorKpis(next, marketingProfile)) {
+        void get().upsertManualKpi(kpi);
+      }
+
+      if (
+        next.verdict?.headline &&
+        next.verdict.headline !== lastDistributionVerdictHeadline
+      ) {
+        lastDistributionVerdictHeadline = next.verdict.headline;
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: next.verdict.headline,
+        });
+      }
+
+      recomputeGrowthPlane();
+      return null;
+    },
+
+    skipDistributionSlot: (slotId) => {
+      const op = get().distributionOperator ?? get().marketingProfile?.distribution_operator;
+      if (!op) return;
+      const next = skipDistributionSlot(op, slotId);
+      syncDistributionOperatorState(next);
+      recomputeGrowthPlane();
+    },
+
+    openInfluencerProofModal: (touchId) => set({ pendingInfluencerProofTouchId: touchId }),
+    dismissInfluencerProofModal: () => set({ pendingInfluencerProofTouchId: undefined }),
+    openInfluencerDealModal: (touchId) => set({ pendingInfluencerDealTouchId: touchId }),
+    dismissInfluencerDealModal: () => set({ pendingInfluencerDealTouchId: undefined }),
+
+    completeInfluencerTouch: (touchId, targetStage, proof, deal) => {
+      const op = get().influencerOperator ?? get().marketingProfile?.influencer_operator;
+      if (!op) return "No influencer operator active.";
+      const touchBefore = op.touches.find((t) => t.id === touchId);
+      const { workspace, error } = completeInfluencerTouch(op, touchId, targetStage, proof, deal);
+      if (error) return error;
+
+      const { channelThesis, marketingProfile, opsCadence } = get();
+      const thesis = channelThesis ?? marketingProfile?.channel_thesis;
+      const cadence = opsCadence ?? marketingProfile?.ops_cadence;
+      let next = workspace;
+      if (thesis && cadence) {
+        next = {
+          ...next,
+          verdict: evaluatePitchPerformanceWithProfile(next, cadence, marketingProfile, thesis),
+        };
+      }
+
+      const laneB = get().laneBWorkspace ?? marketingProfile?.lane_b_workspace;
+      if (laneB) {
+        const synced = syncLaneBFromInfluencerOperator(next, laneB);
+        next = synced.workspace;
+        syncLaneBState(synced.laneB);
+      }
+      syncInfluencerOperatorState(next);
+
+      const linkedOpsId =
+        next.touches.find((t) => t.id === touchId)?.linked_ops_task_id ??
+        touchBefore?.linked_ops_task_id;
+      tryCompleteLinkedOpsFromHumanProof(linkedOpsId, {
+        urls: proof?.live_post_url?.trim() ? [proof.live_post_url.trim()] : proof?.thread_url?.trim() ? [proof.thread_url.trim()] : undefined,
+        note: proof?.note ?? proof?.reply_note,
+        metric_snapshot:
+          proof?.signups != null
+            ? String(proof.signups)
+            : proof?.clicks != null
+              ? String(proof.clicks)
+              : undefined,
+        kpi_value: proof?.signups ?? proof?.clicks,
+      });
+
+      for (const kpi of rollupInfluencerKpis(next, marketingProfile)) {
+        void get().upsertManualKpi(kpi);
+      }
+
+      if (
+        next.verdict?.headline &&
+        next.verdict.headline !== lastInfluencerVerdictHeadline
+      ) {
+        lastInfluencerVerdictHeadline = next.verdict.headline;
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: next.verdict.headline,
+        });
+      }
+
+      recomputeGrowthPlane();
+      return null;
+    },
+
+    skipInfluencerTouch: (touchId) => {
+      const op = get().influencerOperator ?? get().marketingProfile?.influencer_operator;
+      if (!op) return;
+      const next = skipInfluencerTouch(op, touchId);
+      syncInfluencerOperatorState(next);
+      recomputeGrowthPlane();
+    },
+
+    updateInfluencerCreator: (touchId, fields) => {
+      const op = get().influencerOperator ?? get().marketingProfile?.influencer_operator;
+      if (!op) return;
+      syncInfluencerOperatorState(updateInfluencerTouchCreator(op, touchId, fields));
+    },
+
+    beginCmoWeek1: () => {
+      const { project, settings, marketingProfile, channelThesis } = get();
+      const thesis = channelThesis ?? marketingProfile?.channel_thesis;
+      if (!thesis || !project) return;
+      if (!isStrategicDecisionSealed(marketingProfile)) {
+        set({ strategicIntakeOpen: true });
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: "Complete the founder-fit decision and seal one strategic option before Week 1 starts.",
+        });
+        return;
+      }
+      if (thesis.verdict === "not_ready") {
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: thesis.verdict_reason,
+        });
+        return;
+      }
+      if (!get().budgetPlan && marketingProfile?.founder_fit) {
+        const assumed = buildBudgetAllocation(thesis, marketingProfile.founder_fit);
+        syncBudgetPlanState(assumed);
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: `Budget plan uses the ${marketingProfile.founder_fit.monthly_budget_band} band estimate until you confirm a numeric ceiling.`,
+        });
+      }
+      if (!get().productActivation && !marketingProfile?.product_activation) {
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: "Define the activation event and first-value gate before Week 1 starts.",
+        });
+        return;
+      }
+      if (!get().revenueProfile && !marketingProfile?.revenue_profile) {
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: "Define how payment will be received — complete revenue intake before Week 1 starts.",
+        });
+        return;
+      }
+      const baseline = assessMeasurementBaseline(marketingProfile, project);
+      if (!baseline.ready) {
+        if (isMeasurementGateHard()) {
+          set({ measurementIntakeOpen: true });
+          appendEvent({
+            role: "system",
+            kind: "status",
+            text: "Connect GA4 or log a manual baseline before Week 1 starts.",
+          });
+          return;
+        }
+        set({ measurementIntakeOpen: true });
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: "Week 1 works best with a measurement baseline — connect GA4 or log a manual KPI.",
+        });
+      }
+
+      track("begin_cmo_week1", { thesis_id: thesis.id });
+      const projectId = get().activeProjectId ?? project.id;
+      const session = createCampaignSession({
+        projectId,
+        persona: settings.persona,
+        planHorizon: settings.planHorizon,
+        goal: thesis.headline.slice(0, 160),
+      });
+      const now = new Date().toISOString();
+      get().persistCampaignSession({
+        ...session,
+        phase: "executing",
+        milestones: [
+          ...session.milestones,
+          { label: `Channel thesis: ${thesis.title}`, at: now, kind: "phase" },
+        ],
+      });
+
+      const productActivation =
+        get().productActivation ??
+        marketingProfile?.product_activation ??
+        buildProductActivationProfile({
+          founderFit: marketingProfile?.founder_fit,
+          manualKpis: marketingProfile?.manual_kpis,
+          scan: project,
+        });
+      syncProductActivationState(productActivation);
+      const revenueProfile =
+        get().revenueProfile ??
+        marketingProfile?.revenue_profile ??
+        buildRevenueProfile({
+          scan: buildRevenueScanSignals(project, marketingProfile?.gaps),
+          founderFit: marketingProfile?.founder_fit,
+          strategicDecision: marketingProfile?.strategic_decision,
+          persona: settings.persona,
+          manualKpis: marketingProfile?.manual_kpis,
+          salesPipelineEmpty: marketingProfile?.sales_pipeline_empty,
+        });
+      syncRevenueProfileState(revenueProfile);
+      const productBinding = detectProductBinding({
+        founderFit: marketingProfile?.founder_fit,
+        activation: productActivation,
+        growthBinding: get().growthControlPlane?.binding,
+        gaps: marketingProfile?.gaps,
+      });
+      let opsCadence = productBinding.active
+        ? createProductLoopOpsCadence({
+            thesis,
+            activation: productActivation,
+            campaignSessionId: session.id,
+          })
+        : createOpsCadenceFromThesis(thesis, { campaignSessionId: session.id });
+
+      let laneA = productBinding.active
+        ? {
+            id: `lanea.${thesis.id}.product.${Date.now()}`,
+            thesis_id: thesis.id,
+            ops_cadence_id: opsCadence.id,
+            started_at: now,
+            items: [],
+          }
+        : createLaneAWorkspaceFromThesis(thesis, {
+            opsCadence,
+            narrative: marketingProfile?.growth_narrative,
+          });
+
+      const laneD = createLaneDWorkspaceFromBinding({
+        thesis,
+        binding: productBinding,
+        activation: productActivation,
+        gaps: marketingProfile?.gaps,
+        hasAnalytics: project.hasAnalytics,
+        opsCadence,
+      });
+      if (laneD) {
+        const linked = linkSiteLevelToLaneA(laneA, laneD);
+        laneA = linked.laneA;
+        syncLaneDState(linked.laneD);
+      }
+      const revenueBinding = detectRevenueBinding({
+        founderFit: marketingProfile?.founder_fit,
+        revenueProfile,
+        productBindingActive: productBinding.active,
+        marketingPaused: productBinding.active,
+        growthBinding: get().growthControlPlane?.binding,
+        activation: productActivation,
+        gaps: marketingProfile?.gaps,
+        manualKpis: marketingProfile?.manual_kpis,
+      });
+      const monetizationWs = createMonetizationWorkspaceFromBinding({
+        thesis,
+        binding: revenueBinding,
+        revenueProfile,
+        gaps: marketingProfile?.gaps,
+      });
+      if (monetizationWs) {
+        const monetizationLinked = linkSiteLevelMonetizationToLaneA(monetizationWs, laneA, thesis);
+        laneA = monetizationLinked.laneA ?? laneA;
+        syncMonetizationWorkspaceState(monetizationLinked.workspace);
+      }
+      syncLaneAState(laneA);
+      if (!productBinding.active) {
+        opsCadence = bindAndSyncOpsCadence({
+          cadence: opsCadence,
+          thesis,
+          project,
+          laneAWorkspace: laneA,
+          preferScoutForFirstSystem: true,
+        });
+      } else {
+        syncOpsCadenceState(opsCadence);
+      }
+
+      const mechanismPrimary =
+        (thesis.signals?.primary_mechanism_id as GrowthMechanismId | undefined) ??
+        marketingProfile?.growth_mechanism_profile?.primary_mechanism_id;
+      const mechanismSecondary =
+        marketingProfile?.growth_mechanism_profile?.secondary_mechanism_id ??
+        (thesis.signals?.secondary_mechanism_id as GrowthMechanismId | undefined);
+      const mechanismFlags = mechanismPrimary
+        ? resolveMechanismOperatorFlags(mechanismPrimary, mechanismSecondary)
+        : undefined;
+
+      const laneBMode = resolveMechanismLaneBMode(mechanismPrimary);
+
+      const delegateWs =
+        productBinding.active || (mechanismFlags && !mechanismFlags.delegate)
+          ? null
+          : createDelegateOperatorFromThesis(thesis, { opsCadence });
+      if (delegateWs) {
+        syncDelegateState(delegateWs);
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: `Lane C ready — ${delegateWs.briefs.length} delegate brief(s) for handoff.`,
+        });
+      }
+
+      const continuous = createInitialContinuousState({ campaignSessionId: session.id });
+      syncContinuousState(
+        productBinding.active
+          ? {
+              ...continuous,
+              marketing_paused: true,
+              marketing_paused_reason: productBinding.headline,
+              product_loop_started_at: now,
+            }
+          : continuous,
+      );
+      syncGrowthMemoryState(createInitialGrowthMemory(projectId));
+
+      maybeSyncGa4OnCycleStart(1);
+      recomputeGrowthPlane();
+      if (!productBinding.active) {
+        const allowDist = mechanismFlags ? Boolean(mechanismFlags.distribution) : true;
+        const allowInf = mechanismFlags ? Boolean(mechanismFlags.influencer) : true;
+        if (allowDist) {
+          maybeCreateDistributionOperator({
+            week_index: 1,
+            character_mode: mechanismFlags?.character_mode,
+          });
+        } else {
+          set({ distributionOperator: undefined });
+          void get().updateMarketingProfile({ distribution_operator: undefined });
+        }
+        if (allowInf) {
+          maybeCreateInfluencerOperator({ week_index: 1 });
+        } else {
+          set({ influencerOperator: undefined });
+          void get().updateMarketingProfile({ influencer_operator: undefined });
+        }
+      } else {
+        set({ distributionOperator: undefined, influencerOperator: undefined });
+      }
+
+      let laneB = productBinding.active
+        ? undefined
+        : createLaneBWorkspaceFromThesis(thesis, {
+            opsCadence: get().opsCadence ?? opsCadence,
+            narrative: marketingProfile?.growth_narrative,
+            laneBMode,
+          });
+      const distOp = get().distributionOperator;
+      const infOp = get().influencerOperator;
+      if (distOp && laneB) {
+        const synced = syncLaneBFromOperator(distOp, laneB);
+        syncDistributionOperatorState(synced.workspace);
+        laneB = synced.laneB;
+        syncLaneBState(synced.laneB);
+      } else if (infOp && laneB) {
+        const synced = syncLaneBFromInfluencerOperator(infOp, laneB);
+        syncInfluencerOperatorState(synced.workspace);
+        laneB = synced.laneB;
+        syncLaneBState(synced.laneB);
+      } else if (laneB) {
+        syncLaneBState(laneB);
+      }
+
+      if (!productBinding.active) {
+        bindAndSyncHumanExecution({
+          cadence: get().opsCadence ?? opsCadence,
+          thesis,
+          laneB: get().laneBWorkspace ?? laneB,
+          distributionOperator: get().distributionOperator,
+          influencerOperator: get().influencerOperator,
+          delegateOperator: get().delegateOperator ?? delegateWs,
+        });
+      }
+
+      const activeBudget = get().budgetPlan ?? get().marketingProfile?.budget_plan;
+      if (activeBudget) {
+        syncBudgetPlanState(
+          seedActionCosts(activeBudget, {
+            laneB: get().laneBWorkspace,
+            laneC: get().marketingProfile?.lane_c_workspace,
+            distribution: get().distributionOperator,
+            influencer: get().influencerOperator,
+            delegate: get().delegateOperator,
+            cadence: get().opsCadence,
+          }),
+        );
+      }
+
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `Lane A ready — ${laneA.items.length} IDE ship step(s) with thesis skills.`,
+      });
+
+      if (laneB) {
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: `Lane B ready — ${laneB.items.length} human execution steps (${laneB.mode.replace(/_/g, " ")}).`,
+        });
+      } else if (laneD) {
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: `Marketing paused — Lane D has ${laneD.requests.length} P0 PRODUCT REQUEST(s).`,
+        });
+      } else if (monetizationWs) {
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: `Revenue focus — ${monetizationWs.tasks.length} monetization P0 task(s) before scaling paid spend.`,
+        });
+      }
+
+      set({
+        phase: "workspace",
+        route: "workspace",
+        workspaceHandoff: undefined,
+        firstHourActive: true,
+        week1FocusMode: true,
+        warRoomExpanded: false,
+      });
+      get().setActiveCanvas("run");
+
+      const firstSystemOps = opsCadence.tasks.find((t) => t.owner === "system");
+      const firstUser = productBinding.active
+        ? opsCadence.tasks.find((task) => task.owner === "user")
+        : thesis.week1_priorities.find((p) => p.owner === "user");
+
+      appendEvent({
+        role: "agent",
+        kind: "status",
+        text: `Week 1 — ${thesis.title}. ${thesis.headline}`,
+      });
+
+      if (firstUser) {
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: `Your move when ready: ${firstUser.what} — Done when: ${firstUser.done_when}`,
+        });
+      }
+
+      if (firstSystemOps) {
+        get().executeOpsSystemTask(firstSystemOps.id);
+        return;
+      }
+
+      if (firstUser) {
+        set({
+          workspaceHandoff: {
+            eyebrow: "Week 1",
+            title: firstUser.what,
+            reason: `${firstUser.why} Done when: ${firstUser.done_when}`,
+            primaryLabel: "Open workspace",
+            primaryAction: "composer",
+          },
+        });
+      }
+    },
+
+    openOpsProofModal: (taskId) => {
+      const cadence = get().opsCadence;
+      const task = cadence?.tasks.find((t) => t.id === taskId);
+      if (task?.human_execution_ref) {
+        openHumanExecutionProof(task.human_execution_ref);
+        return;
+      }
+      set({ pendingOpsProofTaskId: taskId });
+    },
+    dismissOpsProofModal: () => set({ pendingOpsProofTaskId: undefined }),
+
+    persistOpsCadence: (cadence) => syncOpsCadenceState(cadence),
+
+    completeOpsTask: (taskId, proof) => {
+      const cadence = get().opsCadence;
+      if (!cadence) return "No active ops cadence.";
+      const task = cadence.tasks.find((t) => t.id === taskId);
+      if (!task) return "Task not found.";
+      const { marketingProfile: profile, channelThesis } = get();
+      const enriched = attachKpiToCompletedProof(proof, task, cadence.thesis_id);
+      const fullProof = {
+        ...enriched.proof,
+        kpi_id: enriched.kpiFields.kpi_id,
+        kpi_name: enriched.kpiFields.kpi_name,
+        kpi_value: enriched.kpiFields.kpi_value,
+        kpi_target: enriched.kpiFields.kpi_target,
+        kpi_source: enriched.kpiFields.kpi_source,
+        kpi_unit: enriched.kpiFields.kpi_unit,
+      };
+      const validation = validateFullOpsProof(task, fullProof, profile);
+      if (!validation.ok) return validation.errors.join(" ");
+
+      const { cadence: next, error } = completeOpsTaskCore(cadence, taskId, fullProof);
+      if (error && !error.ok) return error.errors.join(" ");
+
+      const kpi = buildManualKpiFromOpsProof(task, fullProof, cadence.thesis_id);
+      if (kpi) void get().upsertManualKpi(kpi);
+
+      let finalCadence = next;
+      const thesis = channelThesis ?? profile?.channel_thesis;
+      if (thesis && allOpsTasksTerminal(next)) {
+        const distVerdict =
+          get().distributionOperator?.verdict ??
+          profile?.distribution_operator?.verdict ??
+          null;
+        const infVerdict =
+          get().influencerOperator?.verdict ??
+          profile?.influencer_operator?.verdict ??
+          null;
+        const delVerdict =
+          get().delegateOperator?.verdict ??
+          get().delegateWorkspace?.verdict ??
+          profile?.delegate_operator?.verdict ??
+          null;
+        const pivot = buildPivotSuggestion(
+          next,
+          profile,
+          thesis,
+          distVerdict,
+          infVerdict,
+          delVerdict,
+          get().growthMemory ?? profile?.growth_memory,
+        );
+        if (pivot) finalCadence = { ...next, pivot_suggestion: pivot };
+        get().advanceCampaignPhase({ type: "log_kpi" });
+      }
+
+      syncOpsCadenceState(finalCadence);
+      notifyOpsProgress(finalCadence, task.what);
+      recomputeGrowthPlane();
+      track("ops_task_done", { task_id: taskId, owner: task.owner, kpi: fullProof.kpi_id });
+      return null;
+    },
+
+    skipOpsTask: (taskId, reason) => {
+      const cadence = get().opsCadence;
+      if (!cadence) return;
+      const next = skipOpsTaskCore(cadence, taskId, reason);
+      syncOpsCadenceState(next);
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `Skipped ops task — ${cadence.tasks.find((t) => t.id === taskId)?.what ?? taskId}`,
+      });
+      notifyOpsProgress(next);
+      recomputeGrowthPlane();
+    },
+
+    executeOpsSystemTask: (taskId) => {
+      const cadence = get().opsCadence;
+      if (!cadence) return;
+      const task = cadence.tasks.find((t) => t.id === taskId);
+      if (!task || task.owner !== "system") return;
+
+      const thesis = get().channelThesis ?? get().marketingProfile?.channel_thesis;
+      const project = get().project;
+      if (!thesis || !project) {
+        appendEvent({
+          role: "system",
+          kind: "error",
+          text: "Cannot start ops task — project or thesis missing.",
+        });
+        return;
+      }
+
+      let plan: LaneARunPlan | null = null;
+      if (task.execution_plan) {
+        plan = executionPlanToLaneARunPlan(taskId, task.execution_plan);
+      } else {
+        const laneA = get().laneAWorkspace;
+        const laneItem = laneA ? getLaneAItemForOpsTask(laneA, taskId) : undefined;
+        plan = resolveLaneARunPlan({
+          task,
+          thesis,
+          project,
+          laneAItemId: laneItem?.id,
+        });
+        if (import.meta.env.DEV) {
+          console.warn("[cmo] executeOpsSystemTask without bound execution_plan:", taskId);
+        }
+      }
+      if (!plan) {
+        appendEvent({
+          role: "system",
+          kind: "error",
+          text: `No execution plan for: ${task.what}`,
+        });
+        return;
+      }
+      get().startLaneARun(plan);
+    },
+
+    startOpsSystemTask: (taskId) => {
+      const cadence = get().opsCadence;
+      if (!cadence) return;
+      const task = cadence.tasks.find((t) => t.id === taskId);
+      if (!task || task.owner !== "system") return;
+
+      if (get().e2eDryRunExecution) {
+        syncOpsCadenceState(markOpsTaskInProgress(cadence, taskId));
+        const err = get().completeOpsTask(taskId, {
+          note: "E2E dry-run: Lane A shipped without live agent execution.",
+          commit_sha: "e2e0000",
+        });
+        if (err) {
+          appendEvent({ role: "system", kind: "error", text: err });
+        }
+        return;
+      }
+
+      get().executeOpsSystemTask(taskId);
+    },
+
+    startLaneARun: (plan) => {
+      const cadence = get().opsCadence;
+      if (!cadence) return;
+
+      if (get().e2eDryRunExecution) {
+        syncOpsCadenceState(markOpsTaskInProgress(cadence, plan.opsTaskId));
+        const err = get().completeOpsTask(plan.opsTaskId, {
+          note: "E2E dry-run: Lane A run plan completed without live agent.",
+          commit_sha: "e2e0000",
+        });
+        if (err) {
+          appendEvent({ role: "system", kind: "error", text: err });
+        }
+        return;
+      }
+
+      syncOpsCadenceState(markOpsTaskInProgress(cadence, plan.opsTaskId));
+      const laneA = get().laneAWorkspace;
+      if (laneA) {
+        syncLaneAState(markLaneAItemInProgress(laneA, plan.opsTaskId));
+      }
+
+      if (plan.mode === "scout_then_edit" && plan.scoutPrompt) {
+        if (canRunAgent(get().runtime)) {
+          set({ firstHourScoutPending: true });
+          void get().sendMessage(plan.scoutPrompt);
+        }
+        return;
+      }
+
+      if (plan.mode === "browser_research") {
+        const msgId = appendEvent({ role: "user", kind: "text", text: plan.goal });
+        get().runBrowserTask(plan.goal, { sourceMessageId: msgId });
+        return;
+      }
+
+      void get().startRun(plan.goal, undefined, {
+        skills: plan.skills,
+        opsTaskId: plan.opsTaskId,
+        mentions: plan.mentions,
+      });
+    },
+
+    completeOpsWeekReview: (summary) => {
+      const cadence = get().opsCadence;
+      if (!cadence) return "No active ops cadence.";
+      const { marketingProfile: profile, channelThesis } = get();
+      const thesis = channelThesis ?? profile?.channel_thesis;
+      const laneD = get().laneDWorkspace ?? profile?.lane_d_workspace;
+      const check = canCompleteWeekReview(
+        cadence,
+        profile,
+        thesis,
+        summary,
+        laneD,
+        get().monetizationWorkspace ?? profile?.monetization_workspace,
+      );
+      if (!check.ok) return check.errors.join(" ");
+      if (!thesis) return "Channel thesis required for week review.";
+
+      const pivot =
+        thesis != null && !laneD?.marketing_paused
+          ? buildPivotSuggestion(
+              cadence,
+              profile,
+              thesis,
+              get().distributionOperator?.verdict ?? profile?.distribution_operator?.verdict,
+              get().influencerOperator?.verdict ?? profile?.influencer_operator?.verdict,
+              get().delegateOperator?.verdict ??
+                get().delegateWorkspace?.verdict ??
+                profile?.delegate_operator?.verdict,
+              get().growthMemory ?? profile?.growth_memory,
+            )
+          : null;
+      const next = completeWeekReview(cadence, summary, pivot);
+      syncOpsCadenceState(next);
+      set({ week1FocusMode: false });
+      get().advanceCampaignPhase({ type: "log_kpi" });
+
+      const delOp = resolveDelegateOperator(
+        get().delegateOperator ??
+          get().delegateWorkspace ??
+          profile?.delegate_operator ??
+          profile?.lane_c_workspace,
+        thesis,
+      );
+      const revenueProfile = get().revenueProfile ?? profile?.revenue_profile;
+      const assessment = evaluateWeek1MetricsWithGa4Priority(
+        next,
+        profile,
+        thesis,
+        get().distributionOperator ?? profile?.distribution_operator,
+        get().influencerOperator ?? profile?.influencer_operator,
+        delOp,
+        get().growthMemory ?? profile?.growth_memory,
+        revenueProfile,
+      );
+      const distOp = get().distributionOperator ?? profile?.distribution_operator;
+      const infOp = get().influencerOperator ?? profile?.influencer_operator;
+      const laneBWorkspace = get().laneBWorkspace;
+      const budgetPlan = get().budgetPlan ?? profile?.budget_plan;
+      const budgetCloseout = budgetPlan
+        ? rollupBudgetActuals(budgetPlan, profile, {
+            laneB: laneBWorkspace ?? profile?.lane_b_workspace,
+            laneC: profile?.lane_c_workspace,
+            distribution: distOp,
+            influencer: infOp,
+            delegate: delOp,
+            cadence: next,
+          })
+        : undefined;
+      const revenueCloseout = revenueProfile
+        ? buildRevenueCloseout(revenueProfile, profile?.manual_kpis, budgetCloseout)
+        : undefined;
+      const memoryBase =
+        get().growthMemory ??
+        profile?.growth_memory ??
+        createInitialGrowthMemory(get().activeProjectId ?? get().project?.id);
+      let growthMemory = harvestMemoryFromCycle({
+        memory: memoryBase,
+        cadence: next,
+        thesis,
+        laneB: laneBWorkspace ?? profile?.lane_b_workspace,
+        distributionOperator: distOp,
+        influencerOperator: infOp,
+        delegateOperator: delOp,
+        budgetCloseout,
+        laneD,
+        revenueCloseout,
+        growthMechanismProfile: profile?.growth_mechanism_profile,
+      });
+      let replanPreview = buildReplanPreview(growthMemory, {
+        thesis,
+        nextWeekIndex: cadence.week_index + 1,
+        assessment,
+        budgetPlan,
+        budgetCloseout,
+        founderFit: profile?.founder_fit,
+        laneD,
+        revenueProfile,
+        revenueCloseout,
+        gaps: profile?.gaps,
+        weekIndex: cadence.week_index,
+        growthMechanismProfile: profile?.growth_mechanism_profile,
+      });
+      const suggestedThesisId = pivot?.suggested_thesis_ids[0];
+      const currentProject = get().project;
+      if (replanPreview.mode === "pivot" && suggestedThesisId && currentProject) {
+        const targetThesis = buildCmoIntake({
+          project: currentProject,
+          persona: get().settings.persona,
+          profile,
+          context: {
+            force_thesis_id: suggestedThesisId,
+            previous_thesis_id: thesis.id,
+            cycle_index: cadence.week_index + 1,
+            mode: "pivot",
+          },
+        });
+        replanPreview = buildReplanPreview(growthMemory, {
+          thesis: targetThesis,
+          nextWeekIndex: cadence.week_index + 1,
+          assessment,
+          preferredMode: "pivot",
+          budgetPlan,
+          budgetCloseout,
+          founderFit: profile?.founder_fit,
+          laneD,
+          revenueProfile,
+          revenueCloseout,
+          gaps: profile?.gaps,
+          weekIndex: cadence.week_index + 1,
+          growthMechanismProfile: profile?.growth_mechanism_profile,
+        });
+      }
+      growthMemory = { ...growthMemory, pending_replan: replanPreview };
+      let continuous =
+        get().cmoContinuous ??
+        profile?.cmo_continuous ??
+        createInitialContinuousState({
+          campaignSessionId: profile?.campaign_session?.id,
+        });
+      continuous = archiveCompletedCycle(continuous, {
+        cadence: next,
+        thesis,
+        assessment,
+        weekReviewSummary: summary,
+        pivot,
+        laneBWorkspaceId: laneBWorkspace?.id,
+        hookSummary: infOp?.verdict?.headline ?? distOp?.verdict?.headline,
+        delegateSummary: delOp?.verdict?.headline,
+        memorySummary: growthMemorySummary(growthMemory),
+        experimentCount: growthMemory.experiments.filter(
+          (experiment) => experiment.cycle_index === cadence.week_index,
+        ).length,
+        winningMessageLabels: growthMemory.messages
+          .filter(
+            (message) =>
+              message.cycle_index === cadence.week_index && message.verdict === "winner",
+          )
+          .map((message) => message.label),
+        budgetSnapshot:
+          budgetPlan && budgetCloseout
+            ? buildBudgetSnapshot(budgetPlan, budgetCloseout)
+            : undefined,
+        revenueSnapshot:
+          revenueProfile && revenueCloseout
+            ? buildRevenueSnapshot(revenueProfile, revenueCloseout)
+            : undefined,
+      });
+      syncContinuousState(continuous);
+      syncGrowthMemoryState(growthMemory);
+      for (const kpi of rollupGrowthMemoryKpis(growthMemory)) {
+        void get().upsertManualKpi(kpi);
+      }
+
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `${weekLabel(cadence.week_index)} review captured — ${summary.trim().slice(0, 120)}`,
+      });
+      if (pivot?.verdict === "flat") {
+        appendEvent({
+          role: "agent",
+          kind: "status",
+          text: pivot.headline,
+        });
+      }
+      track("ops_week_review", { week_index: cadence.week_index, verdict: pivot?.verdict });
+      return null;
+    },
+
+    openWeekReviewModal: () => set({ pendingWeekReviewOpen: true }),
+    dismissWeekReviewModal: () => set({ pendingWeekReviewOpen: false }),
+
+    dismissPivotSuggestion: () => {
+      const cadence = get().opsCadence;
+      if (!cadence?.pivot_suggestion) return;
+      syncOpsCadenceState({
+        ...cadence,
+        pivot_suggestion: {
+          ...cadence.pivot_suggestion,
+          dismissed_at: new Date().toISOString(),
+        },
+      });
+      const continuous = get().cmoContinuous;
+      if (continuous?.phase === "pivot_ready") {
+        syncContinuousState({ ...continuous, phase: "measuring" });
+      }
+    },
+
+    startNextCmoCycle: (opts) => {
+      const { project, settings, marketingProfile, channelThesis, opsCadence } = get();
+      const cadence = opsCadence;
+      const priorThesis = channelThesis ?? marketingProfile?.channel_thesis;
+      const continuous = get().cmoContinuous ?? marketingProfile?.cmo_continuous;
+      const session = marketingProfile?.campaign_session;
+
+      const check = canStartNextCycle(continuous, cadence);
+      if (!check.ok) return check.errors.join(" ");
+      if (!project || !priorThesis || !cadence) return "Missing project or thesis.";
+
+      const mode: NextCycleMode = opts?.mode ?? "pivot";
+      if (mode === "pivot") {
+        const assessment = evaluateWeek1MetricsWithGa4Priority(
+          cadence,
+          marketingProfile,
+          priorThesis,
+          get().distributionOperator ?? marketingProfile?.distribution_operator,
+          get().influencerOperator ?? marketingProfile?.influencer_operator,
+          get().delegateOperator ??
+            get().delegateWorkspace ??
+            marketingProfile?.delegate_operator,
+          get().growthMemory ?? marketingProfile?.growth_memory,
+        );
+        if (assessment.primaryValue == null || assessment.loggedCount <= 0) {
+          return "Log a numeric KPI in week review before pivoting thesis.";
+        }
+      }
+      const forceThesisId = resolveNextCycleThesisId(cadence, {
+        mode,
+        explicitThesisId: opts?.thesisId,
+      });
+      const nextWeekIndex = cadence.week_index + 1;
+      const activeMemory =
+        get().growthMemory ??
+        marketingProfile?.growth_memory ??
+        createInitialGrowthMemory(get().activeProjectId ?? project.id);
+      const intakeContext = buildIntakeContextForNextCycle(
+        cadence,
+        continuous!,
+        forceThesisId,
+        mode,
+      );
+      const memoryMessages = activeMemory.messages.filter(
+        (message) => message.cycle_index === activeMemory.last_harvest_cycle_index,
+      );
+      intakeContext.memory_snapshot = {
+        winners: memoryMessages
+          .filter((message) => message.verdict === "winner")
+          .map((message) => ({
+            label: message.label,
+            kind: message.kind,
+            metric:
+              message.metric_value != null
+                ? `${message.metric_value}${message.metric_name?.includes("pct") ? "%" : ""}`
+                : undefined,
+          })),
+        losers: memoryMessages
+          .filter((message) => message.verdict === "loser")
+          .map((message) => ({ label: message.label, kind: message.kind })),
+        recommended_mode: activeMemory.pending_replan?.mode,
+      };
+
+      let newThesis = buildCmoIntake({
+        project,
+        persona: settings.persona,
+        profile: marketingProfile,
+        context: intakeContext,
+      });
+      const mechProfile = marketingProfile?.growth_mechanism_profile;
+      if (mechProfile?.primary_mechanism_id) {
+        newThesis = applyMechanismToChannelThesis(
+          newThesis,
+          mechProfile.primary_mechanism_id,
+          mechProfile.secondary_mechanism_id,
+          nextWeekIndex,
+        );
+      }
+
+      const assessment = evaluateWeek1Metrics(
+        cadence,
+        marketingProfile,
+        priorThesis,
+        get().distributionOperator ?? marketingProfile?.distribution_operator,
+        get().influencerOperator ?? marketingProfile?.influencer_operator,
+        get().delegateOperator ??
+          get().delegateWorkspace ??
+          marketingProfile?.delegate_operator,
+        get().growthMemory ?? marketingProfile?.growth_memory,
+      );
+      const memoryPreview =
+        activeMemory.pending_replan?.mode === mode &&
+        activeMemory.pending_replan.target_thesis_id === newThesis.id
+          ? activeMemory.pending_replan
+          : buildReplanPreview(activeMemory, {
+              thesis: newThesis,
+              nextWeekIndex,
+              assessment,
+              preferredMode: mode,
+              budgetPlan: get().budgetPlan ?? marketingProfile?.budget_plan,
+              budgetCloseout: continuous?.cycles.at(-1)?.budget_snapshot?.closeout,
+              founderFit: marketingProfile?.founder_fit,
+              laneD: get().laneDWorkspace ?? marketingProfile?.lane_d_workspace,
+              growthMechanismProfile: marketingProfile?.growth_mechanism_profile,
+            });
+      const memoryApplied = applyMemoryReplan(activeMemory, newThesis, memoryPreview, {
+        weekIndex: nextWeekIndex,
+        campaignSessionId: session?.id,
+        priorOpsCadenceId: cadence.id,
+      });
+      newThesis = memoryApplied.thesis;
+      const productActivation =
+        get().productActivation ??
+        marketingProfile?.product_activation ??
+        buildProductActivationProfile({
+          founderFit: marketingProfile?.founder_fit,
+          manualKpis: marketingProfile?.manual_kpis,
+          scan: project,
+        });
+      const productBinding = detectProductBinding({
+        founderFit: marketingProfile?.founder_fit,
+        activation: productActivation,
+        growthBinding: get().growthControlPlane?.binding,
+        gaps: marketingProfile?.gaps,
+      });
+      const newCadence = productBinding.active
+        ? createProductLoopOpsCadence({
+            thesis: newThesis,
+            activation: productActivation,
+            campaignSessionId: session?.id,
+            priorOpsCadenceId: cadence.id,
+            weekIndex: nextWeekIndex,
+          })
+        : memoryApplied.cadence;
+      const delta = buildIntakeDelta(priorThesis, newThesis, {
+        fromCycleIndex: cadence.week_index,
+        toCycleIndex: nextWeekIndex,
+        assessment,
+        pivot: cadence.pivot_suggestion,
+        memoryRationale: memoryPreview.rationale,
+        priorKpiValue: continuous?.cycles.find((c) => c.cycle_index === cadence.week_index)
+          ?.primary_kpi?.value,
+      });
+
+      let newLaneA: LaneAWorkspace = productBinding.active
+        ? {
+            id: `lanea.${newThesis.id}.product.${Date.now()}`,
+            thesis_id: newThesis.id,
+            ops_cadence_id: newCadence.id,
+            started_at: new Date().toISOString(),
+            items: [],
+          }
+        : createLaneAWorkspaceFromThesis(newThesis, {
+          opsCadence: newCadence,
+          narrative: marketingProfile?.growth_narrative,
+          });
+      const nextLaneD = createLaneDWorkspaceFromBinding({
+        thesis: newThesis,
+        binding: productBinding,
+        activation: productActivation,
+        gaps: marketingProfile?.gaps,
+        hasAnalytics: project.hasAnalytics,
+        opsCadence: newCadence,
+      });
+      if (nextLaneD) {
+        const linked = linkSiteLevelToLaneA(newLaneA, nextLaneD);
+        newLaneA = linked.laneA;
+        syncLaneDState(linked.laneD);
+      }
+      const revenueProfile =
+        get().revenueProfile ??
+        marketingProfile?.revenue_profile ??
+        buildRevenueProfile({
+          scan: buildRevenueScanSignals(project, marketingProfile?.gaps),
+          founderFit: marketingProfile?.founder_fit,
+          strategicDecision: marketingProfile?.strategic_decision,
+          persona: settings.persona,
+          manualKpis: marketingProfile?.manual_kpis,
+          salesPipelineEmpty: marketingProfile?.sales_pipeline_empty,
+        });
+      const revenueBinding = detectRevenueBinding({
+        founderFit: marketingProfile?.founder_fit,
+        revenueProfile,
+        productBindingActive: productBinding.active,
+        marketingPaused: productBinding.active,
+        growthBinding: get().growthControlPlane?.binding,
+        activation: productActivation,
+        gaps: marketingProfile?.gaps,
+        manualKpis: marketingProfile?.manual_kpis,
+      });
+      const nextMonetization = createMonetizationWorkspaceFromBinding({
+        thesis: newThesis,
+        binding: revenueBinding,
+        revenueProfile,
+        gaps: marketingProfile?.gaps,
+      });
+      if (nextMonetization) {
+        const monetizationLinked = linkSiteLevelMonetizationToLaneA(
+          nextMonetization,
+          newLaneA,
+          newThesis,
+        );
+        newLaneA = monetizationLinked.laneA ?? newLaneA;
+        syncMonetizationWorkspaceState(monetizationLinked.workspace);
+      } else {
+        set({ monetizationWorkspace: undefined });
+      }
+      const cycleMechanismPrimary =
+        (newThesis.signals?.primary_mechanism_id as GrowthMechanismId | undefined) ??
+        marketingProfile?.growth_mechanism_profile?.primary_mechanism_id;
+      const cycleMechanismSecondary =
+        marketingProfile?.growth_mechanism_profile?.secondary_mechanism_id ??
+        (newThesis.signals?.secondary_mechanism_id as GrowthMechanismId | undefined);
+      const cycleMechanismFlags = cycleMechanismPrimary
+        ? resolveMechanismOperatorFlags(cycleMechanismPrimary, cycleMechanismSecondary)
+        : undefined;
+      const newLaneB = productBinding.active
+        ? undefined
+        : replanLaneBFromMemory(
+            createLaneBWorkspaceFromThesis(newThesis, {
+              opsCadence: newCadence,
+              narrative: marketingProfile?.growth_narrative,
+              laneBMode: resolveMechanismLaneBMode(cycleMechanismPrimary),
+            }),
+            memoryPreview,
+            activeMemory,
+          );
+      const newDelegate =
+        productBinding.active || (cycleMechanismFlags && !cycleMechanismFlags.delegate)
+          ? null
+          : createDelegateOperatorFromThesis(newThesis, {
+              opsCadence: newCadence,
+              week_index: nextWeekIndex,
+            });
+      const priorBudget = get().budgetPlan ?? marketingProfile?.budget_plan;
+      const reallocatedBudget = priorBudget
+        ? {
+            ...applyBudgetReallocation(priorBudget, {
+              mutations: memoryPreview.budget_mutations ?? [],
+            }),
+            thesis_id: newThesis.id,
+          }
+        : marketingProfile?.founder_fit
+          ? buildBudgetAllocation(newThesis, marketingProfile.founder_fit)
+          : undefined;
+
+      let nextContinuous = applyNextCycleStarted(continuous!, delta, {
+        weekIndex: nextWeekIndex,
+        thesisId: newThesis.id,
+        mode,
+      });
+      nextContinuous = productBinding.active
+        ? {
+            ...nextContinuous,
+            marketing_paused: true,
+            marketing_paused_reason: productBinding.headline,
+            product_loop_started_at:
+              nextContinuous.product_loop_started_at ?? new Date().toISOString(),
+          }
+        : {
+            ...nextContinuous,
+            marketing_paused: false,
+            marketing_paused_reason: undefined,
+          };
+
+      track("cmo_cycle_restart", {
+        week_index: nextWeekIndex,
+        thesis_id: newThesis.id,
+        mode,
+        thesis_changed: delta.thesis_changed,
+      });
+
+      const base = marketingProfile ?? emptyMarketingProfile();
+      set({
+        channelThesis: newThesis,
+        marketingProfile: { ...base, channel_thesis: newThesis },
+      });
+      void get().updateMarketingProfile({ channel_thesis: newThesis });
+
+      syncContinuousState(nextContinuous);
+      syncGrowthMemoryState(memoryApplied.memory);
+      syncLaneAState(newLaneA);
+      if (!productBinding.active) {
+        bindAndSyncOpsCadence({
+          cadence: newCadence,
+          thesis: newThesis,
+          project,
+          laneAWorkspace: newLaneA,
+          preferScoutForFirstSystem: true,
+        });
+      } else {
+        syncOpsCadenceState(newCadence);
+      }
+      if (newLaneB) syncLaneBState(newLaneB);
+      if (newDelegate) {
+        syncDelegateState(newDelegate);
+      } else if (cycleMechanismFlags && !cycleMechanismFlags.delegate) {
+        set({ delegateWorkspace: undefined, delegateOperator: undefined });
+        void get().updateMarketingProfile({
+          delegate_operator: undefined,
+          lane_c_workspace: undefined,
+        });
+      }
+      if (reallocatedBudget) syncBudgetPlanState(reallocatedBudget);
+
+      maybeSyncGa4OnCycleStart(nextWeekIndex);
+      recomputeGrowthPlane();
+      const priorDist =
+        get().distributionOperator ?? marketingProfile?.distribution_operator;
+      const priorInf =
+        get().influencerOperator ?? marketingProfile?.influencer_operator;
+      if (!productBinding.active) {
+        const allowDist = cycleMechanismFlags ? Boolean(cycleMechanismFlags.distribution) : true;
+        const allowInf = cycleMechanismFlags ? Boolean(cycleMechanismFlags.influencer) : true;
+        if (allowDist) {
+          maybeCreateDistributionOperator({
+            week_index: nextWeekIndex,
+            doubleDown: mode === "double_down",
+            winningHookId:
+              memoryPreview.operator_hints.winning_hook_id ??
+              (mode === "double_down" ? priorDist?.verdict?.hook_id : undefined),
+            character_mode: cycleMechanismFlags?.character_mode,
+          });
+        } else {
+          set({ distributionOperator: undefined });
+          void get().updateMarketingProfile({ distribution_operator: undefined });
+        }
+        if (allowInf) {
+          maybeCreateInfluencerOperator({
+            week_index: nextWeekIndex,
+            doubleDown: mode === "double_down",
+            winningPitchId:
+              memoryPreview.operator_hints.winning_pitch_id ??
+              (mode === "double_down" ? priorInf?.verdict?.pitch_id : undefined),
+          });
+        } else {
+          set({ influencerOperator: undefined });
+          void get().updateMarketingProfile({ influencer_operator: undefined });
+        }
+      } else {
+        set({ distributionOperator: undefined, influencerOperator: undefined });
+      }
+
+      if (!productBinding.active) {
+        bindAndSyncHumanExecution({
+          cadence: get().opsCadence ?? newCadence,
+          thesis: newThesis,
+          laneB: get().laneBWorkspace ?? newLaneB,
+          distributionOperator: get().distributionOperator,
+          influencerOperator: get().influencerOperator,
+          delegateOperator: get().delegateOperator ?? newDelegate,
+        });
+      }
+
+      if (reallocatedBudget) {
+        syncBudgetPlanState(
+          seedActionCosts(reallocatedBudget, {
+            laneB: get().laneBWorkspace,
+            laneC: get().marketingProfile?.lane_c_workspace,
+            distribution: get().distributionOperator,
+            influencer: get().influencerOperator,
+            delegate: get().delegateOperator,
+            cadence: get().opsCadence,
+          }),
+        );
+      }
+      for (const kpi of rollupGrowthMemoryKpis(memoryApplied.memory, true)) {
+        void get().upsertManualKpi(kpi);
+      }
+
+      get().advanceCampaignPhase({
+        type: "cmo_cycle_restart",
+        cycleIndex: nextWeekIndex,
+        thesisTitle: newThesis.title,
+      });
+
+      set({
+        phase: "workspace",
+        route: "workspace",
+        workspaceHandoff: undefined,
+        warRoomExpanded: false,
+        week1FocusMode: nextWeekIndex === 1,
+      });
+      get().setActiveCanvas("run");
+
+      appendEvent({
+        role: "agent",
+        kind: "status",
+        text: delta.headline,
+      });
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: delta.rationale[0] ?? `${weekLabel(nextWeekIndex)} ops cadence ready.`,
+      });
+
+      const firstSystemCadenceTask = get().opsCadence?.tasks.find((t) => t.owner === "system");
+      const firstUser = newThesis.week1_priorities.find((p) => p.owner === "user");
+
+      if (firstUser) {
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: `Your move: ${firstUser.what} — Done when: ${firstUser.done_when}`,
+        });
+      }
+
+      if (firstSystemCadenceTask && canRunAgent(get().runtime)) {
+        get().executeOpsSystemTask(firstSystemCadenceTask.id);
+      } else if (firstUser) {
+        set({
+          workspaceHandoff: {
+            eyebrow: weekLabel(nextWeekIndex),
+            title: firstUser.what,
+            reason: `${firstUser.why} Done when: ${firstUser.done_when}`,
+            primaryLabel: "Mark done",
+            primaryAction: "ops_proof",
+            opsTaskId: newCadence.tasks.find((t) => t.owner === "user")?.id,
+          },
+        });
+      }
+
+      return null;
+    },
+
+    openLaneBProofModal: (itemId) => set({ pendingLaneBProofItemId: itemId }),
+    dismissLaneBProofModal: () => set({ pendingLaneBProofItemId: undefined }),
+
+    completeLaneBItem: (itemId, proof) => {
+      const workspace = get().laneBWorkspace;
+      if (!workspace) return "No Lane B workspace.";
+      const itemBefore = workspace.items.find((i) => i.id === itemId);
+      const { workspace: next, error } = completeLaneBItemCore(workspace, itemId, proof);
+      if (error) return error;
+      syncLaneBState(next);
+      tryCompleteLinkedOpsFromHumanProof(
+        itemBefore?.linked_ops_task_id,
+        laneBProofToOpsProof(proof),
+      );
+      const item = workspace.items.find((i) => i.id === itemId);
+      track("lane_b_item_done", { item_id: itemId, mode: workspace.mode });
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `✓ Lane B: ${item?.title ?? itemId}`,
+      });
+      return null;
+    },
+
+    skipLaneBItem: (itemId) => {
+      const workspace = get().laneBWorkspace;
+      if (!workspace) return;
+      syncLaneBState(skipLaneBItemCore(workspace, itemId));
+    },
+
+    updateLaneBTarget: (itemId, patch) => {
+      const workspace = get().laneBWorkspace;
+      if (!workspace) return;
+      syncLaneBState(updateLaneBTargetCore(workspace, itemId, patch));
+    },
+
+    openDelegateBriefModal: (briefId) => set({ pendingDelegateBriefId: briefId }),
+    dismissDelegateBriefModal: () => set({ pendingDelegateBriefId: undefined }),
+    openDelegateHireModal: (briefId) => set({ pendingDelegateHireBriefId: briefId }),
+    dismissDelegateHireModal: () => set({ pendingDelegateHireBriefId: undefined }),
+    openDelegateRubricModal: (rubricId) => set({ pendingDelegateRubricId: rubricId }),
+    dismissDelegateRubricModal: () => set({ pendingDelegateRubricId: undefined }),
+
+    handOffDelegateBrief: (briefId, input) => {
+      const thesis = get().channelThesis ?? get().marketingProfile?.channel_thesis;
+      const workspace = resolveDelegateOperator(
+        get().delegateOperator ?? get().delegateWorkspace,
+        thesis,
+      );
+      if (!workspace) return "No Lane C workspace.";
+      if (!thesis) return "Channel thesis required for handoff.";
+      const laneB = get().laneBWorkspace ?? get().marketingProfile?.lane_b_workspace ?? null;
+      const { workspace: next, laneB: syncedLaneB, error } = prepareDelegateHandoff(
+        workspace,
+        briefId,
+        input,
+        thesis,
+        laneB,
+      );
+      if (error) return error;
+      syncDelegateState(next);
+      if (syncedLaneB) syncLaneBState(syncedLaneB);
+      const bundle = buildDelegateHandoffBundle(next, thesis, briefId, syncedLaneB ?? laneB);
+      if (bundle?.markdown) {
+        const parts = [bundle.markdown];
+        if (bundle.hire_markdown) parts.push(bundle.hire_markdown);
+        if (bundle.rubric_schedule) parts.push(`## Rubric schedule\n${bundle.rubric_schedule}`);
+        void navigator.clipboard.writeText(parts.join("\n\n---\n\n"));
+      }
+      const brief = workspace.briefs.find((b) => b.id === briefId);
+      track("delegate_brief_handoff", { brief_id: briefId, role: brief?.role });
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `Handed off to ${input.assignee_name}: ${brief?.title ?? briefId}`,
+      });
+      recomputeGrowthPlane();
+      return null;
+    },
+
+    completeDelegateRubricDay: (rubricId, input) => {
+      const thesis = get().channelThesis ?? get().marketingProfile?.channel_thesis;
+      const workspace = resolveDelegateOperator(
+        get().delegateOperator ?? get().delegateWorkspace,
+        thesis,
+      );
+      if (!workspace || !thesis) return "No delegate operator active.";
+      const { workspace: next, error } = completeRubricDayCore(workspace, rubricId, input, thesis);
+      if (error) return error;
+      syncDelegateState(next);
+      recomputeGrowthPlane();
+      return null;
+    },
+
+    completeDelegateBrief: (briefId, proof) => {
+      const thesis = get().channelThesis ?? get().marketingProfile?.channel_thesis;
+      const workspace = resolveDelegateOperator(
+        get().delegateOperator ?? get().delegateWorkspace,
+        thesis,
+      );
+      if (!workspace) return "No Lane C workspace.";
+      if (!thesis) return "Channel thesis required.";
+      const { workspace: next, error } = completeDelegateBriefCore(workspace, briefId, proof);
+      if (error) return error;
+      let finalWs = migrateToOperatorWorkspace(next, thesis);
+      const brief = finalWs.briefs.find((b) => b.id === briefId);
+      if (brief && thesis && proof.note?.trim()) {
+        const imported = importDelegateDelivery(finalWs, brief, proof, {
+          thesis,
+          laneB: get().laneBWorkspace ?? get().marketingProfile?.lane_b_workspace,
+          influencerOperator:
+            get().influencerOperator ?? get().marketingProfile?.influencer_operator,
+          distributionOperator:
+            get().distributionOperator ?? get().marketingProfile?.distribution_operator,
+        });
+        if (imported.laneB) syncLaneBState(imported.laneB);
+        if (imported.influencerOperator) {
+          syncInfluencerOperatorState(imported.influencerOperator);
+          const laneB = get().laneBWorkspace ?? get().marketingProfile?.lane_b_workspace;
+          if (laneB) {
+            const synced = syncLaneBFromInfluencerOperator(imported.influencerOperator, laneB);
+            syncInfluencerOperatorState(synced.workspace);
+            syncLaneBState(synced.laneB);
+          }
+        }
+        if (imported.distributionOperator) {
+          syncDistributionOperatorState(imported.distributionOperator);
+        }
+        if (imported.imported > 0) {
+          appendEvent({
+            role: "system",
+            kind: "status",
+            text: `Imported ${imported.imported} row(s) from delegate delivery.`,
+          });
+        }
+        if (imported.errors.length) {
+          appendEvent({
+            role: "system",
+            kind: "status",
+            text: imported.errors[0]!,
+          });
+        }
+      }
+      const kpis = rollupDelegateKpis(finalWs);
+      for (const kpi of kpis) {
+        void get().upsertManualKpi(kpi);
+      }
+      syncDelegateState(finalWs);
+      track("delegate_brief_done", { brief_id: briefId, role: brief?.role });
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `✓ Lane C delivered: ${brief?.title ?? briefId}`,
+      });
+      recomputeGrowthPlane();
+      return null;
+    },
+
+    skipDelegateBrief: (briefId, reason) => {
+      const thesis = get().channelThesis ?? get().marketingProfile?.channel_thesis;
+      const workspace = resolveDelegateOperator(
+        get().delegateOperator ?? get().delegateWorkspace,
+        thesis,
+      );
+      if (!workspace) return;
+      const skipped = skipDelegateBriefCore(workspace, briefId, reason);
+      syncDelegateState({ ...workspace, briefs: skipped.briefs });
     },
 
     connectGa4: async () => {
@@ -2361,6 +7072,7 @@ export const useApp = create<AppState>((set, get) => {
         const { profile } = await apiSyncGa4Metrics(settings, auth.authEnabled, pid);
         set({ marketingProfile: profile });
         get().refreshConnectorFeed();
+        recomputeGrowthPlane();
         appendEvent({
           role: "system",
           kind: "status",
@@ -2384,11 +7096,15 @@ export const useApp = create<AppState>((set, get) => {
       get().startCampaignSession();
       get().advanceCampaignPhase({ type: "plan_generate_start" });
       const outline = buildOfflinePlanOutline(project, { persona: get().settings.persona });
+      const snapshot = emptyProgressSnapshot(outline);
+      applyProgressSnapshot(snapshot);
+      void persistProgressSnapshot(snapshot);
       set({
         plan: outline,
         planPreviewMode: true,
         planError: null,
         canvas: { mode: "campaign-plan" },
+        activePlanRowId: outline.id,
       });
       get().advanceCampaignPhase({ type: "plan_generate_success", planId: outline.id });
       track("plan_preview_outline");
@@ -2462,6 +7178,9 @@ export const useApp = create<AppState>((set, get) => {
         track("project_open", { framework: project.framework });
         void window.api.cache.set("lastProject", { profile: project });
         const toWorkspace = opts?.workspace === true;
+        const patchedProfile = profileFromProjectScan(project, emptyMarketingProfile());
+        lastGrowthAlignmentNote = undefined;
+        lastDistributionVerdictHeadline = undefined;
         set({
           project,
           scanning: false,
@@ -2475,16 +7194,80 @@ export const useApp = create<AppState>((set, get) => {
           canvas: { mode: toWorkspace ? "empty" : "empty" },
           activeProjectId: project.id,
           activeSessionId: undefined,
-          marketingProfile: get().marketingProfile ?? emptyMarketingProfile(),
+          marketingProfile: patchedProfile,
+          channelThesis: undefined,
+          opsCadence: undefined,
+          laneBWorkspace: undefined,
+          laneAWorkspace: undefined,
+          productActivation: undefined,
+          laneDWorkspace: undefined,
+          revenueProfile: undefined,
+          monetizationWorkspace: undefined,
+          pendingMonetizationTaskId: undefined,
+          pendingMonetizationIssueTaskId: undefined,
+          pendingRevenueAttributionSourceId: undefined,
+          pendingProductRequestId: undefined,
+          pendingProductIssueRequestId: undefined,
+          growthControlPlane: undefined,
+          distributionOperator: undefined,
+          pendingDistributionProofSlotId: undefined,
+          influencerOperator: undefined,
+          pendingInfluencerProofTouchId: undefined,
+          pendingInfluencerDealTouchId: undefined,
+          warRoomExpanded: false,
+          delegateWorkspace: undefined,
+          delegateOperator: undefined,
+          pendingDelegateBriefId: undefined,
+          cmoContinuous: undefined,
+          growthMemory: undefined,
+          pendingLaneBProofItemId: undefined,
+          pendingOpsProofTaskId: undefined,
+          firstShipAt: loadFirstShipAt(project.id),
+          firstHourActive: !loadFirstShipAt(project.id),
+          onboardingTrack: loadOnboardingTrack(project.id),
+          firstShipLedger: loadFirstShipLedger(project.id),
+          executionMetrics: loadExecutionMetrics(project.id) ?? {
+            projectId: project.id,
+            projectOpenedAt: Date.now(),
+            rows: [],
+          },
+          projectOpenedAt: Date.now(),
+          wedgePhase: loadFirstShipAt(project.id) ? "shipped" : "scan",
+          shipPipeline: initialShipPipelineState(),
+          sessionOutcomes: loadSessionOutcomesLocal(project.id),
+          lastTurnReceipt: undefined,
+          lastAskAssets: [],
+          lastAnswerText: undefined,
         });
+        hydrateTurnReceiptLocal(project.id);
+        const cwd =
+          project.source.kind === "folder" ? project.source.path : project.localPath;
+        if (cwd) {
+          void window.api.index.enqueue({
+            type: "index.full",
+            projectId: project.id,
+            cwd,
+          });
+        }
         get().refreshConnectorFeed();
         void get().loadMarketingProfile(project.id);
         hydrateCampaignSessionLocal(project.id);
+        hydrateOpsCadenceLocal(project.id);
+        hydrateLaneBLocal(project.id);
+        hydrateLaneALocal(project.id);
+        hydrateContinuousLocal(project.id);
+        hydrateGrowthMemoryLocal(project.id);
+        hydrateDelegateLocal(project.id);
+        hydrateGrowthPlaneLocal(project.id);
+        hydrateDistributionOperatorLocal(project.id);
+        hydrateInfluencerOperatorLocal(project.id);
+        hydrateBudgetPlanLocal(project.id);
+        hydrateProductActivationLocal(project.id);
+        hydrateLaneDLocal(project.id);
+        hydrateRevenueProfileLocal(project.id);
+        hydrateMonetizationWorkspaceLocal(project.id);
         void get().loadRunsArchive();
         void get().refreshRecents();
-        if (!canRunAgent(get().runtime)) {
-          get().previewPlanOutline();
-        }
         // Persist to the backend so the project syncs across devices (best-effort).
         void (async () => {
           try {
@@ -2497,6 +7280,8 @@ export const useApp = create<AppState>((set, get) => {
               profileJson: project,
             });
             set({ activeProjectId: created.id });
+            const mp = get().marketingProfile;
+            if (mp) void get().updateMarketingProfile(mp);
             get().refreshConnectorFeed();
             void get().loadMarketingProfile(created.id);
             swallowBackground("syncProjects", get().syncProjects());
@@ -2660,8 +7445,16 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     cancelAgent: () => {
+      const run = get().run;
+      if (run?.kind === "ask" && run.runId) {
+        void window.api.runs.interrupt(run.runId);
+      }
       agentAbort?.abort();
       agentAbort = null;
+      if (askFoldSession) {
+        finalizeAskFold(askFoldSession, buildAskFoldDeps());
+        askFoldSession = null;
+      }
       set({ agentStreaming: false });
     },
 
@@ -2908,15 +7701,19 @@ export const useApp = create<AppState>((set, get) => {
               }));
             } else if (e.type === "plan") {
               const normalized = normalizePlan(e.plan);
+              const planDoc = normalized ?? e.plan;
               get().recordSessionOutcome({
                 kind: "plan",
                 label: "Launch plan generated",
                 channel: "plan studio",
               });
-              const planId = normalized?.id ?? e.plan.id;
+              const planId = planDoc.id;
               get().advanceCampaignPhase({ type: "plan_generate_success", planId });
+              const snapshot = emptyProgressSnapshot(planDoc);
+              applyProgressSnapshot(snapshot);
+              void persistProgressSnapshot(snapshot);
               set({
-                plan: normalized ?? e.plan,
+                plan: planDoc,
                 planGenerationPhase: "idle",
                 planLoadingPlaybookIds: [],
                 planOutlinePlaybooks: [],
@@ -2924,6 +7721,7 @@ export const useApp = create<AppState>((set, get) => {
                 planStreamingReadiness: [],
                 planJustGenerated: true,
                 planStatusLog: [],
+                activePlanRowId: planId,
               });
             } else if (e.type === "error") {
               // Plan SSE errors are now surfaced in BOTH the canvas AND the chat thread,
@@ -2932,6 +7730,22 @@ export const useApp = create<AppState>((set, get) => {
               inlineError = presented.message;
               set({ planError: presented.message });
               appendEvent({ role: "agent", kind: "error", text: presented.message });
+            } else if (e.type === "usage") {
+              set((s) => {
+                if (!s.auth.usage) return s;
+                return {
+                  auth: {
+                    ...s.auth,
+                    usage: {
+                      ...s.auth.usage,
+                      plan: s.auth.usage.plan + 1,
+                      tokens_in: s.auth.usage.tokens_in + e.tokens_in,
+                      tokens_out: s.auth.usage.tokens_out + e.tokens_out,
+                      cost_cents: s.auth.usage.cost_cents + e.cost_cents,
+                    },
+                  },
+                };
+              });
             }
           },
           planAbort.signal,
@@ -3073,7 +7887,9 @@ export const useApp = create<AppState>((set, get) => {
         }
       }
 
-      const history = buildAgentHistory(get().thread.slice(0, -1));
+      const historyRaw = buildAgentHistory(get().thread.slice(0, -1));
+      const historyBudget = Math.floor(DEFAULT_CONTEXT_LIMIT * 0.45);
+      const history = trimHistoryToBudget(historyRaw, historyBudget);
 
       const thinkingEventId = appendEvent({
         role: "agent",
@@ -3081,29 +7897,43 @@ export const useApp = create<AppState>((set, get) => {
         thinkingPhase: "Thinking",
         thinkingText: "Understanding your request…",
       });
-      let agentTextEventId: string | null = null;
-      let useTextBubble = true;
-
-      const removeThinking = () => {
-        set((s) => ({ thread: s.thread.filter((e) => e.id !== thinkingEventId) }));
-      };
 
       set({
         agentStreaming: true,
         suggestedComposerMode: undefined,
         lastAgentUserMessage: trimmed || undefined,
+        run: {
+          runId: "",
+          goal: trimmed || "(proactive)",
+          status: "running",
+          kind: "ask",
+          events: [],
+          lastSeq: 0,
+          policy: DEFAULT_PERMISSION_POLICY,
+          startedAt: Date.now(),
+        },
+        canvas: { mode: get().canvas.mode === "empty" ? "run" : get().canvas.mode },
       });
-      agentAbort?.abort();
-      agentAbort = new AbortController();
 
-      const { planProgress, settings: st, canvas, activePlaybookId, plan } = get();
+      askFoldSession = createAskFoldSession({
+        runId: "",
+        thinkingEventId,
+        proactive: Boolean(proactive),
+        trimmed,
+        activeProjectId: activeProjectId ?? null,
+      });
+
+      const { planProgress, settings: st, canvas, activePlaybookId, plan, marketingProfile } = get();
       const activeSurface = normalizeToWorkSurface(canvas.mode) ?? undefined;
       const planProgressSummary = buildPlanProgressSummaryForAgent({
         plan: get().plan,
         planProgress,
         activePlaybookId,
       });
-      const planSnapshot = plan ? normalizePlan(plan) ?? plan : undefined;
+      const planSnapshotRaw = plan ? normalizePlan(plan) ?? plan : undefined;
+      const planSnapshot = planSnapshotRaw
+        ? (compactPlanSnapshot(planSnapshotRaw) as typeof planSnapshotRaw)
+        : undefined;
       const agentContext =
         opts?.context ??
         buildAgentTurnContext({
@@ -3113,227 +7943,37 @@ export const useApp = create<AppState>((set, get) => {
           campaignSession: get().marketingProfile?.campaign_session ?? null,
         });
 
-      let streamBuffer = "";
-      let streamFlushTimer: ReturnType<typeof setTimeout> | null = null;
-      let capturedBrainSkills: string[] | undefined;
-      const flushStreamText = () => {
-        if (!agentTextEventId || !streamBuffer) return;
-        const current = get().thread.find((x) => x.id === agentTextEventId);
-        patchEvent(agentTextEventId, { text: (current?.text ?? "") + streamBuffer });
-        streamBuffer = "";
-      };
-
       try {
-        await streamAgent(
-          settings,
-          {
-            sessionId,
-            profile: project ?? undefined,
-            message: trimmed,
+        const token = await resolveBackendToken(settings, auth.authEnabled);
+        const cwd = projectAgentCwd(project) ?? ".";
+        const mentions = parseMentionsFromText(trimmed);
+        const { runId } = await window.api.runs.start({
+          projectId: activeProjectId ?? "local",
+          cwd,
+          intent: { kind: "ask", prompt: trimmed || "(proactive)", mentions },
+          sessionId: sessionId ?? undefined,
+          serverUrl: settings.serverUrl,
+          sessionToken: token,
+          persona: st.persona,
+          marketingProfile: marketingProfile ?? undefined,
+          ask: {
             history,
-            persona: st.persona,
-            planProgressSummary,
-            activeSurface,
-            context: agentContext,
             planSnapshot,
+            planProgressSummary,
+            context: agentContext,
+            activeSurface,
+            provider: settings.provider,
           },
-          auth.authEnabled,
-          (e) => {
-            if (e.type === "brain.status") {
-              if (e.skills?.length) capturedBrainSkills = e.skills;
-              patchEvent(thinkingEventId, {
-                thinkingPhase: e.phase,
-                thinkingText: e.text,
-                thinkingSkills: e.skills,
-              });
-            } else if (e.type === "brain.intent") {
-              patchEvent(thinkingEventId, {
-                thinkingText: `Working on ${e.discipline.replace(/_/g, " ")}…`,
-              });
-            } else if (e.type === "brain.retrieved") {
-              capturedBrainSkills = e.skills;
-              patchEvent(thinkingEventId, {
-                thinkingText: `Pulling ${e.skills.length} playbook sections…`,
-                thinkingSkills: e.skills,
-              });
-            } else if (e.type === "brain.profile") {
-              patchEvent(thinkingEventId, {
-                thinkingText: "Reading product profile…",
-              });
-            } else if (e.type === "brain.critique") {
-              patchEvent(thinkingEventId, {
-                thinkingText: "Reviewing decision quality…",
-              });
-            } else if (e.type === "decision") {
-              removeThinking();
-              useTextBubble = false;
-              appendEvent({
-                role: "agent",
-                kind: "decision",
-                decision: e.decision,
-                critique: e.critique,
-                summary: e.summary,
-                text: e.summary,
-              });
-            } else if (e.type === "draft") {
-              removeThinking();
-              useTextBubble = false;
-              appendEvent({
-                role: "agent",
-                kind: "draft",
-                draftSummary: e.summary,
-                draftAssets: e.assets,
-                draftCritique: e.draft_critique,
-                draftQualityWarn: e.quality_warn,
-                text: e.summary,
-              });
-              if (e.assets.length) hintWorkSurface("content-set");
-            } else if (e.type === "proactive_suggestion") {
-              removeThinking();
-              useTextBubble = false;
-              appendEvent({
-                role: "agent",
-                kind: "proactive_suggestion",
-                proactiveTitle: e.title,
-                proactiveAction: e.action,
-                text: e.body,
-              });
-            } else if (e.type === "plan_revision") {
-              removeThinking();
-              useTextBubble = false;
-              const currentPlan = get().plan;
-              const prevProgress = get().planProgress?.byTaskId;
-              const revised = normalizePlan(e.plan) ?? e.plan;
-              const diff =
-                e.diff ??
-                (currentPlan
-                  ? diffPlanVersions(currentPlan, revised, e.summary)
-                  : e.diff);
-              setPlanFromSuite(
-                revised,
-                undefined,
-                currentPlan && prevProgress
-                  ? { carryFrom: { plan: currentPlan, byTaskId: prevProgress } }
-                  : undefined,
-              );
-              appendEvent({
-                role: "agent",
-                kind: "plan_revision",
-                text: e.summary,
-                planRevisionSummary: e.summary,
-                planRevisionDiff: diff,
-                sourcePlanId: e.sourcePlanId,
-              });
-              hintWorkSurface("campaign-plan");
-              void get().loadPlanHistory().then(() => {
-                const row = get().planHistory[0];
-                if (!row) return;
-                set({ activePlanRowId: row.id });
-                const snap = get().planProgress;
-                if (snap && snap.planId !== row.id) {
-                  const updated = { ...snap, planId: row.id };
-                  applyProgressSnapshot(updated);
-                  void persistProgressSnapshot(updated);
-                }
-                void get().loadPlanProgress(row.id);
-              });
-            } else if (e.type === "missing_info") {
-              removeThinking();
-              useTextBubble = false;
-              appendEvent({
-                role: "agent",
-                kind: "missing_info",
-                missingQuestions: e.questions,
-                missingInfoState: "open",
-              });
-            } else if (e.type === "suggested_mode") {
-              const snap = get();
-              const suite = snap.plan ? normalizePlan(snap.plan) : null;
-              const resolved = resolveIntent({
-                suggestedMode: e.mode,
-                suggestedModeReason: e.reason,
-                message: snap.lastAgentUserMessage,
-                plan: suite,
-                planProgress: snap.planProgress,
-                activeRunId: snap.run?.runId,
-                planTaskId: snap.activePlanTaskId,
-              });
-              const handoff = resolved ? handoffFromResolved(resolved) : null;
-              set({
-                suggestedComposerMode: {
-                  mode: e.mode,
-                  reason: e.reason,
-                },
-                ...(handoff ? { workspaceHandoff: handoff } : {}),
-              });
-            } else if (e.type === "token") {
-              if (!useTextBubble) return;
-              if (!agentTextEventId) {
-                removeThinking();
-                agentTextEventId = appendEvent({ role: "agent", kind: "text", text: "" });
-              }
-              streamBuffer += e.text;
-              if (!streamFlushTimer) {
-                streamFlushTimer = setTimeout(() => {
-                  flushStreamText();
-                  streamFlushTimer = null;
-                }, 50);
-              }
-            } else if (e.type === "tool") {
-              if (e.name.startsWith("brain.")) return;
-              appendEvent({
-                role: "agent",
-                kind: "tool",
-                tool: e.name,
-                text: e.detail ?? e.status,
-              });
-            } else if (e.type === "asset") {
-              appendEvent({ role: "agent", kind: "asset", asset: e.asset });
-              get().recordSessionOutcome({
-                kind: "asset",
-                label: `${e.asset.type} draft ready`,
-                channel: e.asset.type,
-              });
-              if (e.asset.type === "ad" || e.asset.type === "tweet") {
-                hintWorkSurface("ad-preview");
-              } else {
-                hintWorkSurface("content-set");
-              }
-            } else if (e.type === "error") {
-              removeThinking();
-              appendPresentedError(e.message);
-            }
-          },
-          agentAbort.signal,
+        });
+        if (askFoldSession) askFoldSession.runId = runId;
+        set((s) =>
+          s.run?.kind === "ask"
+            ? { run: { ...s.run, runId, status: "running" } }
+            : s,
         );
-        if (streamFlushTimer) {
-          clearTimeout(streamFlushTimer);
-          flushStreamText();
-        }
-        if (capturedBrainSkills?.length) {
-          appendEvent({
-            role: "agent",
-            kind: "status",
-            text: strategyContextSummary(capturedBrainSkills),
-          });
-        }
-        swallowBackground("loadMe", get().loadMe());
-        if (activeProjectId) {
-          void apiListAssets(settings, auth.authEnabled, activeProjectId)
-            .then(({ assets }) => set({ serverAssets: assets }))
-            .catch((err) => reportBackgroundError("apiListAssets", err, "debug"));
-        }
       } catch (err) {
-        if (agentAbort?.signal.aborted) {
-          set((s) => ({
-            thread: s.thread.filter(
-              (e) =>
-                e.id !== thinkingEventId && (agentTextEventId ? e.id !== agentTextEventId : true),
-            ),
-          }));
-          appendEvent({ role: "system", kind: "status", text: "Stopped." });
-          return;
-        }
+        finalizeAskFold(askFoldSession, buildAskFoldDeps());
+        askFoldSession = null;
         const raw = err instanceof Error ? err.message : String(err);
         if (err instanceof AuthError) set({ authError: raw });
         if (!proactive && trimmed && activeProjectId && isNetworkFailure(err)) {
@@ -3351,18 +7991,7 @@ export const useApp = create<AppState>((set, get) => {
         } else {
           appendPresentedError(raw);
         }
-      } finally {
-        agentAbort = null;
-        set((s) => ({
-          thread: s.thread.filter((e) => e.id !== thinkingEventId),
-        }));
-        if (agentTextEventId) {
-          const current = get().thread.find((x) => x.id === agentTextEventId);
-          if (current && !current.text?.trim()) {
-            set((s) => ({ thread: s.thread.filter((e) => e.id !== agentTextEventId) }));
-          }
-        }
-        set({ agentStreaming: false });
+        set({ agentStreaming: false, run: null });
       }
     },
 
@@ -3407,6 +8036,12 @@ export const useApp = create<AppState>((set, get) => {
           get().setWorkSurface("campaign-plan");
           get().setActiveCanvas("campaign-plan");
           break;
+        case "generate_plan":
+          get().navigate("workspace");
+          get().setWorkSurface("campaign-plan");
+          get().setActiveCanvas("campaign-plan");
+          void get().generatePlan();
+          break;
         default:
           break;
       }
@@ -3427,7 +8062,7 @@ export const useApp = create<AppState>((set, get) => {
         });
         return;
       }
-      const { settings, browser, auth, connection } = get();
+      const { settings, browser, auth } = get();
       const planTask = taskId ? plan?.taskGraph.find((t) => t.id === taskId) : undefined;
       const resolvedGoal = resolveBrowserGoal({
         rawGoal: trimmed,
@@ -3435,17 +8070,31 @@ export const useApp = create<AppState>((set, get) => {
         task: planTask,
       });
 
-      if (!canRunAgent(get().runtime)) {
-        appendPresentedError(
-          get().runtime === "degraded"
-            ? "anthropic_not_configured"
-            : "not connected to backend",
-        );
-        return;
-      }
-      if (!connection.providers?.anthropic) {
-        appendPresentedError("anthropic_not_configured");
-        return;
+      {
+        const preflight = assertCan(get().capabilityMatrix, [
+          "backend",
+          "auth",
+          "anthropic",
+          "computer_use",
+        ]);
+        if (!preflight.ok) {
+          const missing = preflight.missing[0];
+          appendPresentedError(
+            missing?.id === "anthropic"
+              ? "anthropic_not_configured"
+              : missing?.id === "auth"
+                ? "Sign in to use AI features."
+                : missing?.reason ?? "not connected to backend",
+          );
+          appendEvent({
+            role: "system",
+            kind: "status",
+            text: missing?.fix
+              ? `${missing.reason ?? "Can't start browser task."} → ${missing.fix.label}`
+              : missing?.reason ?? "Can't start browser task.",
+          });
+          return;
+        }
       }
 
       const sourceMessageId =
@@ -3468,6 +8117,8 @@ export const useApp = create<AppState>((set, get) => {
       get().registerCampaignRun(browseRunId, taskId);
       set({
         run,
+        route: "workspace",
+        focusMode: true,
         canvas: { mode: "browser" },
         browser: {
           ...browser,
@@ -3477,7 +8128,7 @@ export const useApp = create<AppState>((set, get) => {
           prevFrame: undefined,
           pendingApprovalId: undefined,
           lastError: undefined,
-          lastStatus: "Starting browser…",
+          lastStatus: "Starting secure browser sandbox…",
           lastAction: undefined,
           cursor: undefined,
           bbox: undefined,
@@ -3491,14 +8142,137 @@ export const useApp = create<AppState>((set, get) => {
           frameHistory: [],
         },
       });
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: "Opening live Computer Use stage — watch the agent browse in the center canvas.",
+      });
       track("browser_task");
       void (async () => {
         const token = await resolveBackendToken(settings, auth.authEnabled);
-        browserSocket.start(settings.serverUrl, token, resolvedGoal, browser.autoApprove, settings.persona);
+        const cwd = projectAgentCwd(get().project) ?? "";
+        const projectId = get().activeProjectId ?? "local";
+        try {
+          const { runId } = await window.api.runs.start({
+            projectId,
+            cwd: cwd || ".",
+            intent: { kind: "browse", goal: resolvedGoal },
+            sessionId: get().activeSessionId,
+            planTaskId: taskId,
+            serverUrl: settings.serverUrl,
+            sessionToken: token,
+            autoApproveBrowser: browser.autoApprove,
+            persona: settings.persona,
+          });
+          set((s) =>
+            s.run
+              ? { run: { ...s.run, runId, status: "running" } }
+              : {},
+          );
+          linkMessageToRun(sourceMessageId, runId);
+        } catch (err) {
+          appendPresentedError(errorMessage(err));
+          set((s) => ({
+            browser: { ...s.browser, running: false, lastError: errorMessage(err) },
+            run: null,
+          }));
+        }
       })();
     },
 
+    startVerifyAfterApply: async (url, checklist) => {
+      pendingVerifyAfterApply = { url, checklist, startedAt: Date.now() };
+      const preflight = assertCan(get().capabilityMatrix, [
+        "backend",
+        "auth",
+        "anthropic",
+        "computer_use",
+      ]);
+      if (!preflight.ok) {
+        const missing = preflight.missing[0];
+        appendPresentedError(missing?.reason ?? "not connected to backend");
+        return;
+      }
+      const { settings, auth, browser } = get();
+      const cwd = projectAgentCwd(get().project) ?? ".";
+      const projectId = get().activeProjectId ?? "local";
+      const sourceMessageId = appendEvent({
+        role: "user",
+        kind: "text",
+        text: `Verify after apply${url ? `: ${url}` : ""}`,
+      });
+      const browseRunId = `verify-${Date.now()}`;
+      set({
+        run: {
+          runId: browseRunId,
+          goal: `Verify ${url || "preview"}`,
+          status: "running",
+          kind: "browse",
+          events: [],
+          lastSeq: 0,
+          policy: DEFAULT_PERMISSION_POLICY,
+          startedAt: Date.now(),
+          sourceMessageId,
+        },
+        route: "workspace",
+        focusMode: true,
+        canvas: { mode: "browser" },
+        browser: {
+          ...browser,
+          running: true,
+          currentGoal: `Verify ${url || "preview"}`,
+          frame: undefined,
+          prevFrame: undefined,
+          pendingApprovalId: undefined,
+          lastError: undefined,
+          lastStatus: "Starting verify in Computer Use…",
+          lastAction: undefined,
+          cursor: undefined,
+          bbox: undefined,
+          url: url || undefined,
+          title: undefined,
+          step: undefined,
+          stepMax: undefined,
+          phase: "thinking",
+          paused: false,
+          findings: [],
+          frameHistory: [],
+        },
+      });
+      try {
+        const token = await resolveBackendToken(settings, auth.authEnabled);
+        const { runId } = await window.api.runs.start({
+          projectId,
+          cwd,
+          intent: {
+            kind: "verify",
+            afterApply: true,
+            url,
+            checklist,
+          },
+          serverUrl: settings.serverUrl,
+          sessionToken: token,
+          autoApproveBrowser: browser.autoApprove,
+          persona: settings.persona,
+        });
+        set((s) => (s.run ? { run: { ...s.run, runId } } : {}));
+        linkMessageToRun(sourceMessageId, runId);
+      } catch (err) {
+        pendingVerifyAfterApply = null;
+        appendPresentedError(errorMessage(err));
+        set((s) => ({
+          browser: { ...s.browser, running: false, lastError: errorMessage(err) },
+          run: null,
+        }));
+      }
+    },
+
     stopBrowser: () => {
+      const runId = get().run?.kind === "browse" ? get().run?.runId : undefined;
+      if (runId) {
+        void window.api.runs.browserControl({ runId, action: "stop" });
+        void window.api.runs.interrupt(runId);
+      }
       browserSocket.stop();
       releaseActivePlanTask("pending");
       set((s) => ({
@@ -3517,27 +8291,42 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     pauseBrowser: () => {
-      browserSocket.pause();
+      const runId = get().run?.kind === "browse" ? get().run?.runId : undefined;
+      if (runId) void window.api.runs.browserControl({ runId, action: "pause" });
+      else browserSocket.pause();
       set((s) => ({ browser: { ...s.browser, paused: true } }));
     },
 
     resumeBrowser: () => {
-      browserSocket.resume();
+      const runId = get().run?.kind === "browse" ? get().run?.runId : undefined;
+      if (runId) void window.api.runs.browserControl({ runId, action: "resume" });
+      else browserSocket.resume();
       set((s) => ({ browser: { ...s.browser, paused: false } }));
     },
 
     steerBrowser: (text) => {
       const t = text.trim();
       if (!t) return;
-      browserSocket.steer(t);
+      const runId = get().run?.kind === "browse" ? get().run?.runId : undefined;
+      if (runId) {
+        void window.api.runs.browserControl({ runId, action: "steer", text: t });
+        void window.api.runs.browserControl({ runId, action: "resume" });
+      } else {
+        browserSocket.steer(t);
+        browserSocket.resume();
+      }
       appendEvent({ role: "user", kind: "text", text: `↪ ${t}` });
-      browserSocket.resume();
       set((s) => ({ browser: { ...s.browser, paused: false } }));
     },
 
     approve: (id) => {
       const { pendingSummary } = get().browser;
-      browserSocket.approve(id);
+      const runId = get().run?.kind === "browse" ? get().run?.runId : undefined;
+      if (runId) {
+        void window.api.runs.browserControl({ runId, action: "approve", approvalId: id });
+      } else {
+        browserSocket.approve(id);
+      }
       resolveThreadApproval(id, true, {
         intent: pendingSummary,
         scope: "submit_public_forms",
@@ -3549,7 +8338,12 @@ export const useApp = create<AppState>((set, get) => {
 
     reject: (id) => {
       const { pendingSummary } = get().browser;
-      browserSocket.reject(id);
+      const runId = get().run?.kind === "browse" ? get().run?.runId : undefined;
+      if (runId) {
+        void window.api.runs.browserControl({ runId, action: "reject", approvalId: id });
+      } else {
+        browserSocket.reject(id);
+      }
       resolveThreadApproval(id, false, {
         intent: pendingSummary,
         scope: "submit_public_forms",
@@ -3773,19 +8567,64 @@ export const useApp = create<AppState>((set, get) => {
       }
 
       try {
-        const { runId } = await window.api.agent.startRun({
+        const snap = get();
+        const enrichedGoal = enrichEditGoal({
+          userGoal: trimmed,
+          turnReceipt: snap.lastTurnReceipt,
+          lastAnswerText: snap.lastAnswerText,
+          lastAssets: snap.lastAskAssets,
+        });
+        const mentions =
+          opts?.mentions?.length ? opts.mentions : parseMentionsFromText(enrichedGoal);
+        const { runId } = await window.api.runs.start({
+          projectId: get().activeProjectId ?? "local",
           cwd,
-          goal: trimmed,
-          serverUrl: settings.serverUrl,
-          sessionToken: token,
-          projectId: get().activeProjectId,
+          intent: {
+            kind: "edit",
+            goal: enrichedGoal,
+            mentions,
+            skills: opts?.skills,
+            guaranteedShip:
+              opts?.guaranteedShip ??
+              (get().wedgePhase === "ship" || get().firstHourActive ? true : undefined),
+          },
           sessionId: get().activeSessionId,
           planTaskId,
-          kind: "edit",
+          serverUrl: settings.serverUrl,
+          sessionToken: token,
+          persona: settings.persona,
+          marketingProfile: get().marketingProfile ?? undefined,
+          ask: {
+            turnReceipt: snap.lastTurnReceipt,
+            lastAssets: snap.lastAskAssets,
+            lastAnswerText: snap.lastAnswerText,
+          },
         });
         set((s) => (s.run ? { run: { ...s.run, runId } } : {}));
         linkMessageToRun(sourceMessageId, runId);
+        if (get().wedgePhase === "ship" || get().firstHourActive) {
+          recordExecutionMetricEvent("run_started", { runId });
+          bumpShipPipeline("run.started", { runId });
+        }
         get().registerCampaignRun(runId, planTaskId);
+        const cadence = get().opsCadence;
+        const opsTaskId = opts?.opsTaskId;
+        if (cadence && opsTaskId && !planTaskId) {
+          syncOpsCadenceState(markOpsTaskInProgress(cadence, opsTaskId, runId));
+          const laneA = get().laneAWorkspace;
+          if (laneA) {
+            syncLaneAState(markLaneAItemInProgress(laneA, opsTaskId, runId));
+          }
+        } else if (cadence && !planTaskId) {
+          const nowOps = getNowTask(cadence);
+          if (nowOps?.owner === "system") {
+            syncOpsCadenceState(markOpsTaskInProgress(cadence, nowOps.id, runId));
+            const laneA = get().laneAWorkspace;
+            if (laneA) {
+              syncLaneAState(markLaneAItemInProgress(laneA, nowOps.id, runId));
+            }
+          }
+        }
       } catch (err) {
         appendEvent({ role: "agent", kind: "error", text: errorMessage(err) });
         set((s) => (s.run ? { run: { ...s.run, status: "failed" } } : {}));
@@ -3795,7 +8634,16 @@ export const useApp = create<AppState>((set, get) => {
     interruptRun: () => {
       const { run } = get();
       if (!run?.runId) return;
+      void window.api.runs.interrupt(run.runId);
       void window.api.agent.interrupt(run.runId);
+      if (run.kind === "ask") {
+        if (askFoldSession) {
+          finalizeAskFold(askFoldSession, buildAskFoldDeps());
+          askFoldSession = null;
+        }
+        clearFirstHourAutoHandoff();
+        set({ agentStreaming: false, firstHourScoutPending: false });
+      }
     },
 
     approveRun: (approvalId) => {
@@ -3836,12 +8684,108 @@ export const useApp = create<AppState>((set, get) => {
           set({ canvas: { mode: "preview" } });
           return;
         }
+        const patchStats = aggregatePatchStats(run.events);
+        const commitSha = (result as { commit?: string }).commit;
+        const shippedReceipt = buildTurnReceipt({
+          turnId: run.sourceMessageId ?? run.runId,
+          runId: run.runId,
+          startedAt: run.startedAt,
+          events: run.events,
+          applyResult: {
+            files: result.applied,
+            branch: result.branch,
+            commitSha,
+            linesAdded: patchStats.linesAdded,
+            linesRemoved: patchStats.linesRemoved,
+          },
+        });
+        const summaryWithCommit = [
+          `Applied ${result.applied.length} file(s)`,
+          result.branch ? `to ${result.branch}` : "",
+          commitSha ? `· commit ${commitSha.slice(0, 7)}` : "",
+          patchStats.linesAdded + patchStats.linesRemoved > 0
+            ? `· +${patchStats.linesAdded}/−${patchStats.linesRemoved}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+
         appendEvent({
           role: "system",
           kind: "status",
-          text: result.applied.length
-            ? `Applied ${result.applied.length} file(s)${result.branch ? ` to ${result.branch}` : ""}.`
-            : "No files applied.",
+          text: summaryWithCommit,
+        });
+        appendEvent({
+          role: "agent",
+          kind: "turn_receipt",
+          turnReceipt: { ...shippedReceipt, shipped: true, summaryLine: summaryWithCommit },
+          text: summaryWithCommit,
+        });
+        set({ lastTurnReceipt: shippedReceipt });
+        const pid = get().activeProjectId;
+        if (pid) {
+          persistTurnReceipt(pid, shippedReceipt);
+          if (!get().firstShipAt) markFirstShip(pid);
+        }
+        recordExecutionMetricEvent("apply_completed", {
+          runId: run.runId,
+          patchCount: result.applied.length,
+        });
+        bumpShipPipeline("apply.completed");
+
+        const snapshot = get().firstShipSnapshot;
+        const heroPath = snapshot?.heroPath ?? result.applied[0];
+        let afterMeta: { metaTitle?: string; heroHeadline?: string } | undefined;
+        const proj = get().project;
+        if (heroPath && proj?.source.kind === "folder") {
+          try {
+            const source = await window.api.fs.read(proj.source.path, heroPath);
+            afterMeta = parseShipSnapshotFromSource(source, heroPath);
+          } catch {
+            /* optional re-read */
+          }
+        }
+        const previewUrl =
+          run.events.find((e) => e.type === "preview.ready")?.payload &&
+          typeof (run.events.find((e) => e.type === "preview.ready")?.payload as { url?: string })
+            ?.url === "string"
+            ? ((run.events.find((e) => e.type === "preview.ready")?.payload as { url?: string })
+                ?.url ?? undefined)
+            : undefined;
+        const ledger: FirstShipLedger = {
+          at: Date.now(),
+          commitSha,
+          summary: buildShipSummary(snapshot, afterMeta),
+          files: result.applied,
+          linesDelta: { add: patchStats.linesAdded, del: patchStats.linesRemoved },
+          previewUrl,
+          before: snapshot
+            ? {
+                metaTitle: snapshot.metaTitle,
+                metaDesc: snapshot.metaDesc,
+                heroHeadline: snapshot.heroHeadline,
+                heroPath: snapshot.heroPath,
+              }
+            : undefined,
+          after: afterMeta,
+        };
+        if (pid) {
+          persistFirstShipLedgerLocal(pid, ledger);
+          set({ firstShipLedger: ledger });
+        }
+
+        autoCompleteOpsOnApply({
+          runId: run.runId,
+          commitSha,
+          filesApplied: result.applied.length,
+        });
+        get().recordSessionOutcome({
+          kind: "run",
+          label: summaryWithCommit,
+          commitSha,
+          filesApplied: result.applied.length,
+          linesDelta: `+${patchStats.linesAdded}/−${patchStats.linesRemoved}`,
+          ref: run.runId,
         });
 
         removeApplyPendingFeed(run.runId);
@@ -3868,7 +8812,59 @@ export const useApp = create<AppState>((set, get) => {
         }
 
         if (remaining.length === 0) {
-          set({ run: null, replayRun: null, runApplySelection: [], canvas: { mode: "empty" } });
+          const inQuickShip = get().wedgePhase === "shipped" || get().wedgePhase === "ship";
+          const previewEv = run.events.find((e) => e.type === "preview.ready");
+          const previewUrl = (previewEv?.payload as { url?: string } | undefined)?.url?.trim();
+          const cadenceBefore = get().opsCadence;
+          const thesisBefore =
+            get().channelThesis ?? get().marketingProfile?.channel_thesis ?? null;
+          const activeOps = cadenceBefore?.tasks.find(
+            (t) => t.status === "in_progress" && t.owner === "system",
+          );
+          const verifyChecklist = buildVerifyChecklistFromTask(activeOps, thesisBefore);
+          set({
+            run: null,
+            replayRun: null,
+            runApplySelection: [],
+            canvas: { mode: inQuickShip ? "preview" : "browser" },
+            route: "workspace",
+            focusMode: inQuickShip ? false : true,
+            pendingAutoPreview: inQuickShip,
+          });
+          if (inQuickShip) {
+            get().startRunPreview();
+          }
+          const gateId = `browser-verify-after-apply-${Date.now()}`;
+          get().appendFeedItem({
+            id: gateId,
+            ts: Date.now(),
+            source: "system",
+            category: "gate",
+            title: "Verify in browser",
+            summary: "Changes are in your repo — watch Computer Use check the live page.",
+            status: "waiting",
+            canvasTarget: { mode: "browser", payload: { verify: "1" } },
+          });
+          appendEvent({
+            role: "system",
+            kind: "feed_link",
+            text: "Verify applied changes in live Computer Use",
+            feedItemId: gateId,
+          });
+          if (previewUrl && get().capabilityMatrix.canBrowse) {
+            scheduleVerifyAfterApply(previewUrl, verifyChecklist);
+          } else if (!get().capabilityMatrix.canBrowse) {
+            set({
+              workspaceHandoff: {
+                eyebrow: "Verify live",
+                title: "Connect Computer Use to verify",
+                reason:
+                  "Changes are applied — connect backend + Computer Use to capture live CTA proof.",
+                primaryLabel: "Open settings",
+                primaryAction: "home",
+              },
+            });
+          }
         } else {
           set({ runApplySelection: remaining, canvas: { mode: "preview" } });
         }
@@ -3878,6 +8874,52 @@ export const useApp = create<AppState>((set, get) => {
         });
       } catch (err) {
         appendEvent({ role: "agent", kind: "error", text: errorMessage(err) });
+      }
+    },
+
+    applyRunHunks: async (file, hunkIds) => {
+      const { run } = get();
+      if (!run?.runId || !file || hunkIds.length === 0) return;
+      let patchText = "";
+      for (let i = run.events.length - 1; i >= 0; i--) {
+        const e = run.events[i];
+        if (e.type === "file.patch_created" || e.type === "file.patch_updated") {
+          const p = e.payload as { file?: string; patch?: string } | undefined;
+          if (p?.file === file && p.patch) {
+            patchText = p.patch;
+            break;
+          }
+        }
+      }
+      if (!patchText) {
+        appendEvent({
+          role: "agent",
+          kind: "error",
+          text: `No patch found for ${file} — apply the whole file instead.`,
+        });
+        return;
+      }
+      try {
+        const result = await window.api.agent.applyHunks(run.runId, file, patchText, hunkIds);
+        if (!result.ok) {
+          appendEvent({
+            role: "agent",
+            kind: "error",
+            text: result.reason ?? "Hunk apply failed",
+          });
+          return;
+        }
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: `Applied ${hunkIds.length} hunk(s) in ${file}.`,
+        });
+      } catch (err) {
+        appendEvent({
+          role: "agent",
+          kind: "error",
+          text: `Could not apply hunks: ${errorMessage(err)}`,
+        });
       }
     },
 
@@ -4515,6 +9557,7 @@ export const useApp = create<AppState>((set, get) => {
             appliedPath: result.path,
             applyMode: "sidecar",
           });
+          if (activeProjectId && !get().firstShipAt) markFirstShip(activeProjectId);
           get().recordSessionOutcome({
             kind: "asset",
             label: `Applied ${targetFile}${result.commit ? ` (${result.commit.slice(0, 7)})` : ""}`,
@@ -4673,6 +9716,27 @@ export const useApp = create<AppState>((set, get) => {
 
       const target = item.canvasTarget;
       if (!target) return;
+
+      // Verify-in-browser gate: orchestrator verify intent (same run timeline as browse).
+      if (
+        item.category === "gate" &&
+        target.mode === "browser" &&
+        (item.id.startsWith("browser-verify-") || target.payload?.verify === "1")
+      ) {
+        const previewUrl =
+          get().run?.events
+            .slice()
+            .reverse()
+            .find((ev) => ev.type === "preview.ready")?.payload as { url?: string } | undefined;
+        const url = previewUrl?.url ?? "";
+        get().navigate("workspace");
+        void get().startVerifyAfterApply(url, [
+          "Page loads without obvious errors",
+          "Hero and primary CTA visible",
+          "No broken layout above the fold",
+        ]);
+        return;
+      }
 
       const ws = normalizeToWorkSurface(target.mode);
       if (ws) {
@@ -5023,7 +10087,7 @@ export const useApp = create<AppState>((set, get) => {
       const state = get();
       const { plan, planProgress, project } = state;
 
-      if (!opts?.skipConfirm && intentRequiresConfirm(intent)) {
+      if (!opts?.skipConfirm && !state.firstHourActive && intentRequiresConfirm(intent)) {
         const suite = plan ? normalizePlan(plan) : null;
         const task =
           intent.kind === "start_edit_run" && intent.planTaskId

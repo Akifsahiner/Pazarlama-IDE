@@ -3,13 +3,23 @@
   "nodes": {
     "is_audience_on_ph": {
       "q": "Is your ICP active on Product Hunt (indie makers, early-stage founders, prosumer/dev/design tools)?",
-      "yes": "have_warm_supporter_pool",
+      "yes": "warm_asset_check",
       "no": "OUTPUT:skip-PH-pick-vertical-channel"
+    },
+    "warm_asset_check": {
+      "q": "Do you have an engaged email list ≥5,000 OR ≥100 people who will leave honest first-hour comments?",
+      "yes": "aggressive_ready_check",
+      "no": "have_warm_supporter_pool"
+    },
+    "aggressive_ready_check": {
+      "q": "Is launch ≥14 days away and gallery/tagline ready (or schedulable)?",
+      "yes": "OUTPUT:aggressive-top-1",
+      "no": "OUTPUT:with-email-list"
     },
     "have_warm_supporter_pool": {
       "q": "Can you personally reach 100+ engaged supporters (list, X, LinkedIn, Discord, customers)?",
       "yes": "have_tagline_under_60_chars",
-      "no": "OUTPUT:build-warm-pool-first-postpone-30-days"
+      "no": "OUTPUT:no-audience"
     },
     "have_tagline_under_60_chars": {
       "q": "Do you have a tagline that's under 60 chars and names the outcome, not the technology?",
@@ -22,8 +32,8 @@
       "no": "OUTPUT:build-gallery-before-submitting"
     },
     "have_hunter_strategy": {
-      "q": "Have you decided whether to self-hunt or partner with a known hunter?",
-      "yes": "OUTPUT:ready-to-schedule-12am-PT-launch",
+      "q": "Have you decided whether to self-hunt or partner with a known hunter (no payment)?",
+      "yes": "OUTPUT:with-email-list",
       "no": "OUTPUT:default-to-self-hunt-and-personal-outreach"
     }
   }

@@ -25,11 +25,28 @@ function elapsed(startedAt: number): string {
  */
 export function IntentStrip() {
   const run = useApp((s) => s.run);
+  const browser = useApp((s) => s.browser);
   const interruptRun = useApp((s) => s.interruptRun);
-  if (!run) return null;
+  const stopBrowser = useApp((s) => s.stopBrowser);
+  if (!run && !browser.running) return null;
 
-  const active = run.status === "running" || run.status === "planning" || run.status === "created";
-  const skill = detectSkill(`${run.intent ?? ""} ${run.goal}`);
+  const browseActive = browser.running || run?.kind === "browse";
+  const active = browseActive
+    ? browser.running
+    : !!run && (run.status === "running" || run.status === "planning" || run.status === "created");
+  const goal = browser.currentGoal ?? run?.intent ?? run?.goal ?? "Working…";
+  const skill = detectSkill(`${run?.intent ?? ""} ${goal}`);
+  const statusLabel = browseActive
+    ? browser.running
+      ? browser.phase === "acting"
+        ? "Acting"
+        : browser.phase === "verifying"
+          ? "Verifying"
+          : "Browsing"
+      : "Idle"
+    : run
+      ? STATUS_LABEL[run.status]
+      : "Idle";
 
   return (
     <div className="flex items-center gap-3 border-b border-line bg-surface/90 px-4 py-2 backdrop-blur-sm">
@@ -38,11 +55,16 @@ export function IntentStrip() {
       ) : (
         <span
           className={`h-2 w-2 shrink-0 rounded-full ${
-            run.status === "failed" ? "bg-danger" : "bg-ok"
+            run?.status === "failed" || browser.lastError ? "bg-danger" : "bg-ok"
           }`}
         />
       )}
-      {skill && (
+      {browseActive && (
+        <span className="shrink-0 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-[10.5px] text-accent">
+          Computer Use
+        </span>
+      )}
+      {skill && !browseActive && (
         <span
           className={`shrink-0 rounded-full border px-2 py-0.5 text-[10.5px] ${
             skill.category === "Sales"
@@ -53,15 +75,14 @@ export function IntentStrip() {
           {skill.category} · {skill.label}
         </span>
       )}
-      <span className="min-w-0 flex-1 truncate text-body-sm text-text">
-        {run.intent ?? run.goal}
-      </span>
+      <span className="min-w-0 flex-1 truncate text-body-sm text-text">{goal}</span>
       <span className="shrink-0 text-micro uppercase tracking-wide text-text-3">
-        {STATUS_LABEL[run.status]} · {elapsed(run.startedAt)}
+        {statusLabel}
+        {run ? ` · ${elapsed(run.startedAt)}` : ""}
       </span>
       {active && (
         <button
-          onClick={() => interruptRun()}
+          onClick={() => (browseActive ? stopBrowser() : interruptRun())}
           className="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-sm)] border border-line px-2.5 py-1 text-micro text-text-2 transition-colors hover:bg-elevated hover:text-text"
         >
           <Square size={12} /> Stop

@@ -1,0 +1,33 @@
+{
+  "id": "devrel-open-source-launch",
+  "name": "DevRel Open Source Launch (repo scan → distribution)",
+  "category": "distribution",
+  "version": "1.0.0",
+  "changelog": "Initial war-room: README star CTA, awesome-list PR, release notes as distribution, maintainer DM ethics — pairs with community-launch Show HN",
+  "aggression_playbooks": ["aggressive-oss-launch"],
+  "applies_when": {
+    "company_stage": ["prelaunch", "pre-launch", "early", "growth", "relaunch"],
+    "business_model": ["open_source", "tool", "developer_tool", "freemium", "saas"]
+  },
+  "do_not_use_when": {
+    "business_model": ["enterprise_field_sales_only", "closed_source_only"],
+    "constraints_includes": ["private_repo_only", "no_public_github", "stealth_mode"],
+    "company_stage": ["enterprise_field_sales_only"]
+  },
+  "required_inputs": [
+    "product_name",
+    "github_repo_url",
+    "main_value_proposition",
+    "target_audience",
+    "license_type",
+    "available_assets"
+  ],
+  "output_schema": "marketing_decision",
+  "primary_metric": "github_stars_30d",
+  "playbook_selector": [
+    { "if": { "days_until_launch_gte": 7 }, "pick": "aggressive-oss-launch" },
+    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
+    { "if": { "email_list_size_gte": 500 }, "pick": "with-email-list" },
+    { "if": { "business_model": ["open_source", "tool", "developer_tool"] }, "pick": "b2b-saas" }
+  ]
+}

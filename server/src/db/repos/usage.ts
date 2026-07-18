@@ -82,3 +82,32 @@ export async function summary(userId: string): Promise<UsageSummary> {
     return acc;
   }, empty);
 }
+
+export interface UsageHistoryItem {
+  id: number;
+  kind: string | null;
+  tokens_in: number;
+  tokens_out: number;
+  browser_ms: number;
+  cost_cents: number;
+  created_at: string;
+}
+
+/** Recent usage events (newest first). */
+export async function listRecent(userId: string, limit = 30): Promise<UsageHistoryItem[]> {
+  if (!persistenceEnabled) return [];
+  const capped = Math.min(Math.max(1, limit), 100);
+  const rows =
+    (await sb<UsageEventRow[]>(
+      `/usage_events?user_id=${eq(userId)}&order=created_at.desc&limit=${capped}`,
+    )) ?? [];
+  return rows.map((r) => ({
+    id: r.id,
+    kind: r.kind,
+    tokens_in: r.tokens_in ?? 0,
+    tokens_out: r.tokens_out ?? 0,
+    browser_ms: r.browser_ms ?? 0,
+    cost_cents: Number(r.cost_cents ?? 0),
+    created_at: r.created_at,
+  }));
+}

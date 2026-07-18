@@ -248,6 +248,35 @@ export function apiGetMe(settings: Settings, authEnabled: boolean): Promise<MeRe
   return authedJson<MeResponse>(settings, "/me", authEnabled);
 }
 
+export function apiUsageHistory(
+  settings: Settings,
+  authEnabled: boolean,
+  limit = 30,
+): Promise<{ events: import("@shared/types").UsageHistoryItem[] }> {
+  return authedJson(settings, `/me/usage-history?limit=${limit}`, authEnabled);
+}
+
+export function apiBillingCheckout(
+  settings: Settings,
+  authEnabled: boolean,
+  tier: "pro" | "team" = "pro",
+): Promise<{ url: string; sessionId: string }> {
+  return authedJson(settings, "/billing/checkout", authEnabled, {
+    method: "POST",
+    body: JSON.stringify({ tier }),
+  });
+}
+
+export function apiBillingPortal(
+  settings: Settings,
+  authEnabled: boolean,
+): Promise<{ url: string }> {
+  return authedJson(settings, "/billing/portal", authEnabled, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
 export function apiListProjects(
   settings: Settings,
   authEnabled: boolean,
@@ -566,6 +595,7 @@ export function apiSubmitFeedback(
     comment?: string;
     skillId?: string;
     discipline?: string;
+    tacticApplied?: string[];
   },
 ): Promise<{ ok: boolean }> {
   return authedJson(settings, "/feedback", authEnabled, {

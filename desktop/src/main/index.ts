@@ -3,6 +3,7 @@ import { BrowserWindow, app } from "electron";
 import { registerIpcHandlers } from "./ipc";
 import { initAutoUpdater } from "./updater";
 import { createMainWindow } from "./window";
+import { stopAllProjectIndexWatchers } from "./context/projectIndexWatcher";
 import { agentCoordinator } from "./agentHost";
 import { maybeAutoStartBundledServer, stopBundledServerOnQuit } from "./serverManager";
 import { getSettings } from "./store";
@@ -65,6 +66,7 @@ app.on("open-url", (event, url) => {
 
 app.on("before-quit", () => {
   stopBundledServerOnQuit();
+  void stopAllProjectIndexWatchers();
   void agentCoordinator.shutdown();
 });
 

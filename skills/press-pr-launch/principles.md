@@ -1,0 +1,14 @@
+## Principles
+
+1. **Press is earned, not scheduled.** A launch date does not create news. You need a hook: first-in-category, hard metric, funding, major partnership, or regulatory shift. Without proof, press skill returns honest ceiling = 0 pickups — do not waste reporter relationships.
+2. **Embargo is a contract.** Lock `launch_datetime_utc` in every pitch and press kit footer. Reporters who break embargo get no future access. Founders who leak early destroy trust with the five outlets that matter for your category.
+3. **Five pitches, five hooks.** One generic blast to 50 reporters converts worse than five deeply personalized emails. Each pitch references the reporter's last 2–3 relevant stories and one sentence on why *their* readers care.
+4. **Press kit PDF is the single source of truth.** One PDF (≤8 pages): boilerplate, fact sheet, founder bio + headshot, 3–5 product screenshots, approved founder quote, customer proof (with permission), embargo line, and media contact. No scattered Google Drive folders.
+5. **Founder quote is pre-approved copy.** Write it before pitching. ≤60 words, one insight (not "we're excited to announce"). Reporters paste quotes verbatim under deadline — surprise quotes get edited or dropped.
+6. **Screenshots are assets, not afterthoughts.** Ship a screenshot kit: hero UI, workflow in motion (GIF or annotated still), before/after metric visual, logo on transparent PNG. Dark + light mode if B2B devtool. No mockups labeled as product.
+7. **Big launch profile only.** This skill applies when `days_until_launch ≥ 7` and `existing_proof` is real (named customer, revenue band, waitlist size with methodology, funding, or shipped milestone). Minor releases belong in changelog + community, not embargo PR.
+8. **Cold reporter lists have a hard ceiling.** Zero prior relationships → expect 0–1 pickup from 5 targeted pitches. One warm intro beats 20 cold emails. State the ceiling in the plan; do not promise "TechCrunch coverage."
+9. **Follow-up SLA is 24 hours.** If a reporter replies with questions, answer within one business day. Silence after a pitch gets no second blast — one polite follow-up at +48h, then stop.
+10. **Launch monitoring window is 6 hours post-embargo lift.** Track Google News, outlet RSS, X mentions from target reporters, and referral UTM `utm_source=press`. Founder on standby for fact checks; wrong numbers in print are harder to fix than wrong tweets.
+11. **Kill at 48h no pickup.** If zero stories live 48h after embargo lift, do not escalate to paid placement or spam more reporters. Pivot to owned media (teardown post, email, community) and log lessons for the next news cycle.
+12. **Customer proof requires permission.** Named logos, revenue figures, and quotes need written approval (email OK). "Anonymous Fortune 500" without verification reads as fabrication and gets cut by editors — or worse, corrected publicly.

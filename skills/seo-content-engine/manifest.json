@@ -1,0 +1,33 @@
+{
+  "id": "seo-content-engine",
+  "name": "SEO Content Engine (organic + programmatic)",
+  "category": "awareness",
+  "version": "1.0.0",
+  "changelog": "Initial engine: keyword clusters, comparison/vs/alternatives pages, internal link graph, docs/blog CTA — no fake traffic",
+  "aggression_playbooks": ["aggressive-programmatic-cluster"],
+  "applies_when": {
+    "company_stage": ["prelaunch", "pre-launch", "early", "growth", "relaunch"],
+    "scan_signals": ["has_blog_or_docs", "routes_gte_2"],
+    "business_model": ["saas", "open_source", "tool", "freemium", "developer_tool"]
+  },
+  "do_not_use_when": {
+    "company_stage": ["stealth_only"],
+    "constraints_includes": ["no_indexable_site", "single_landing_only", "regulated_no_seo"]
+  },
+  "required_inputs": [
+    "product_name",
+    "main_value_proposition",
+    "target_audience",
+    "differentiators",
+    "competitors",
+    "available_assets"
+  ],
+  "output_schema": "marketing_decision",
+  "primary_metric": "organic_sessions_mom",
+  "playbook_selector": [
+    { "if": { "business_model": ["saas", "tool", "developer_tool", "open_source"] }, "pick": "aggressive-programmatic-cluster" },
+    { "if": { "current_users_lt": 500 }, "pick": "no-audience" },
+    { "if": { "email_list_size_gte": 1000 }, "pick": "with-email-list" },
+    { "if": { "business_model": ["saas", "tool", "developer_tool"] }, "pick": "b2b-saas" }
+  ]
+}

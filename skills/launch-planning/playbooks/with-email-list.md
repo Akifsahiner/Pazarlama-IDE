@@ -12,3 +12,45 @@ You have a warm asset most founders don't. The list is the lever — design the 
 - **Days +2 to +7: Daily public update** with metrics, lessons, and 1 customer story. Each one is a re-pitch to the press, partners, and your list.
 
 Realistic outcome with a 5–20k engaged list: 5–12% list-to-signup, top 3 on PH, 30–80 inbound press/partner DMs.
+
+## Preconditions
+- [ ] Marketing profile complete for launch-planning
+- [ ] Primary metric named before execution
+- [ ] Honest aggression dial matches real assets (list, proof, team hours)
+
+## Aggression dial
+
+| Level | When | Focus |
+|-------|------|-------|
+| conservative | Thin assets / solo | One channel, learning metrics |
+| standard | Warm channel or list | Best-practice cadence from narrative above |
+| aggressive | Strong proof + distribution | Execute full tactic stack with kill rules |
+
+## Timeline
+- **T-14**: Instrument leading metric; lock ICP + offer
+- **T-7**: Ship assets referenced in narrative
+- **T-1**: Final checklist + supporter warm-up
+- **H0**: Primary launch motion
+- **D+1…D+7**: Measure, teardown, kill or scale
+
+## Tactic stack
+1. Name bottleneck with 3 profile citations
+2. Ship one measurable experiment this week
+3. Tie Plan Studio tasks to registry tactic ids
+4. Cap parallel channels at 2
+5. Predefine kill/pivot rule before spend or blast
+
+## Orchestration
+- One primary channel from narrative; ≤2 support channels
+- Repo/browser/asset tasks split by execution_mode
+
+## Realistic outcomes
+- State honest bands — do not promise #1 PH or viral without assets
+- Leading metric moves in 7–14d when playbook matches profile
+
+## Kill / pivot rules
+- Leading metric misses after agreed sample → stop and rewrite hypothesis
+- Never add channels when primary motion underperforms
+
+## Ethics line
+- No fake metrics, fake social proof, undisclosed ads, or ToS-breaking growth hacks

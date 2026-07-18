@@ -1,0 +1,41 @@
+{
+  "id": "press-pr-launch",
+  "name": "Press & PR Launch",
+  "category": "launch",
+  "version": "1.0.0",
+  "changelog": "Initial executable press launch: embargo lock, 5 reporter pitches, press kit PDF, founder quote, honest coverage ceiling",
+  "aggression_playbooks": ["aggressive-press-war-room"],
+  "applies_when": {
+    "company_stage": ["prelaunch", "pre-launch", "early", "growth", "relaunch"],
+    "business_model": ["saas", "developer_tool", "open_source", "tool", "freemium"]
+  },
+  "do_not_use_when": {
+    "company_stage": ["stealth_mode"],
+    "constraints_includes": [
+      "days_until_launch_lt_7",
+      "no_launch_proof",
+      "no_public_demo",
+      "regulated_no_press",
+      "minor_launch_no_news_hook"
+    ]
+  },
+  "required_inputs": [
+    "product_name",
+    "main_value_proposition",
+    "target_audience",
+    "differentiators",
+    "existing_proof",
+    "days_until_launch",
+    "launch_datetime_utc",
+    "founder_name",
+    "available_assets"
+  ],
+  "output_schema": "marketing_decision",
+  "primary_metric": "press_pickups_embargo_window",
+  "playbook_selector": [
+    { "if": { "days_until_launch_gte": 14 }, "pick": "aggressive-press-war-room" },
+    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
+    { "if": { "channels_includes": ["email"], "email_list_size_gte": 1000 }, "pick": "with-email-list" },
+    { "if": { "business_model": ["saas", "developer_tool"] }, "pick": "b2b-saas" }
+  ]
+}

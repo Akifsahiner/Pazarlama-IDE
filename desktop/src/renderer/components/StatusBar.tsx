@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Circle, Cpu, FolderGit2, GitBranch } from "lucide-react";
 import { useApp } from "@renderer/state/store";
 import { UsageMeter } from "@renderer/components/UsageMeter";
+import { NotificationBell } from "@renderer/components/NotificationBell";
 import type { RepoStatus } from "@shared/types";
 
 export function StatusBar() {
@@ -53,7 +54,7 @@ export function StatusBar() {
     runtime === "connected"
       ? "Connected"
       : localOnlyMode
-        ? "Local mode — connect for AI"
+        ? "Local mode — enable AI when ready"
         : state === "checking"
           ? "Checking…"
           : "Not connected";
@@ -72,9 +73,10 @@ export function StatusBar() {
       style={{ height: "var(--statusbar-h)" }}
     >
       <div className="flex min-w-0 items-center gap-4">
+        <NotificationBell />
         <button
           onClick={() => (runtime === "connected" ? void checkConnection() : openConnectFlow())}
-          title={runtime === "connected" ? "Click to retry connection" : "Connect for AI features"}
+          title={runtime === "connected" ? "Click to retry connection" : "Retry connection"}
           className="flex shrink-0 items-center gap-1.5 transition-colors hover:text-text"
         >
           <Circle size={8} className={dotClass} />

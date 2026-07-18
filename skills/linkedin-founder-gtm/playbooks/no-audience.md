@@ -13,3 +13,45 @@ Zero followers, zero connections in your ICP. LinkedIn GTM from cold starts with
 - **Days 46–60: Launch thread when ready.** Only after 1,000+ followers or 30+ design partners with proof. 5-post thread over 7 days. By then, comment history and connections give posts initial velocity.
 
 Realistic outcome: 800–1,500 followers in 60 days, 40–60% ICP ratio, 10–25 DM conversations, 8–15 design partners, 5–12 demos from LinkedIn alone.
+
+## Preconditions
+- [ ] Marketing profile complete for linkedin-founder-gtm
+- [ ] Primary metric named before execution
+- [ ] Honest aggression dial matches real assets (list, proof, team hours)
+
+## Aggression dial
+
+| Level | When | Focus |
+|-------|------|-------|
+| conservative | Thin assets / solo | One channel, learning metrics |
+| standard | Warm channel or list | Best-practice cadence from narrative above |
+| aggressive | Strong proof + distribution | Execute full tactic stack with kill rules |
+
+## Timeline
+- **T-14**: Instrument leading metric; lock ICP + offer
+- **T-7**: Ship assets referenced in narrative
+- **T-1**: Final checklist + supporter warm-up
+- **H0**: Primary launch motion
+- **D+1…D+7**: Measure, teardown, kill or scale
+
+## Tactic stack
+1. Name bottleneck with 3 profile citations
+2. Ship one measurable experiment this week
+3. Tie Plan Studio tasks to registry tactic ids
+4. Cap parallel channels at 2
+5. Predefine kill/pivot rule before spend or blast
+
+## Orchestration
+- One primary channel from narrative; ≤2 support channels
+- Repo/browser/asset tasks split by execution_mode
+
+## Realistic outcomes
+- State honest bands — do not promise #1 PH or viral without assets
+- Leading metric moves in 7–14d when playbook matches profile
+
+## Kill / pivot rules
+- Leading metric misses after agreed sample → stop and rewrite hypothesis
+- Never add channels when primary motion underperforms
+
+## Ethics line
+- No fake metrics, fake social proof, undisclosed ads, or ToS-breaking growth hacks

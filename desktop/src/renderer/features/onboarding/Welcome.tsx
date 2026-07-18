@@ -2,17 +2,12 @@ import { motion } from "framer-motion";
 import { ArrowRight, Eye, FileDiff, Search } from "lucide-react";
 import { Button } from "@renderer/components/ui/Button";
 import { staggerItem, staggerList } from "@renderer/design/animations";
+import { FIRST_HOUR_MILESTONES, FIRST_TEN_MINUTES } from "@shared/firstHour";
 
 const VALUE_PROPS = [
   { icon: FileDiff, text: "Edits your site as reviewable diffs" },
   { icon: Eye, text: "Verifies in a real browser, live" },
   { icon: Search, text: "Researches leads and drafts outreach — you send" },
-];
-
-const FIRST_RUN_PATH = [
-  { step: "1", label: "Connect", detail: "Link backend for AI — or preview offline first" },
-  { step: "2", label: "Open folder", detail: "Same repo you built in Cursor" },
-  { step: "3", label: "Launch plan", detail: "30-day GTM tasks you approve and apply" },
 ];
 
 /**
@@ -53,10 +48,10 @@ export function Welcome({ onStart }: { onStart: () => void }) {
 
       <div className="mt-8 w-full max-w-md rounded-[var(--radius-md)] border border-line bg-surface-2/80 px-4 py-3 text-left">
         <div className="mb-2 text-micro font-semibold uppercase tracking-wider text-text-3">
-          Your first 10 minutes
+          Your first hour
         </div>
         <ol className="space-y-2">
-          {FIRST_RUN_PATH.map((row) => (
+          {FIRST_TEN_MINUTES.map((row) => (
             <li key={row.step} className="flex gap-3 text-body-sm">
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-micro font-semibold text-accent">
                 {row.step}
@@ -68,6 +63,24 @@ export function Welcome({ onStart }: { onStart: () => void }) {
             </li>
           ))}
         </ol>
+        <div className="mt-3 border-t border-line pt-3">
+          <div className="mb-2 text-micro font-semibold uppercase tracking-wider text-text-3">
+            Minutes 10–60
+          </div>
+          <ol className="space-y-2">
+            {FIRST_HOUR_MILESTONES.map((row) => (
+              <li key={row.label} className="flex gap-3 text-body-sm">
+                <span className="w-14 shrink-0 text-micro font-medium tabular-nums text-text-3">
+                  {row.minutes}
+                </span>
+                <span>
+                  <span className="font-medium text-text">{row.label}</span>
+                  <span className="text-text-2"> — {row.detail}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
       </div>
 
       <motion.div

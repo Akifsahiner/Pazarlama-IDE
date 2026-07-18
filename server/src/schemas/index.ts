@@ -104,11 +104,13 @@ export const agentTurnContextSchema = z.object({
   proactive_trigger: z
     .enum(["apply_complete", "plan_task_done", "measuring_phase"])
     .optional(),
+  /** Local ContextPack markdown from desktop index (hybrid retrieve + facts + @mentions). */
+  local_context_pack: z.string().max(12_000).optional(),
 });
 export type AgentTurnContext = z.infer<typeof agentTurnContextSchema>;
 
 export const proactiveSuggestionActionSchema = z.object({
-  kind: z.enum(["continue_plan", "log_kpi", "focus_run", "open_plan"]),
+  kind: z.enum(["continue_plan", "log_kpi", "focus_run", "open_plan", "generate_plan"]),
   taskId: z.string().optional(),
   playbookId: z.string().optional(),
   presetId: z.string().optional(),
@@ -173,10 +175,17 @@ export type PlanStreamEvent =
     }
   | { type: "plan"; plan: MarketingPlan & { playbooks?: import("./planPlaybooks.js").PlanPlaybook[] } }
   | { type: "error"; message: string; code?: StreamErrorCode }
+  | {
+      type: "usage";
+      tokens_in: number;
+      tokens_out: number;
+      cost_cents: number;
+    }
   | { type: "done" };
 
 import type { MarketingDecision } from "./decision.js";
 import type { Critique, DraftCritique } from "../brain/critic.js";
+import type { AnswerCritique } from "../brain/answerCritic.js";
 import type { Discipline, TaskKind } from "../brain/router.js";
 
 export type { MarketingDecision, Critique, DraftCritique };
@@ -198,9 +207,10 @@ export type AgentStreamEvent =
       urgency: "fast" | "deep";
     }
   | { type: "brain.status"; phase: string; text: string; skills?: string[] }
-  | { type: "brain.retrieved"; skills: string[] }
+  | { type: "brain.retrieved"; skills: string[]; playbookId?: string; tacticCount?: number; aggressionLevel?: string }
   | { type: "brain.profile"; gaps: string[] }
   | { type: "brain.critique"; critique: Critique }
+  | { type: "brain.answer_critique"; critique: AnswerCritique; quality_warn?: boolean }
   | {
       type: "decision";
       decision: MarketingDecision;
@@ -220,10 +230,17 @@ export type AgentStreamEvent =
       title: string;
       body: string;
       action?: ProactiveSuggestionAction;
+      buttonLabel?: string;
       source: "apply_complete" | "plan_task_done" | "measuring_phase" | "brain";
     }
   | { type: "missing_info"; questions: string[] }
   | { type: "suggested_mode"; mode: ComposerSuggestedMode; reason?: string }
+  | {
+      type: "executable_action";
+      primary?: import("../brain/executionClassifier.js").ExecutableAction;
+      secondary?: import("../brain/executionClassifier.js").ExecutableAction[];
+      actions?: import("../brain/executionClassifier.js").ExecutableAction[];
+    }
   | { type: "tool"; name: string; status: "start" | "done"; detail?: string }
   | { type: "asset"; asset: MarketingAsset }
   | {
@@ -234,6 +251,12 @@ export type AgentStreamEvent =
       sourcePlanId: string;
     }
   | { type: "error"; message: string; code?: StreamErrorCode }
+  | {
+      type: "usage";
+      tokens_in: number;
+      tokens_out: number;
+      cost_cents: number;
+    }
   | { type: "done" };
 
 /** Persisted agent turn payload (messages.content_json). */
@@ -254,4 +277,5 @@ export type AgentTurnPersist = {
     source: string;
   };
   draft_critique?: DraftCritique;
+  answer_critique?: AnswerCritique;
 };

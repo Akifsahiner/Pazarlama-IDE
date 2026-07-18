@@ -1,0 +1,20 @@
+{
+  "root": "founder_will_post",
+  "nodes": {
+    "founder_will_post": {
+      "q": "Will the founder post publicly on X at least 3×/week for 30 days?",
+      "yes": "icp_on_x",
+      "no": "OUTPUT:delegate-or-skip-x-channel"
+    },
+    "icp_on_x": {
+      "q": "Is your ICP (dev founders, indie hackers, eng leaders) active on X?",
+      "yes": "launch_window",
+      "no": "OUTPUT:linkedin-or-community-first"
+    },
+    "launch_window": {
+      "q": "Is launch within 30 days (days_until_launch ≥7)?",
+      "yes": "OUTPUT:aggressive-x-launch-30d",
+      "no": "OUTPUT:no-audience"
+    }
+  }
+}

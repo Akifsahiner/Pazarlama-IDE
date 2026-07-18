@@ -1,12 +1,16 @@
 import { WORK_SURFACES, type WorkSurface } from "./workSurfaces";
+import { parseRepoFileLink } from "./codeCitation";
 
 export type CanvasLinkAction =
   | { type: "surface"; surface: WorkSurface }
   | { type: "plan-task"; taskId: string }
   | { type: "plan-playbook"; playbookId: string }
+  | { type: "repo-file"; path: string; line?: number; endLine?: number }
   | { type: "external"; url: string };
 
 export function parseCanvasLink(href: string): CanvasLinkAction | null {
+  const repo = parseRepoFileLink(href);
+  if (repo) return { type: "repo-file", ...repo };
   if (href.startsWith("surface://")) {
     const slug = href.replace("surface://", "").split(/[?#]/)[0];
     if (slug.startsWith("plan-playbook/")) {

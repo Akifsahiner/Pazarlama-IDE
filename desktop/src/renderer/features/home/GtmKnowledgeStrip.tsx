@@ -8,7 +8,7 @@ export function GtmKnowledgeStrip() {
   const plan = useApp((s) => s.plan);
   const generatePlan = useApp((s) => s.generatePlan);
   const previewPlanOutline = useApp((s) => s.previewPlanOutline);
-  const connected = useApp((s) => s.connection.state === "connected");
+  const connected = useApp((s) => s.runtime === "connected");
   const setWorkSurface = useApp((s) => s.setWorkSurface);
   const setActivePlaybook = useApp((s) => s.setActivePlaybook);
   const navigate = useApp((s) => s.navigate);

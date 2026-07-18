@@ -1,0 +1,45 @@
+{
+  "root": "repo_public_scan",
+  "nodes": {
+    "repo_public_scan": {
+      "q": "Is the GitHub repo public with README, LICENSE file, and working install instructions?",
+      "yes": "license_clear",
+      "no": "OUTPUT:ship-public-repo-before-oss-launch"
+    },
+    "license_clear": {
+      "q": "Does README include SPDX license identifier and one-sentence commercial-use clarity?",
+      "yes": "release_tagged",
+      "no": "OUTPUT:fix-oss_license_clarity_block-first"
+    },
+    "release_tagged": {
+      "q": "Is there at least one semver tag (e.g. v0.1.0) with GitHub Release notes?",
+      "yes": "registry_listed",
+      "no": "OUTPUT:no-audience-repo-runway-21d"
+    },
+    "registry_listed": {
+      "q": "Is the package published on npm/PyPI/crates.io (or equivalent) with repo link?",
+      "yes": "email_list_check",
+      "no": "OUTPUT:oss_package_registry_listing-before-spike"
+    },
+    "email_list_check": {
+      "q": "Do you have ≥500 subscribers who opted in for product updates?",
+      "yes": "show_hn_planned",
+      "no": "star_baseline"
+    },
+    "star_baseline": {
+      "q": "Are GitHub stars ≥50 OR do you have 3+ weeks of OSS runway (issues, releases, list PRs in flight)?",
+      "yes": "show_hn_planned",
+      "no": "OUTPUT:no-audience"
+    },
+    "show_hn_planned": {
+      "q": "Is Show HN (community-launch) scheduled ≥48h after README + CHANGELOG polish?",
+      "yes": "aggressive_window",
+      "no": "OUTPUT:b2b-saas-with-delayed-hn"
+    },
+    "aggressive_window": {
+      "q": "Is launch ≥7 days out with 3+ awesome-list targets researched and maintainer DM ethics signed?",
+      "yes": "OUTPUT:aggressive-oss-launch",
+      "no": "OUTPUT:with-email-list-or-b2b-saas"
+    }
+  }
+}

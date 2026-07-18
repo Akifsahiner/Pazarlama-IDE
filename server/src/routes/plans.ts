@@ -7,6 +7,8 @@ import { persistenceEnabled } from "../db/client.js";
 import { assertTierAndQuota } from "../middleware/tierGate.js";
 import { sendMeteringError } from "../middleware/meteringErrors.js";
 import { classifyError } from "../llm/errors.js";
+import { estimateCostCents } from "../billing/pricing.js";
+import { env } from "../env.js";
 import * as plans from "../db/repos/plans.js";
 import * as usage from "../db/repos/usage.js";
 import { revisePlanSuite } from "../brain/planSuite.js";
@@ -49,6 +51,7 @@ export async function planListRoutes(app: FastifyInstance): Promise<void> {
     const { instruction, currentPlan, persona } = parsed.data;
     const sse = startSSE(reply);
     const emit = (e: PlanStreamEvent) => sse.send(e);
+    const usageSink = { input: 0, output: 0 };
 
     try {
       const result = await revisePlanSuite({
@@ -57,14 +60,31 @@ export async function planListRoutes(app: FastifyInstance): Promise<void> {
         persona,
         emit,
         signal: sse.signal,
+        usageSink,
       });
       if (sse.closed()) return;
+      const costCents = estimateCostCents(
+        env.ANTHROPIC_MODEL,
+        usageSink.input,
+        usageSink.output,
+      );
+      emit({
+        type: "usage",
+        tokens_in: usageSink.input,
+        tokens_out: usageSink.output,
+        cost_cents: costCents,
+      });
       emit({ type: "done" });
 
       if (persistenceEnabled) {
         try {
           await plans.insert(user.id, projectId, result.plan);
-          await usage.insert(user.id, { kind: "plan" });
+          await usage.insert(user.id, {
+            kind: "plan",
+            tokens_in: usageSink.input,
+            tokens_out: usageSink.output,
+            cost_cents: costCents,
+          });
         } catch (persistErr) {
           app.log.warn({ err: persistErr }, "failed to persist revised plan");
         }

@@ -21,6 +21,13 @@ export interface StartRunInput {
   skills?: string[];
   /** Absolute paths to skill plugin directories to load. */
   pluginPaths?: string[];
+  /** Auto-retrieved ContextPack text prepended to the prompt. */
+  contextPrefix?: string;
+  /** Faz 4 — optional mid-run browser verify (orchestrator reuse). */
+  browserVerify?: (input: {
+    url: string;
+    checklist: string[];
+  }) => Promise<{ ok: boolean; summary?: string }>;
 }
 
 /**
@@ -49,6 +56,8 @@ interface ActiveRun {
  */
 export class AgentHost {
   private runs = new Map<string, ActiveRun>();
+  /** Cumulative assistant text — emit deltas when successive messages grow a prefix. */
+  private assistantText = new Map<string, string>();
 
   constructor(
     private bus: RunEventBus,
@@ -89,6 +98,45 @@ export class AgentHost {
         return { behavior: "deny", message: `Policy forbids ${scope}.` };
       }
 
+      if (toolName.toLowerCase() === "browser_verify" && input.browserVerify) {
+        const url = String(toolInput.url ?? "");
+        const checklist = Array.isArray(toolInput.checklist)
+          ? (toolInput.checklist as string[])
+          : [];
+        this.bus.emit({
+          runId,
+          type: "tool.started",
+          status: "running",
+          title: "browser_verify",
+          summary: url || "verify checklist",
+          payload: { tool: toolName, scope },
+        });
+        try {
+          const result = await input.browserVerify({ url, checklist });
+          this.bus.emit({
+            runId,
+            type: result.ok ? "tool.completed" : "tool.failed",
+            status: result.ok ? "success" : "failed",
+            title: "browser_verify",
+            summary: result.summary,
+          });
+          return {
+            behavior: "deny",
+            message: JSON.stringify(result),
+          };
+        } catch (err) {
+          const summary = err instanceof Error ? err.message : String(err);
+          this.bus.emit({
+            runId,
+            type: "tool.failed",
+            status: "failed",
+            title: "browser_verify",
+            summary,
+          });
+          return { behavior: "deny", message: summary };
+        }
+      }
+
       if (level === "ask" || level === "always_ask") {
         const approvalId = randomUUID();
         this.bus.emit({
@@ -127,8 +175,12 @@ export class AgentHost {
       return { behavior: "allow", updatedInput: toolInput };
     };
 
+    const prompt = input.contextPrefix?.trim()
+      ? `${input.contextPrefix.trim()}\n\n---\n\n# User goal\n${input.goal}`
+      : input.goal;
+
     const q = query({
-      prompt: input.goal,
+      prompt,
       options: {
         cwd: input.cwd,
         env: {
@@ -166,6 +218,7 @@ export class AgentHost {
       });
     } finally {
       this.runs.delete(runId);
+      this.assistantText.delete(runId);
     }
   }
 
@@ -192,16 +245,29 @@ export class AgentHost {
 
     if (m.type === "assistant") {
       const content = extractContent(m.message);
-      for (const block of content) {
-        if (block.type === "text" && block.text?.trim()) {
+      const joined = content
+        .filter((b) => b.type === "text" && b.text?.trim())
+        .map((b) => b.text!.trim())
+        .join("\n\n");
+      if (joined) {
+        const prev = this.assistantText.get(runId) ?? "";
+        const delta =
+          joined.startsWith(prev) && joined.length > prev.length
+            ? joined.slice(prev.length)
+            : joined === prev
+              ? ""
+              : joined;
+        this.assistantText.set(runId, joined.startsWith(prev) ? joined : prev + joined);
+        if (delta) {
           this.bus.emit({
             runId,
             type: "agent.message",
-            title: briefTitle(block.text),
-            summary: block.text.trim(),
+            status: "running",
+            title: briefTitle(delta),
+            summary: delta,
+            payload: { delta, stream: true, cumulative: this.assistantText.get(runId) },
           });
         }
-        // tool_use blocks are surfaced through canUseTool (tool.started) instead.
       }
       return;
     }
@@ -224,7 +290,26 @@ export class AgentHost {
     }
 
     if (m.type === "result") {
-      const r = m as { subtype?: string; is_error?: boolean };
+      const r = m as {
+        subtype?: string;
+        is_error?: boolean;
+        usage?: { input_tokens?: number; output_tokens?: number };
+        total_cost_usd?: number;
+      };
+      if (r.usage || r.total_cost_usd != null) {
+        const tokens_in = r.usage?.input_tokens ?? 0;
+        const tokens_out = r.usage?.output_tokens ?? 0;
+        const cost_cents =
+          r.total_cost_usd != null ? Math.round(r.total_cost_usd * 100) : 0;
+        this.bus.emit({
+          runId,
+          type: "agent.status",
+          status: "success",
+          title: "Usage",
+          summary: `${tokens_in + tokens_out} tokens`,
+          payload: { usage: { tokens_in, tokens_out, cost_cents } },
+        });
+      }
       if (r.is_error) {
         this.bus.emit({ runId, type: "run.failed", status: "failed", title: "Run failed" });
       }

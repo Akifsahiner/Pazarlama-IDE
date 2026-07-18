@@ -249,3 +249,19 @@ export function parseFinding(
   if (!title || !evidence) return null;
   return { severity: severity.toLowerCase(), title, evidence, suggestion };
 }
+
+/** Parse a `VALIDATION: label | pass|fail | detail` line (Faz 4 verify checklist). */
+export function parseValidation(
+  line: string,
+): { label: string; passed: boolean; detail?: string } | null {
+  const m = /^\s*VALIDATION:\s*(.+)$/i.exec(line);
+  if (!m) return null;
+  const parts = m[1].split("|").map((s) => s.trim());
+  if (parts.length < 2) return null;
+  const label = parts[0]!;
+  const status = parts[1]!.toLowerCase();
+  const passed = status === "pass" || status === "passed" || status === "ok" || status === "yes";
+  const detail = parts.slice(2).join(" | ") || undefined;
+  if (!label) return null;
+  return { label, passed, detail };
+}

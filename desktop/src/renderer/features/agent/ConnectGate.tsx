@@ -1,41 +1,48 @@
 import { Plug, Sparkles } from "lucide-react";
 import type { RuntimeCapability } from "@shared/runtimeCapability";
+import type { CapabilityMatrix, CapId } from "@shared/capability";
+import { fixLabel } from "@shared/capability";
 import { Button } from "@renderer/components/ui/Button";
+
+const FEATURE_CAPS: Record<"chat" | "plan" | "run" | "browser", CapId[]> = {
+  chat: ["backend", "auth", "anthropic"],
+  plan: ["backend", "auth", "anthropic"],
+  run: ["backend", "auth", "anthropic", "local_agent"],
+  browser: ["backend", "auth", "anthropic", "computer_use"],
+};
 
 const COPY: Record<
   "chat" | "plan" | "run" | "browser",
-  { title: string; body: string; primary: string }
+  { title: string; body: string }
 > = {
   chat: {
-    title: "Connect to chat with the agent",
-    body: "Your project scan is ready. Sign in to ask questions and get marketing guidance.",
-    primary: "Connect",
+    title: "Sign in to chat with the agent",
+    body: "Your project scan is ready. Enable AI to ask questions and get marketing guidance.",
   },
   plan: {
-    title: "Connect to generate your launch plan",
-    body: "Preview the outline from your scan, or connect to generate a personalized plan with AI.",
-    primary: "Connect",
+    title: "Enable AI to generate your launch plan",
+    body: "Preview the outline from your scan, or enable AI for a personalized plan.",
   },
   run: {
-    title: "Connect to run the agent",
-    body: "Agent runs need an active connection to execute tasks in your project.",
-    primary: "Connect",
+    title: "Enable AI to run the agent",
+    body: "Agent runs need a ready AI connection to execute tasks in your project.",
   },
   browser: {
-    title: "Connect for browser tasks",
-    body: "Web research runs through the connected backend sandbox.",
-    primary: "Connect",
+    title: "Enable AI for live browser tasks",
+    body: "Web research runs through the Computer Use sandbox when AI is ready.",
   },
 };
 
 export function ConnectGate({
   feature,
   capability,
+  matrix,
   onConnect,
   compact,
 }: {
   feature: keyof typeof COPY;
   capability: RuntimeCapability;
+  matrix?: CapabilityMatrix;
   onConnect: () => void;
   compact?: boolean;
 }) {
@@ -43,6 +50,15 @@ export function ConnectGate({
 
   const copy = COPY[feature];
   const isDegraded = capability === "degraded";
+  const need = FEATURE_CAPS[feature];
+  const label = matrix
+    ? fixLabel(matrix, need)
+    : isDegraded
+      ? "Open connection settings"
+      : "Retry connection";
+  const reason = matrix
+    ? need.map((id) => matrix.caps[id]).find((c) => c.state !== "ready")?.reason
+    : undefined;
 
   return (
     <div
@@ -59,13 +75,14 @@ export function ConnectGate({
             {isDegraded ? "AI service isn't ready yet" : copy.title}
           </div>
           <p className="mt-0.5 text-body-sm text-text-2">
-            {isDegraded
-              ? "The backend is reachable but AI isn't configured yet. Check connection settings or try again."
-              : copy.body}
+            {reason ??
+              (isDegraded
+                ? "The backend is reachable but AI isn't configured yet. Check connection settings or try again."
+                : copy.body)}
           </p>
           <div className="mt-2">
             <Button size="sm" variant="primary" onClick={onConnect}>
-              {copy.primary}
+              {label}
             </Button>
           </div>
         </div>

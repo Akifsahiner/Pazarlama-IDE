@@ -46,6 +46,8 @@ export function defaultSidecarPath(title: string, taken: string[] = []): string 
 }
 
 const ROUTE_PRIORITY = [
+  /(?:^|\/)apps\/[^/]+\/app\/page\.(tsx|jsx|ts|js)$/i,
+  /(?:^|\/)apps\/[^/]+\/page\.(tsx|jsx|ts|js)$/i,
   /(?:^|\/)app\/page\.(tsx|jsx|ts|js)$/i,
   /(?:^|\/)src\/app\/page\.(tsx|jsx|ts|js)$/i,
   /(?:^|\/)pages\/index\.(tsx|jsx|ts|js)$/i,

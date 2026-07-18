@@ -20,6 +20,7 @@ import { cloneRepo } from "../project/cloneRepo";
 import { applyAssetGit, rollbackCommit } from "../git";
 import { getRepoStatus } from "../git/status";
 import { buildEditorFileUrl, buildEditorFolderUrl } from "../../shared/editorLinks";
+import { saveEvidenceScreenshot } from "../evidence/storeEvidence";
 import { buildFileTree, readProjectFile } from "../fs/tree";
 import {
   addRecent,
@@ -31,6 +32,12 @@ import {
 } from "../store";
 import { clearAuthBlob, loadAuthBlob, saveAuthBlob } from "../auth";
 import { agentCoordinator } from "../agentHost";
+import { runOrchestrator } from "../orchestration/orchestrator";
+import { getBrowseSession } from "../orchestration/toolRouter";
+import { notificationCenter } from "../background/notificationCenter";
+import { enqueueBackgroundJob, refreshFactsFromScan } from "../background/jobs";
+import { startProjectIndexWatcher } from "../context/projectIndexWatcher";
+import { searchProjectIndex } from "../context/projectIndex";
 import {
   loadLocalPlanProgress,
   saveLocalPlanProgress,
@@ -41,6 +48,7 @@ import {
   getLocalRunEvents,
   listLocalRuns,
 } from "../activity/localArchive";
+import type { StartOrchestratedRun } from "../../shared/orchestration";
 
 const projectSourceSchema = z.union([
   z.object({ kind: z.literal("folder"), path: z.string().min(1) }),
@@ -122,6 +130,22 @@ export function registerIpcHandlers(): void {
       source: profile.source,
       openedAt: Date.now(),
     });
+    const cwd =
+      profile.source.kind === "folder"
+        ? profile.source.path
+        : profile.localPath;
+    if (cwd) {
+      startProjectIndexWatcher(profile.id, cwd);
+      void refreshFactsFromScan(profile.id, cwd, {
+        name: profile.name,
+        framework: profile.framework,
+        hasGa4: profile.hasAnalytics,
+        routes: profile.routes,
+        brandHints: profile.readmeSummary ? [profile.readmeSummary.slice(0, 200)] : undefined,
+      }).catch(() => {
+        /* non-blocking */
+      });
+    }
     return profile;
   });
 
@@ -268,6 +292,17 @@ export function registerIpcHandlers(): void {
       .parse(raw);
     return agentCoordinator.apply(runId, files);
   });
+  ipcMain.handle(IPC.agent.applyHunks, (_e, raw: unknown) => {
+    const { runId, file, patch, hunkIds } = z
+      .object({
+        runId: z.string().min(1),
+        file: z.string().min(1),
+        patch: z.string().min(1),
+        hunkIds: z.array(z.string()).min(1),
+      })
+      .parse(raw);
+    return agentCoordinator.applyHunks(runId, file, patch, hunkIds);
+  });
   ipcMain.handle(IPC.agent.discard, (_e, rawRunId: unknown) => {
     const runId = z.string().min(1).parse(rawRunId);
     return agentCoordinator.discard(runId);
@@ -409,7 +444,183 @@ export function registerIpcHandlers(): void {
     }
   });
 
+  ipcMain.handle(IPC.evidence.saveScreenshot, async (_e, raw: unknown) => {
+    const input = z
+      .object({
+        projectId: z.string().min(1),
+        runId: z.string().min(1),
+        pngBase64: z.string().min(1),
+      })
+      .parse(raw);
+    const filePath = await saveEvidenceScreenshot(
+      input.projectId,
+      input.runId,
+      input.pngBase64,
+    );
+    return { ok: true, path: filePath };
+  });
+
   ipcMain.on(IPC.updater.install, () => {
     electronUpdater.autoUpdater.quitAndInstall();
+  });
+
+  // RunOrchestrator — unified intent entry
+  const startOrchSchema = z.object({
+    projectId: z.string().min(1),
+    cwd: z.string().min(1),
+    intent: z.discriminatedUnion("kind", [
+      z.object({
+        kind: z.literal("ask"),
+        prompt: z.string(),
+        mentions: z.array(z.any()).optional(),
+      }),
+      z.object({
+        kind: z.literal("edit"),
+        goal: z.string(),
+        mentions: z.array(z.any()).optional(),
+        skills: z.array(z.string()).optional(),
+        guaranteedShip: z.boolean().optional(),
+      }),
+      z.object({
+        kind: z.literal("browse"),
+        goal: z.string(),
+        startUrl: z.string().optional(),
+        maxSteps: z.number().optional(),
+      }),
+      z.object({
+        kind: z.literal("plan"),
+        horizon: z.union([z.literal(14), z.literal(30)]),
+        mode: z.enum(["ai", "preview"]),
+      }),
+      z.object({
+        kind: z.literal("verify"),
+        afterApply: z.literal(true),
+        url: z.string(),
+        checklist: z.array(z.string()),
+      }),
+    ]),
+    sessionId: z.string().optional(),
+    planTaskId: z.string().optional(),
+    serverUrl: z.string().min(1),
+    sessionToken: z.string(),
+    autoApproveBrowser: z.boolean().optional(),
+    persona: z.enum(["marketing", "sales"]).optional(),
+    marketingProfile: z.record(z.string(), z.unknown()).optional(),
+    ask: z
+      .object({
+        history: z.array(z.object({ role: z.string(), content: z.string() })).optional(),
+        profile: z.unknown().optional(),
+        planSnapshot: z.unknown().optional(),
+        planProgressSummary: z.unknown().optional(),
+        context: z.unknown().optional(),
+        activeSurface: z.string().optional(),
+        provider: z.string().optional(),
+      })
+      .optional(),
+  });
+
+  ipcMain.handle(IPC.runs.start, (e, raw: unknown) => {
+    const win = senderWindow(e);
+    if (win) {
+      runOrchestrator.attachWindow(win);
+      notificationCenter.attachWindow(win);
+    }
+    return runOrchestrator.start(startOrchSchema.parse(raw) as StartOrchestratedRun);
+  });
+  ipcMain.handle(IPC.runs.interrupt, (_e, rawRunId: unknown) => {
+    runOrchestrator.interrupt(z.string().min(1).parse(rawRunId));
+  });
+  ipcMain.handle(IPC.runs.browserControl, (_e, raw: unknown) => {
+    const input = z
+      .object({
+        runId: z.string().min(1),
+        action: z.enum(["pause", "resume", "steer", "approve", "reject", "stop"]),
+        text: z.string().optional(),
+        approvalId: z.string().optional(),
+      })
+      .parse(raw);
+    const session = getBrowseSession(input.runId);
+    if (!session) return { ok: false };
+    switch (input.action) {
+      case "pause":
+        session.pause();
+        break;
+      case "resume":
+        session.resume();
+        break;
+      case "steer":
+        if (input.text) session.steer(input.text);
+        break;
+      case "approve":
+        if (input.approvalId) session.approve(input.approvalId);
+        break;
+      case "reject":
+        if (input.approvalId) session.reject(input.approvalId);
+        break;
+      case "stop":
+        session.stop();
+        break;
+    }
+    return { ok: true };
+  });
+
+  ipcMain.handle(IPC.context.search, async (_e, raw: unknown) => {
+    const { projectId, cwd, query, limit } = z
+      .object({
+        projectId: z.string(),
+        cwd: z.string(),
+        query: z.string(),
+        limit: z.number().optional(),
+      })
+      .parse(raw);
+    return searchProjectIndex(projectId, cwd, query, limit ?? 8);
+  });
+  ipcMain.handle(IPC.context.suggest, async (_e, raw: unknown) => {
+    const { projectId, cwd, prefix } = z
+      .object({ projectId: z.string(), cwd: z.string(), prefix: z.string() })
+      .parse(raw);
+    const hits = await searchProjectIndex(projectId, cwd, prefix || "page", 12);
+    const paths = [...new Set(hits.map((h) => h.path))];
+    return paths.map((p) => ({ type: "file" as const, path: p }));
+  });
+
+  ipcMain.handle(IPC.notifications.list, () => notificationCenter.list());
+  ipcMain.handle(IPC.notifications.dismiss, (_e, rawId: unknown) => {
+    notificationCenter.dismiss(z.string().min(1).parse(rawId));
+  });
+
+  ipcMain.handle(IPC.index.enqueue, (_e, raw: unknown) => {
+    const job = z
+      .object({
+        type: z.enum(["index.full", "index.incremental", "facts.refresh", "health.probe"]),
+        projectId: z.string().optional(),
+        cwd: z.string().optional(),
+        paths: z.array(z.string()).optional(),
+      })
+      .parse(raw);
+    if (job.type === "health.probe") {
+      enqueueBackgroundJob({ type: "health.probe" });
+      return;
+    }
+    if (!job.projectId || !job.cwd) return;
+    if (job.type === "facts.refresh") {
+      enqueueBackgroundJob({ type: "facts.refresh", projectId: job.projectId, cwd: job.cwd });
+      return;
+    }
+    enqueueBackgroundJob({
+      type: job.type,
+      projectId: job.projectId,
+      cwd: job.cwd,
+      ...(job.type === "index.incremental" && job.paths ? { paths: job.paths } : {}),
+    });
+  });
+
+  ipcMain.handle(IPC.traces.list, async () => {
+    const { listRunTraces } = await import("../obs/runTrace");
+    return listRunTraces();
+  });
+  ipcMain.handle(IPC.traces.read, async (_e, rawId: unknown) => {
+    const { readRunTrace } = await import("../obs/runTrace");
+    return readRunTrace(z.string().min(1).parse(rawId));
   });
 }

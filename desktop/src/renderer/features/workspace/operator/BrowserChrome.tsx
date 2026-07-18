@@ -4,10 +4,11 @@ interface BrowserChromeProps {
   url?: string;
   title?: string;
   reloading: boolean;
+  actionLabel?: string;
 }
 
 /** A lightweight browser-chrome header: URL bar + secure/sandbox badges. */
-export function BrowserChrome({ url, title, reloading }: BrowserChromeProps) {
+export function BrowserChrome({ url, title, reloading, actionLabel }: BrowserChromeProps) {
   const secure = !!url && url.startsWith("https://");
   return (
     <div className="flex items-center gap-2 border-b border-line bg-surface px-3 py-2">
@@ -27,7 +28,12 @@ export function BrowserChrome({ url, title, reloading }: BrowserChromeProps) {
         <span className="min-w-0 flex-1 truncate font-mono text-micro text-text-2">
           {url ?? "about:blank"}
         </span>
-        {title && (
+        {actionLabel && (
+          <span className="hidden shrink-0 rounded-full bg-accent-soft px-2 py-0.5 text-[10px] text-accent sm:inline">
+            {actionLabel}
+          </span>
+        )}
+        {title && !actionLabel && (
           <span className="hidden max-w-[40%] shrink-0 truncate text-micro text-text-3 sm:inline">
             {title}
           </span>

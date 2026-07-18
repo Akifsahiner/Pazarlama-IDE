@@ -57,6 +57,14 @@ const schema = z.object({
   SUPABASE_JWT_AUD: z.string().default("authenticated"),
   // HS256 secret used to verify Supabase access tokens. Empty = JWT auth disabled.
   SUPABASE_JWT_SECRET: z.string().default(""),
+
+  // Stripe billing (Faz A). Empty = checkout returns billing_not_configured.
+  STRIPE_SECRET_KEY: z.string().default(""),
+  STRIPE_WEBHOOK_SECRET: z.string().default(""),
+  STRIPE_PRICE_PRO: z.string().default(""),
+  STRIPE_PRICE_TEAM: z.string().default(""),
+  STRIPE_SUCCESS_URL: z.string().default("marketingide://billing/success"),
+  STRIPE_CANCEL_URL: z.string().default("marketingide://billing/cancel"),
 });
 
 export const env = schema.parse(process.env);

@@ -65,7 +65,7 @@ export function FirstRunFunnel() {
               </span>
               <div>
                 <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-ink-3">
-                  Minute {index === 0 ? "1–2" : index === 1 ? "3–4" : index === 2 ? "5–7" : "8–10"}
+                  Minute {index === 0 ? "1–5" : index === 1 ? "5–10" : index === 2 ? "10–20" : "20–60"}
                 </p>
                 <h3 className="mt-0.5 text-[16px] font-semibold tracking-[-0.02em] text-ink">
                   {step.title}

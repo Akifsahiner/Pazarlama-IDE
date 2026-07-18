@@ -23,6 +23,7 @@ import { feedbackRoutes } from "./routes/feedback.js";
 import { qualityRoutes } from "./routes/quality.js";
 import { teamRoutes } from "./routes/team.js";
 import { reportRoutes } from "./routes/reports.js";
+import { billingRoutes, billingWebhookRoutes } from "./routes/billing.js";
 import { getGa4OAuthConfig } from "./connectors/ga4.js";
 import { getMetaOAuthConfig } from "./connectors/meta.js";
 import { getLinkedInOAuthConfig } from "./connectors/linkedin.js";
@@ -55,6 +56,9 @@ const app = Fastify({
 });
 
 await app.register(fastifyWebsocket);
+
+// Stripe webhook needs the raw body — register before the default JSON parser path.
+await app.register(billingWebhookRoutes);
 
 // CORS + rate limiting (dependency-free).
 registerSecurity(app);
@@ -93,6 +97,7 @@ app.get("/config", async () => ({
 }));
 
 await app.register(meRoutes);
+await app.register(billingRoutes);
 await app.register(projectRoutes);
 await app.register(marketingProfileRoutes);
 await app.register(connectorRoutes);

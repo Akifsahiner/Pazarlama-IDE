@@ -22,10 +22,70 @@ Living notes for the "Claude arka plan motoru" build. Plan: `.cursor/plans/marke
 **Decision:** All sources normalize into one `RunEvent` union with monotonic per-run `seq`; clients resume from `afterSeq`. Canonical type: `server/src/runs/types.ts`; mirror: `desktop/src/shared/types.ts`.
 **Why:** Single coherent stream powers the Execution Canvas, activity timeline, and replay.
 
+### ADR-5 — RunOrchestrator + ContextGraph + CapabilityMatrix
+**Decision:** Electron main owns a **RunOrchestrator** (`desktop/src/main/orchestration/`) that accepts unified `RunIntent` via IPC `runs.start`. Local Agent Host (edit), browser CU (`browser.*` tools / `BrowserToolSession`), and ask/plan delegation share one `RunEventBus`. **CapabilityMatrix** (`desktop/src/shared/capability.ts`) is the only AI/CU gate — never raw `connection.state` alone; CTAs use exact fix labels (no generic “Connect”). **ContextGraph** is a per-project local index (JSON + FTS-lite today; SQLite-shaped schema) with `ContextPack` injected before runs; scan → facts → `MarketingProfile` site_structure/tracking_flags. Background indexer + NotificationCenter emit real-signal notifications only (1h dedupe). Run traces append to `userData/traces/{runId}.jsonl`.
+**Why:** Kill three-silo glue in the renderer; match Cursor-class “knows / thinks / verifies” without uploading the repo.
+**Consequence:** Renderer `store` wrappers call `runs.start` / `browserControl`; Brain SSE remains delegated for ask/plan until fully toolized.
+
+### ADR-6 — Software CMO (product north star)
+**Decision:** Marketing IDE is a **Software CMO** — not a launch checklist, SEO utility, or advice chatbot. The product diagnoses the project, selects a **channel thesis** appropriate to the product/founder (awareness, distribution, conversion, revenue, measurement), runs a **continuous** intake → operate → measure → pivot loop, executes **Lane A** work in the repo, and prepares/directs **Lane B** human work (post, DM, ads UI, launch day) and **Lane C** delegate briefs. Social posting stays human-driven; the system owns strategy, assets, calendar, and accountability.
+**Why:** Users want traffic, visibility, and sales — achievable only with CMO-grade operations, not generic tips. Competing with Cursor requires solving **big** growth coordination, not small copy edits.
+**Canonical doc:** [`PRODUCT_NORTH_STAR.md`](PRODUCT_NORTH_STAR.md) + `.cursor/rules/product-north-star.mdc` (always-on agent context).
+**Implementation pillars (priority):** P0 CMO Intake + channel thesis → P1 operating cadence UI → P2 proof loop → P3 Lane B task system → P4 continuous replan.
+**Feature gate:** Every GTM/onboarding/plan feature must pass the checklist in PRODUCT_NORTH_STAR §12.
+
 ## First milestone (golden path)
 `Open project → understand product → homepage audit → prepare patch → show diff → run preview → browser verification → approve → generate launch plan`
 
-## Status log
+- **Implemented:** `desktop/src/shared/cmoIntake.ts`, `CmoIntakeCard`, `beginCmoWeek1`, spec `CMO_INTAKE_SPEC.md`
+
+## Status log (CMO P0 — 2026-07)
+- **CMO Intake + Channel Thesis (P0)** — `buildCmoIntake()` deterministic thesis engine; 8 channel theses; Cluely calibration test; `channel_thesis` on MarketingProfile; Reveal CMO beat; `beginCmoWeek1` starts campaign + Week 1 system run. DONE
+
+## Status log (CMO P1 — 2026-07)
+- **Operating Cadence + Accountability (P1)** — `cmoOpsCadence.ts` sequential Week-1 ops table; stable `week1_priorities.id`; `ops_cadence` on profile; `CmoOpsBoard` + proof modal; apply auto-completes system tasks; `nextAction` surfaces user moves. DONE — spec `CMO_OPS_SPEC.md`
+
+## Status log (CMO P2 — 2026-07)
+- **KPI Proof Loop + Pivot (P2)** — `cmoProofLoop.ts` ties user task close to `manual_kpis`/GA4; week review gate; flat-metric `pivot_suggestion`; `CmoPivotCard` + week review modal. DONE — spec `CMO_PROOF_LOOP_SPEC.md`
+
+## Status log (CMO P3 — 2026-07)
+- **Lane B Task System (P3)** — `cmoLaneB.ts` posting calendar / outreach tracker / launch runbook / distribution log; `LaneBPanel` + proof modal; linked ops KPI; `nextAction` Lane B dispatch. DONE — spec `CMO_LANE_B_SPEC.md`
+
+## Status log (CMO P6 — 2026-07)
+- **Lane A Execution System (P6)** — `cmoLaneA.ts` thesis-aware run plans (skills, scout, browser); `LaneAPanel`; `startLaneARun`; apply → Lane A + ops proof. DONE — spec `CMO_LANE_A_SPEC.md`
+
+## Status log (CMO P7 — 2026-07)
+- **Growth Control Plane (P7)** — `cmoGrowthPlane.ts` equation + binding + red list; `growth_control_plane` on profile; recompute on intake/ops/KPI; P12 owns its command UX. DONE — spec `CMO_GROWTH_PLANE_SPEC.md`
+
+## Status log (CMO P8 — 2026-07)
+- **Distribution Operator (P8)** — `cmoDistributionOperator.ts` volume grid + retention proof + scale/kill/double-down; `DistributionOperatorPanel`; P7 strip enrichment; Lane B sync; KPI rollup. DONE — spec `CMO_DISTRIBUTION_OPERATOR_SPEC.md`
+
+## Status log (CMO P9 — 2026-07)
+- **Influencer Operator (P9)** — `cmoInfluencerOperator.ts` creator pipeline + pitch variants + deal/UTM tracking + scale/kill/double-down; `InfluencerOperatorPanel` + proof/deal modals; P7 strip outreach summary; Lane B sync; delegate VA import; KPI rollup + CSV export. DONE — spec `CMO_INFLUENCER_OPERATOR_SPEC.md`
+
+## Status log (CMO P10 — 2026-07)
+- **Delegation Operator (P10)** — `cmoDelegateOperator.ts` hire scaffolds + D1–7 daily rubrics + lane link sync + import parsers + promote/extend/release verdicts; `DelegateOperatorPanel` + hire/rubric modals; P7 strip rubric summary; P2 pivot suppress on promote; KPI rollup. DONE — spec `CMO_DELEGATE_OPERATOR_SPEC.md`
+
+## Status log (CMO P11 — 2026-07)
+- **Growth Memory (P11)** — `cmoGrowthMemory.ts` cycle-linked experiment/message ledger + deterministic winner/loser classification + memory-aware Week N+1 replan; `GrowthMemoryPanel` + `ReplanPreviewCard`; P7/P8/P9/P4 integration; KPI rollup. DONE — spec `CMO_GROWTH_MEMORY_SPEC.md`
+
+## Status log (CMO P12 — 2026-07)
+- **Command Surface Simplification (P12)** — deterministic `cmoCommandSurface.ts`; four-field `GrowthCommandSurface`; single governance banner; Ops/Lane/operator/Memory/Cycle `CmoBackstage`; CMO NextActionBar de-duplication with blocking-action preservation. DONE — spec `CMO_COMMAND_SURFACE_SPEC.md`
+
+## Status log (CMO P13 — 2026-07)
+- **Founder-Fit Intake + Strategic Options (P13)** — exactly seven founder-fit questions; deterministic cultural tension + shared narrative; A/B/C options with eligibility, recommendation, honest 30-day targets, and CMO/founder contract; sealed decision gate before Week 1; narrative inheritance across execution lanes. DONE — spec `CMO_FOUNDER_FIT_SPEC.md`
+
+## Status log (CMO P14 — 2026-07)
+- **Budget Plane (P14)** — numeric monthly boundary + deterministic thesis allocation; Lane B/C/operator estimates and actual-spend proof; honest week-close channel CPA; cycle budget archive; spend-only P11 experiments; user-applied reallocation preview. DONE — spec `CMO_BUDGET_PLANE_SPEC.md`
+
+## Status log (CMO P15 — 2026-07)
+- **Product Loop / Lane D (P15)** — activation + TTFV intake; deterministic product binding; explicit marketing pause; P0 PRODUCT REQUESTs with acceptance/growth impact; site fixes via Lane A; core issue export/proof; product-fix memory and human resume gate. DONE — spec `CMO_PRODUCT_LOOP_SPEC.md`
+
+## Status log (CMO P16 — 2026-07)
+- **Revenue & Monetization Plane (P16)** — pricing thesis intake; payment funnel + paying-customer targets from P13; revenue binding focus shift; monetization P0 tasks with Lane A/issue export; evidence-bound CAC/LTV; cycle revenue snapshot; `revenue_signal` memory isolation; command-surface `revenue_focus`. DONE — spec `CMO_REVENUE_PLANE_SPEC.md`
+
+## Status log (CMO P17 — 2026-07)
+- **Growth Mechanism Intelligence (P17)** — 14-mechanism knowledge corpus; public presence intake; mechanism-driven A/B/C; `applyMechanismToChannelThesis` week1 diversity; anti-pattern red list; operator flags (distribution/influencer/delegate/character_mode); `engine_signal` memory + replan hints; backstage rationale panel. DONE — spec `CMO_GROWTH_ENGINE_SPEC.md`
 
 - **Faz 0 — contracts & scaffold** (in progress)
   - `server/src/runs/types.ts` — canonical RunEvent + permission matrix. DONE
@@ -188,6 +248,60 @@ Plan: `.cursor/plans/senior_product_remediation_32fb5642.plan.md` (do not edit t
 | Guardrails | Quota banner at 80%; block second `startRun` while a run is active |
 
 **Verify:** `cd desktop && npm run typecheck` — PASS after remediation.
+
+## Skill Excellence Program — GTM skill packs (P0 + P1)
+
+**Contract:** `SKILL_EXCELLENCE.md` — 7 layers per pack. Plan Studio tasks bind to registry tactic IDs; channel playbooks lint at 100% tactic coverage.
+
+### P0 — Primary distribution (v1.0.0)
+| Skill | Stub | Focus |
+|-------|------|-------|
+| `community-launch` | `community-launch` | Show HN / IH / Reddit (ethical) |
+| `seo-content-engine` | `seo-foundation` | Intent cluster, vs/alternatives |
+| `email-nurture-sequence` | `email-nurture` | Pre-launch drip + launch waves |
+
+### P1 — Second wave (v1.0.0)
+| Skill | Stub | Focus |
+|-------|------|-------|
+| `twitter-x-founder-gtm` | `twitter-x-gtm` | Threads, build-in-public, 2h reply SLA |
+| `newsletter-sponsorship` | `newsletter-sponsorship` | Niche dev newsletters, UTM, CPA kill |
+| `press-pr-launch` | `press-pr-launch` | Embargo, 5 reporter pitches, press kit |
+| `devrel-open-source-launch` | `devrel-open-source-launch` | README star CTA, awesome-list PR |
+
+**Runtime:** `eligiblePlaybooks(ctx)` skipIf contract; discipline maps (`social`→X, `ads`→newsletter); desktop `gtmCatalog` + HelpPage v1.0.0.
+
+**Eval gates (structural):** `skill:audit` 20/20 · `eval:skill-quality` 120 cases · `eval:skill-coverage` · `eval:p0-plan-smoke` 64 checks · `eval:devflow-plan-smoke` Phase A.
+
+**Optional LLM:** `P0_LLM_SMOKE=1` / `DEVFLOW_LLM_SMOKE=1` with `ANTHROPIC_API_KEY`.
+
+### P0 Anti-comfort trio (chat UX)
+- **Router:** broad GTM questions → `launch_plan` + `decide` + `deep`.
+- **Answer prompt:** `Honest ceiling` → `Do this next` → `Why (brief)`.
+- **Chat→task CTA:** proactive card with Generate plan / Run task.
+
+### P1 Anti-comfort (quality + effort)
+- **Answer generality gate:** structural lint (headings, hype, generic phrases) + fast LLM critic; buffer+revise before tokens stream; `AnswerQualityBadge` in thread.
+- **Effort badge:** `estimatePlanEffort` — founder minutes by task mode; shown in Plan Studio, playbook detail, proactive CTA.
+
+### P2 Anti-comfort (decision + peak day)
+- **Decision effort badge:** `estimateDecisionEffort` infers from tactic stack (`T-7`/`H0` phases) or live plan; `EffortBadge` + compact `PeakDayWarning` on `MarketingDecisionCard`.
+- **Launch week peak warning:** `peakLaunchDayFromTasks` + `PeakDayWarning` banner in `PlanProgressHeader`, `LaunchTimeline` (axis highlight), `PlaybookDetailPanel`.
+
+### Context excellence (Cursor-parity pass)
+- **Brain sees ContextPack:** `local_context_pack` in `agentTurnContextSchema` → `agentContextBlock` in prompts (hybrid retrieve + facts + @mentions).
+- **Scan → profile sync:** `profileFromProjectScan` merges channels/assets; PATCH to server on open; `loadMarketingProfile` re-merges scan facts.
+- **Monorepo scanner:** picks best `package.json` under `apps/*` (fixes Ghost-style repos).
+- **@mentions wired:** `parseMentionsFromText` → ask/edit runs → ContextPack excerpts.
+- **Index depth:** prioritized paths (pages, apps/, package.json) · 600 files cap.
+- **Incremental index:** `projectIndexWatcher` (debounced chokidar) → `index.incremental` jobs on save; quiet notifications unless ≥3 files change.
+- **Citation chips:** Brain `path:line` contract → `linkifyCodeCitations` in `AgentMarkdown` + `ContextCitationChips` (open in Cursor).
+
+### Advice → Ship + Instant ROI
+- **ExecutableAction layer:** `propose_executable_actions` Brain tool + `executionClassifier` → SSE `executable_action` + `suggested_mode: edit`.
+- **TurnReceipt:** `buildTurnReceipt` after every ask/edit; `TurnReceiptCard` in thread with files/commit/duration/cost.
+- **Context carry-over:** `enrichEditGoal` injects answer + assets + citations into edit runs.
+- **Apply amplification:** apply shows commit SHA + line stats; `firstShipAt` + Home last-ship strip.
+- **Reveal CTA:** "Ship hero CTA first" → concrete `beginFirstShip` edit handoff from scan routes.
 
 ## Activity hub — Runs archive + Marketing Activity (G1–G5)
 

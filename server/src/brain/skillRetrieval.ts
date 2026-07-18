@@ -22,6 +22,10 @@ interface SkillManifest {
   playbook_selector?: Array<{
     if: Partial<{
       current_users_lt: number;
+      email_list_size_gte: number;
+      email_list_size_lt: number;
+      days_until_launch_gte: number;
+      sales_pipeline_empty: boolean;
       channels_includes: string[];
       business_model: string[];
       category_contains: string[];
@@ -42,17 +46,17 @@ export interface SkillPack {
 }
 
 const DISCIPLINE_TO_SKILL_IDS: Record<Discipline, string[]> = {
-  positioning: ["product-intelligence", "landing-page-conversion"],
+  positioning: ["product-intelligence", "landing-page-conversion", "seo-content-engine", "devrel-open-source-launch"],
   icp: ["product-intelligence", "lead-research"],
   landing: ["landing-page-conversion"],
-  ph_launch: ["ph_launch", "launch-asset-generator"],
-  launch_plan: ["launch-planning", "waitlist-hype-engine", "linkedin-founder-gtm"],
-  email: ["outreach-drafting", "launch-asset-generator"],
-  content: ["launch-asset-generator", "short-form-video", "linkedin-founder-gtm"],
-  seo: ["landing-page-conversion"],
-  social: ["short-form-video", "linkedin-founder-gtm", "launch-asset-generator"],
-  growth: ["launch-planning", "waitlist-hype-engine", "influencer-partnerships"],
-  ads: ["paid-ads-optimization", "launch-asset-generator"],
+  ph_launch: ["ph_launch", "community-launch", "launch-asset-generator"],
+  launch_plan: ["launch-planning", "waitlist-hype-engine", "community-launch", "press-pr-launch", "linkedin-founder-gtm"],
+  email: ["email-nurture-sequence", "outreach-drafting", "waitlist-hype-engine", "launch-asset-generator"],
+  content: ["launch-asset-generator", "short-form-video", "linkedin-founder-gtm", "twitter-x-founder-gtm"],
+  seo: ["seo-content-engine", "landing-page-conversion", "community-launch"],
+  social: ["twitter-x-founder-gtm", "community-launch", "short-form-video", "linkedin-founder-gtm", "launch-asset-generator"],
+  growth: ["launch-planning", "waitlist-hype-engine", "community-launch", "seo-content-engine", "newsletter-sponsorship", "influencer-partnerships"],
+  ads: ["paid-ads-optimization", "newsletter-sponsorship", "launch-asset-generator"],
   cro: ["landing-page-conversion"],
   analytics: ["analytics-measurement"],
   pricing: ["product-intelligence"],
@@ -75,6 +79,14 @@ export const PLAYBOOK_STUB_TO_SKILL: Record<string, string> = {
   "content-engine": "launch-asset-generator",
   "sales-outbound": "outreach-drafting",
   "analytics-measurement": "analytics-measurement",
+  "community-launch": "community-launch",
+  "seo-foundation": "seo-content-engine",
+  "seo-content-engine": "seo-content-engine",
+  "email-nurture": "email-nurture-sequence",
+  "twitter-x-gtm": "twitter-x-founder-gtm",
+  "newsletter-sponsorship": "newsletter-sponsorship",
+  "press-pr-launch": "press-pr-launch",
+  "devrel-open-source-launch": "devrel-open-source-launch",
 };
 
 const SKILLS_DIR_CANDIDATES = [
@@ -98,6 +110,9 @@ async function skillsDir(): Promise<string | null> {
 }
 
 const manifestCache = new Map<string, SkillManifest>();
+const playbookBodyCache = new Map<string, string>();
+const renderContextCache = new Map<string, string>();
+
 async function readManifest(id: string): Promise<SkillManifest | null> {
   if (manifestCache.has(id)) return manifestCache.get(id) ?? null;
   const root = await skillsDir();
@@ -122,7 +137,12 @@ function arrSome(a?: string[], hay?: string[]): boolean {
 function appliesTo(manifest: SkillManifest, profile: MarketingProfile): boolean {
   const aw = manifest.applies_when;
   if (aw) {
-    if (aw.company_stage?.length && profile.company_stage && !aw.company_stage.includes(profile.company_stage)) return false;
+    if (aw.company_stage?.length && profile.company_stage) {
+      const allowed = new Set(
+        aw.company_stage.flatMap((s) => (s === "pre-launch" ? ["prelaunch", "pre-launch"] : [s])),
+      );
+      if (!allowed.has(profile.company_stage)) return false;
+    }
     if (aw.business_model?.length && profile.business_model && !aw.business_model.includes(profile.business_model)) return false;
     if (aw.channels_includes?.length && !arrSome(aw.channels_includes, profile.available_channels)) return false;
   }
@@ -139,6 +159,16 @@ function selectPlaybook(manifest: SkillManifest, profile: MarketingProfile): str
   for (const rule of manifest.playbook_selector) {
     const ok = (() => {
       const cond = rule.if;
+      if (typeof cond.email_list_size_gte === "number") {
+        if ((profile.email_list_size ?? 0) >= cond.email_list_size_gte) return true;
+      }
+      if (typeof cond.email_list_size_lt === "number") {
+        if ((profile.email_list_size ?? 0) < cond.email_list_size_lt) return true;
+      }
+      if (typeof cond.days_until_launch_gte === "number") {
+        if ((profile.days_until_launch ?? 0) >= cond.days_until_launch_gte) return true;
+      }
+      if (cond.sales_pipeline_empty === true && profile.sales_pipeline_empty === true) return true;
       if (typeof cond.current_users_lt === "number") {
         if ((profile.current_users ?? 0) < cond.current_users_lt) return true;
       }
@@ -181,7 +211,12 @@ async function loadPack(
   const playbookId = selectPlaybook(manifest, profile);
   let playbook: SkillPack["playbook"] = null;
   if (playbookId) {
-    const body = await tryRead(`${id}/playbooks/${playbookId}.md`);
+    const cacheK = `${id}:${playbookId}`;
+    let body = playbookBodyCache.get(cacheK);
+    if (!body) {
+      body = (await tryRead(`${id}/playbooks/${playbookId}.md`)) ?? "";
+      if (body) playbookBodyCache.set(cacheK, body);
+    }
     if (body) playbook = { id: playbookId, body };
   }
 
@@ -211,17 +246,59 @@ async function loadPack(
   };
 }
 
+const PLAYBOOK_CHAR_CAP = 12_000;
+
+function capPlaybook(pack: SkillPack): SkillPack {
+  if (!pack.playbook || pack.playbook.body.length <= PLAYBOOK_CHAR_CAP) return pack;
+  const body = pack.playbook.body;
+  const stackIdx = body.search(/## Tactic stack/i);
+  const trimmed =
+    stackIdx >= 0
+      ? body.slice(0, 800) + "\n\n" + body.slice(stackIdx, stackIdx + PLAYBOOK_CHAR_CAP - 900)
+      : body.slice(0, PLAYBOOK_CHAR_CAP);
+  return { ...pack, playbook: { ...pack.playbook, body: trimmed + "\n…[truncated]" } };
+}
+
 export async function retrieveSkills(
   discipline: Discipline,
   profile: MarketingProfile,
   limit = 2,
 ): Promise<SkillPack[]> {
+  return retrieveSkillsV2(discipline, profile, { limit, primaryFull: true });
+}
+
+/**
+ * Skill Excellence retrieval: primary pack gets full playbook + up to 5 templates;
+ * support packs get principles only (token budget).
+ */
+export async function retrieveSkillsV2(
+  discipline: Discipline,
+  profile: MarketingProfile,
+  opts: { limit?: number; primaryFull?: boolean } = {},
+): Promise<SkillPack[]> {
+  const limit = opts.limit ?? 2;
+  const primaryFull = opts.primaryFull !== false;
   const ids = DISCIPLINE_TO_SKILL_IDS[discipline] ?? [];
   const out: SkillPack[] = [];
-  for (const id of ids) {
-    if (out.length >= limit) break;
-    const pack = await loadPack(id, profile, 2);
-    if (pack) out.push(pack);
+  for (let i = 0; i < ids.length && out.length < limit; i++) {
+    const id = ids[i]!;
+    const isPrimary = out.length === 0;
+    const templateLimit = isPrimary && primaryFull ? 5 : 1;
+    const pack = await loadPack(id, profile, templateLimit);
+    if (!pack) continue;
+    if (isPrimary && primaryFull) {
+      out.push(capPlaybook(pack));
+    } else {
+      // Support: principles + anti excerpt only
+      out.push({
+        ...pack,
+        playbook: null,
+        templates: [],
+        antiPatterns: pack.antiPatterns.slice(0, 1500),
+        decisionTree: null,
+        kpis: null,
+      });
+    }
   }
   return out;
 }
@@ -233,10 +310,10 @@ export async function retrieveSkillsForPlaybook(
 ): Promise<SkillPack[]> {
   const primaryId = PLAYBOOK_STUB_TO_SKILL[playbookStubId];
   if (primaryId) {
-    const pack = await loadPack(primaryId, profile, 3);
-    if (pack) return [pack];
+    const pack = await loadPack(primaryId, profile, 5);
+    if (pack) return [capPlaybook(pack)];
   }
-  return retrieveSkills("launch_plan", profile, 2);
+  return retrieveSkillsV2("launch_plan", profile, { limit: 2, primaryFull: true });
 }
 
 /** All skill pack directory ids referenced by discipline routing or playbook stubs. */
@@ -257,7 +334,12 @@ export function disciplineSkillMap(): Record<Discipline, string[]> {
 /** Compact text rendering for direct injection into a system prompt. */
 export function renderSkillContext(packs: SkillPack[]): string {
   if (packs.length === 0) return "";
-  return packs
+  const hash = packs
+    .map((p) => `${p.id}:${p.playbook?.id ?? ""}:${(p.playbook?.body.length ?? 0)}`)
+    .join("|");
+  const cached = renderContextCache.get(hash);
+  if (cached) return cached;
+  const out = packs
     .map((p) => {
       const sections: string[] = [];
       sections.push(`## SKILL — ${p.manifest.name} (${p.manifest.category})`);
@@ -275,4 +357,6 @@ export function renderSkillContext(packs: SkillPack[]): string {
       return sections.join("\n\n");
     })
     .join("\n\n---\n\n");
+  renderContextCache.set(hash, out);
+  return out;
 }

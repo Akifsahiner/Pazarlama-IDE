@@ -57,6 +57,7 @@ export function PlanCanvas() {
     reducedMotion,
     connected,
     runtime,
+    capabilityMatrix,
     openConnectFlow,
     navigate,
     workspaceHandoff,
@@ -88,6 +89,7 @@ export function PlanCanvas() {
       reducedMotion: s.settings.reducedMotion,
       connected: s.runtime === "connected",
       runtime: s.runtime,
+      capabilityMatrix: s.capabilityMatrix,
       openConnectFlow: s.openConnectFlow,
       navigate: s.navigate,
       workspaceHandoff: s.workspaceHandoff,
@@ -170,7 +172,12 @@ export function PlanCanvas() {
               transition={pageFade.transition}
             >
               {runtime !== "connected" ? (
-                <ConnectGate feature="plan" capability={runtime} onConnect={openConnectFlow} />
+                <ConnectGate
+                  feature="plan"
+                  capability={runtime}
+                  matrix={capabilityMatrix}
+                  onConnect={openConnectFlow}
+                />
               ) : (
                 <PlanGenerationStage
                   status={status}
@@ -232,7 +239,7 @@ export function PlanCanvas() {
               secondaryAction={
                 deferPlanCta || connected || openAiBlocked
                   ? undefined
-                  : { label: "Connect for AI", onClick: () => openConnectFlow() }
+                  : { label: "Enable AI", onClick: () => openConnectFlow() }
               }
             />
           </motion.div>
@@ -355,7 +362,7 @@ function PlanStudioBody({
                 size="sm"
                 onClick={() => (connected ? void generatePlan() : openConnectFlow())}
               >
-                {connected ? "Generate AI plan" : "Connect for AI plan"}
+                {connected ? "Generate AI plan" : "Enable AI plan"}
               </Button>
               <Button variant="ghost" size="sm" onClick={openConnectFlow}>
                 Connection setup

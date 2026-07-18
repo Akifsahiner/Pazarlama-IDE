@@ -105,7 +105,7 @@ export function PlaybookCard({
 }) {
   const reducedMotion = useApp((s) => s.settings.reducedMotion);
   const Icon = ICONS[playbook.iconKey] ?? Target;
-  const connected = useApp((s) => s.connection.state === "connected");
+  const connected = useApp((s) => s.runtime === "connected");
   const accent = ACCENT_VAR[playbook.iconKey] ?? "var(--accent)";
   const completed = total > 0 && done >= total;
 

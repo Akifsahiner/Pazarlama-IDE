@@ -3,12 +3,42 @@
   "name": "Launch Asset Generator",
   "category": "launch",
   "applies_when": {
-    "company_stage": ["idea", "prelaunch", "pre-launch", "launched", "growing", "scaling", "early", "growth", "relaunch"],
-    "channels_includes": ["product_hunt", "twitter", "linkedin", "email", "paid_ads", "social"],
-    "business_model": ["saas", "freemium", "marketplace", "info_product", "mobile_app", "open_source", "consumer", "tool"]
+    "company_stage": [
+      "idea",
+      "prelaunch",
+      "pre-launch",
+      "launched",
+      "growing",
+      "scaling",
+      "early",
+      "growth",
+      "relaunch"
+    ],
+    "channels_includes": [
+      "product_hunt",
+      "twitter",
+      "linkedin",
+      "email",
+      "paid_ads",
+      "social"
+    ],
+    "business_model": [
+      "saas",
+      "freemium",
+      "marketplace",
+      "info_product",
+      "mobile_app",
+      "open_source",
+      "consumer",
+      "tool"
+    ]
   },
   "do_not_use_when": {
-    "constraints_includes": ["no_public_announcement_allowed", "stealth_mode", "embargo_locked_no_owned_channels"]
+    "constraints_includes": [
+      "no_public_announcement_allowed",
+      "stealth_mode",
+      "embargo_locked_no_owned_channels"
+    ]
   },
   "required_inputs": [
     "product_name",
@@ -21,8 +51,34 @@
   "output_schema": "launch_assets",
   "primary_metric": "launch_asset_completion_rate",
   "playbook_selector": [
-    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
-    { "if": { "channels_includes": ["email"] }, "pick": "with-email-list" },
-    { "if": { "business_model": ["saas", "freemium", "tool"] }, "pick": "b2b-saas" }
+    {
+      "if": {
+        "current_users_lt": 100
+      },
+      "pick": "no-audience"
+    },
+    {
+      "if": {
+        "channels_includes": [
+          "email"
+        ]
+      },
+      "pick": "with-email-list"
+    },
+    {
+      "if": {
+        "business_model": [
+          "saas",
+          "freemium",
+          "tool"
+        ]
+      },
+      "pick": "b2b-saas"
+    }
+  ],
+  "version": "1.1.0",
+  "changelog": "Manifest v2 fields for Skill Excellence",
+  "aggression_playbooks": [
+    "aggressive-platform-native"
   ]
 }

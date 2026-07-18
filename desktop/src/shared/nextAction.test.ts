@@ -3,6 +3,12 @@ import assert from "node:assert/strict";
 import { resolveNextAction, type NextActionInput } from "./nextAction";
 import type { MarketingPlan } from "./types";
 import { emptyProgressSnapshot } from "./planProgress";
+import { buildCmoIntake } from "./cmoIntake";
+import { createOpsCadenceFromThesis, completeOpsTask } from "./cmoOpsCadence";
+import { createLaneBWorkspaceFromThesis } from "./cmoLaneB";
+import { createDelegateWorkspaceFromThesis } from "./cmoLaneC";
+import { isCommandSurfaceOwnedAction } from "./cmoCommandSurface";
+import type { GrowthControlPlane } from "./cmoGrowthPlane";
 
 function base(overrides: Partial<NextActionInput> = {}): NextActionInput {
   return {
@@ -185,5 +191,218 @@ describe("resolveNextAction", () => {
     );
     assert.ok(a?.eyebrow.startsWith("Campaign ·"));
     assert.ok(a?.reason.includes("30-day launch"));
+  });
+
+  it("prefers unlocked user ops task when cadence active and no plan", () => {
+    const thesis = buildCmoIntake({
+      project: {
+        id: "p1",
+        source: { kind: "folder", path: "/p" },
+        name: "Acme",
+        framework: "Next",
+        routes: ["app/page.tsx"],
+        hasAnalytics: false,
+        excludedPaths: [],
+        scannedFileCount: 10,
+      },
+      persona: "marketing",
+    });
+    let cadence = createOpsCadenceFromThesis(thesis);
+    for (const t of cadence.tasks.filter((x) => x.owner === "system")) {
+      cadence = completeOpsTask(cadence, t.id, { metric_snapshot: "1" }).cadence;
+    }
+    const userTask = cadence.tasks.find((t) => t.owner === "user");
+    assert.ok(userTask);
+    const a = resolveNextAction(
+      base({
+        plan: null,
+        opsCadence: cadence,
+        scope: "workspace",
+        route: "workspace",
+      }),
+    );
+    assert.equal(a?.id, `ops-user-${userTask.id}`);
+    assert.equal(a?.primaryLabel, "Mark done");
+    assert.equal(a?.dispatch.type, "open_ops_proof");
+  });
+
+  it("hides Lane B while ops user task is still active", () => {
+    const thesis = buildCmoIntake({
+      project: {
+        id: "p1",
+        source: { kind: "folder", path: "/p" },
+        name: "Acme",
+        framework: "Next",
+        routes: ["app/page.tsx"],
+        hasAnalytics: false,
+        excludedPaths: [],
+        scannedFileCount: 10,
+      },
+      persona: "marketing",
+      context: { force_thesis_id: "landing_conversion" },
+    });
+    let cadence = createOpsCadenceFromThesis(thesis);
+    const laneB = createLaneBWorkspaceFromThesis(thesis, { opsCadence: cadence });
+    const a = resolveNextAction(
+      base({
+        plan: null,
+        opsCadence: cadence,
+        laneBWorkspace: laneB,
+        scope: "workspace",
+        route: "workspace",
+      }),
+    );
+    assert.ok(a?.id.startsWith("ops-"));
+
+    for (const t of cadence.tasks) {
+      const result = completeOpsTask(cadence, t.id, {
+        kpi_value: t.owner === "user" ? 10 : undefined,
+        note:
+          t.owner === "user"
+            ? "Logged measurable outcome for the week review gate."
+            : "System task shipped — metric_snapshot 42.",
+        metric_snapshot: t.owner === "system" ? "42" : undefined,
+      });
+      cadence = result.cadence;
+    }
+    const cleared = resolveNextAction(
+      base({
+        plan: null,
+        opsCadence: cadence,
+        laneBWorkspace: laneB,
+        scope: "workspace",
+        route: "workspace",
+      }),
+    );
+    assert.equal(cleared?.id, "ops-week-review");
+  });
+
+  it("hides Lane C delegate brief while ops queue is active", () => {
+    const thesis = buildCmoIntake({
+      project: {
+        id: "p1",
+        source: { kind: "folder", path: "/p" },
+        name: "Acme",
+        framework: "Next",
+        routes: ["app/page.tsx"],
+        hasAnalytics: false,
+        excludedPaths: [],
+        scannedFileCount: 10,
+        readmeSummary: "B2B SaaS for teams.",
+      },
+      persona: "sales",
+      profile: { sales_pipeline_empty: true } as never,
+    });
+    let cadence = createOpsCadenceFromThesis(thesis);
+    const delegateWs = createDelegateWorkspaceFromThesis(thesis, { opsCadence: cadence });
+    assert.ok(delegateWs);
+    const blocked = resolveNextAction(
+      base({
+        plan: null,
+        opsCadence: cadence,
+        delegateWorkspace: delegateWs!,
+        scope: "workspace",
+        route: "workspace",
+      }),
+    );
+    assert.ok(blocked?.id.startsWith("ops-"));
+
+    for (const t of cadence.tasks) {
+      const result = completeOpsTask(cadence, t.id, {
+        kpi_value: t.owner === "user" ? 5 : undefined,
+        note:
+          t.owner === "user"
+            ? "Logged measurable outcome for the week review gate."
+            : "System task shipped — metric_snapshot 42.",
+        metric_snapshot: t.owner === "system" ? "42" : undefined,
+      });
+      cadence = result.cadence;
+    }
+    const cleared = resolveNextAction(
+      base({
+        plan: null,
+        opsCadence: cadence,
+        delegateWorkspace: delegateWs!,
+        scope: "workspace",
+        route: "workspace",
+      }),
+    );
+    assert.equal(cleared?.id, "ops-week-review");
+  });
+
+  it("lets the command surface own CMO daily actions", () => {
+    const thesis = buildCmoIntake({
+      project: {
+        id: "p1",
+        source: { kind: "folder", path: "/p" },
+        name: "Acme",
+        framework: "Next",
+        routes: ["app/page.tsx"],
+        hasAnalytics: false,
+        excludedPaths: [],
+        scannedFileCount: 10,
+      },
+      persona: "marketing",
+    });
+    const cadence = createOpsCadenceFromThesis(thesis);
+    const now = cadence.tasks[0]!;
+    const growthControlPlane = {
+      binding: { headline: "Distribution is binding", rationale: [], evidence: [] },
+      primary_lever: thesis.headline,
+      today: {
+        what: now.what,
+        why: now.why,
+        done_when: now.done_when,
+        owner: now.owner,
+        ops_task_id: now.id,
+      },
+    } as unknown as GrowthControlPlane;
+    const action = resolveNextAction(
+      base({
+        opsCadence: cadence,
+        growthControlPlane,
+        route: "workspace",
+        scope: "workspace",
+      }),
+    );
+    assert.equal(action ? isCommandSurfaceOwnedAction(action.id) : false, false);
+  });
+
+  it("keeps blocking approval visible above the command surface", () => {
+    const thesis = buildCmoIntake({
+      project: {
+        id: "p1",
+        source: { kind: "folder", path: "/p" },
+        name: "Acme",
+        framework: "Next",
+        routes: ["app/page.tsx"],
+        hasAnalytics: false,
+        excludedPaths: [],
+        scannedFileCount: 10,
+      },
+      persona: "marketing",
+    });
+    const cadence = createOpsCadenceFromThesis(thesis);
+    const now = cadence.tasks[0]!;
+    const action = resolveNextAction(
+      base({
+        opsCadence: cadence,
+        growthControlPlane: {
+          binding: { headline: "Distribution is binding", rationale: [], evidence: [] },
+          primary_lever: thesis.headline,
+          today: {
+            what: now.what,
+            why: now.why,
+            done_when: now.done_when,
+            owner: now.owner,
+            ops_task_id: now.id,
+          },
+        } as unknown as GrowthControlPlane,
+        runNeedsApproval: true,
+        route: "workspace",
+        scope: "workspace",
+      }),
+    );
+    assert.equal(action?.id, "run-approval");
   });
 });

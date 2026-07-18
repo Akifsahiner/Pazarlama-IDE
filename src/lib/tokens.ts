@@ -12,7 +12,7 @@ export const heroCopy = {
   subheadline:
     "Connect once (or preview offline), open your project folder, and get a 30-day launch plan you approve — agent tasks, diffs, and browser research you apply yourself.",
   cta: "Download Marketing IDE",
-  secondaryCta: "See your first 10 minutes",
+  secondaryCta: "See your first hour",
 } as const;
 
 export const trustItems = [
@@ -23,9 +23,9 @@ export const trustItems = [
 
 export const firstRunFunnel = {
   eyebrow: "First launch",
-  title: "Your first 10 minutes in the app",
+  title: "Your first hour in the app",
   subtitle:
-    "Download is step zero — the desktop app walks you through connect, scan, and your first plan.",
+    "Download is step zero — connect, scan, plan, and run your first task within sixty minutes.",
   steps: [
     {
       title: "Connect",
@@ -42,13 +42,13 @@ export const firstRunFunnel = {
     },
     {
       title: "Scan & reveal",
-      description: "Routes, stack, gaps, and suggested first moves — before any AI runs.",
+      description: "Routes, stack, gaps — then one click into Plan Studio (no second handoff).",
       icon: "ScanSearch",
       accent: "green" as const,
     },
     {
       title: "Plan & execute",
-      description: "30-day task graph, diffs you approve, browser research — you publish and send.",
+      description: "Day 1 task by minute 40 — diffs you approve, browser research, KPIs you log.",
       icon: "GitBranch",
       accent: "blue" as const,
     },

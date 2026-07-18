@@ -119,11 +119,11 @@ export async function browserRoutes(app: FastifyInstance): Promise<void> {
           onApprovalRequest: (id, summary) => send({ type: "approval_request", id, summary }),
           onPaused: () => send({ type: "paused" }),
           onResumed: () => send({ type: "resumed" }),
-          onDone: async () => {
+          onDone: async (report) => {
             if (userId && persistenceEnabled && startedAt) {
               await usage.insert(userId, { kind: "browser", browser_ms: Date.now() - startedAt }).catch(() => {});
             }
-            send({ type: "done" });
+            send({ type: "done", report });
           },
           onError: (message) => send({ type: "error", message }),
         },

@@ -178,6 +178,9 @@ const api: DesktopApi = {
 
       ipcRenderer.invoke(IPC.agent.apply, { runId, files }),
 
+    applyHunks: (runId: string, file: string, patch: string, hunkIds: string[]) =>
+      ipcRenderer.invoke(IPC.agent.applyHunks, { runId, file, patch, hunkIds }),
+
     discard: (runId: string) => ipcRenderer.invoke(IPC.agent.discard, runId),
 
     discardFiles: (runId: string, files: string[]) =>
@@ -254,6 +257,58 @@ const api: DesktopApi = {
   export: {
     saveHtmlAsPdf: (input: { html: string; defaultFilename: string }) =>
       ipcRenderer.invoke(IPC.export.saveHtmlAsPdf, input),
+  },
+
+  evidence: {
+    saveScreenshot: (input: { projectId: string; runId: string; base64: string }) =>
+      ipcRenderer.invoke(IPC.evidence.saveScreenshot, input),
+  },
+
+  runs: {
+    start: (req: import("../shared/orchestration").StartOrchestratedRun) =>
+      ipcRenderer.invoke(IPC.runs.start, req),
+    interrupt: (runId: string) => ipcRenderer.invoke(IPC.runs.interrupt, runId),
+    browserControl: (input: {
+      runId: string;
+      action: "pause" | "resume" | "steer" | "approve" | "reject" | "stop";
+      text?: string;
+      approvalId?: string;
+    }) => ipcRenderer.invoke(IPC.runs.browserControl, input),
+  },
+
+  context: {
+    search: (input: {
+      projectId: string;
+      cwd: string;
+      query: string;
+      limit?: number;
+    }) => ipcRenderer.invoke(IPC.context.search, input),
+    suggest: (input: { projectId: string; cwd: string; prefix: string }) =>
+      ipcRenderer.invoke(IPC.context.suggest, input),
+  },
+
+  notifications: {
+    list: () => ipcRenderer.invoke(IPC.notifications.list),
+    dismiss: (id: string) => ipcRenderer.invoke(IPC.notifications.dismiss, id),
+    onUpdated: (cb: (items: import("../shared/orchestration").IdeNotification[]) => void) => {
+      const listener = (_e: unknown, items: import("../shared/orchestration").IdeNotification[]) =>
+        cb(items);
+      ipcRenderer.on(IPC.notifications.updated, listener);
+      return () => ipcRenderer.removeListener(IPC.notifications.updated, listener);
+    },
+  },
+
+  index: {
+    enqueue: (job: {
+      type: "index.full" | "index.incremental" | "facts.refresh" | "health.probe";
+      projectId?: string;
+      cwd?: string;
+    }) => ipcRenderer.invoke(IPC.index.enqueue, job),
+  },
+
+  traces: {
+    list: () => ipcRenderer.invoke(IPC.traces.list),
+    read: (runId: string) => ipcRenderer.invoke(IPC.traces.read, runId),
   },
 
 };

@@ -35,7 +35,7 @@ function statusFromRunEvent(event: RunEvent): FeedItemStatus {
 
 function canvasTargetForRunEvent(event: RunEvent): FeedItem["canvasTarget"] | undefined {
   if (event.type.startsWith("browser.") || event.type === "issue.detected") {
-    return { mode: "research-map" };
+    return { mode: "browser" };
   }
   if (event.type === "file.patch_created" || event.type === "file.patch_updated") {
     const file = (event.payload as { file?: string } | undefined)?.file;

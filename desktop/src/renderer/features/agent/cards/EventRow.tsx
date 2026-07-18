@@ -14,6 +14,8 @@ import { BrowserFrameCard } from "./BrowserFrameCard";
 import { DraftEventCard } from "./DraftEventCard";
 import { ProactiveSuggestionCard } from "./ProactiveSuggestionCard";
 import { PlanRevisionCard } from "./PlanRevisionCard";
+import { TurnReceiptCard } from "../TurnReceiptCard";
+import { ExecutableActionBar } from "../ExecutableActionBar";
 
 function FeedLinkEvent({ event }: { event: SessionEvent }) {
   const openFeedItem = useApp((s) => s.openFeedItem);
@@ -136,6 +138,14 @@ export function EventRow({ event, streaming }: { event: SessionEvent; streaming:
       return <BrowserFrameCard event={event} />;
     case "approval":
       return event.approvalId ? <ApprovalPointerCard event={event} /> : null;
+    case "turn_receipt":
+      return event.turnReceipt ? (
+        <TurnReceiptCard receipt={event.turnReceipt} />
+      ) : null;
+    case "executable_action":
+      return event.executableActions?.length ? (
+        <ExecutableActionBar actions={event.executableActions} />
+      ) : null;
     case "error":
       return <ErrorRow message={event.text ?? "Unknown error"} />;
     default:

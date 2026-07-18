@@ -91,6 +91,18 @@ describe("applyCampaignPhaseEvent", () => {
     assert.equal(s.phase, "measuring");
     assert.ok(s.milestones.some((m) => m.kind === "kpi"));
   });
+
+  it("cmo_cycle_restart → executing with week milestone", () => {
+    let s = applyCampaignPhaseEvent(base(), { type: "log_kpi" });
+    assert.equal(s.phase, "measuring");
+    s = applyCampaignPhaseEvent(s, {
+      type: "cmo_cycle_restart",
+      cycleIndex: 2,
+      thesisTitle: "Landing conversion",
+    });
+    assert.equal(s.phase, "executing");
+    assert.ok(s.milestones.some((m) => m.label.includes("Week 2")));
+  });
 });
 
 describe("appendCampaignRun / appendCampaignAsset", () => {

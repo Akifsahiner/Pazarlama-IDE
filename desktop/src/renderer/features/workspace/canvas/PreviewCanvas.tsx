@@ -36,7 +36,7 @@ function latestPatchFor(events: RunEvent[], file: string): FilePatchPayload | nu
   return null;
 }
 
-import { parseUnifiedPatch } from "@shared/patchParse";
+import { parseHunks, parseUnifiedPatch } from "@shared/patchParse";
 function previewUrl(events: RunEvent[]): string | null {
   for (let i = events.length - 1; i >= 0; i--) {
     if (events[i].type === "preview.ready") {
@@ -78,9 +78,11 @@ export function PreviewCanvas() {
   const resetRunApplySelection = useApp((s) => s.resetRunApplySelection);
   const toggleRunApplyFile = useApp((s) => s.toggleRunApplyFile);
   const applyRunChanges = useApp((s) => s.applyRunChanges);
+  const applyRunHunks = useApp((s) => s.applyRunHunks);
   const discardRunChanges = useApp((s) => s.discardRunChanges);
   const discardRunSelection = useApp((s) => s.discardRunSelection);
   const [tab, setTab] = useState<PreviewTab>("diff");
+  const [selectedHunkIds, setSelectedHunkIds] = useState<string[]>([]);
 
   const projectRoot = project?.source.kind === "folder" ? project.source.path : undefined;
 
@@ -120,6 +122,15 @@ export function PreviewCanvas() {
 
   const patch = activeFile ? latestPatchFor(events, activeFile) : null;
   const parsed = patch?.patch ? parseUnifiedPatch(patch.patch) : null;
+  const hunks = useMemo(
+    () => (patch?.patch ? parseHunks(patch.patch) : []),
+    [patch?.patch],
+  );
+
+  useEffect(() => {
+    setSelectedHunkIds(hunks.map((h) => h.id));
+  }, [activeFile, hunks]);
+
   const absFilePath =
     projectRoot && activeFile
       ? `${projectRoot.replace(/[\\/]+$/, "")}/${activeFile.replace(/\\/g, "/")}`
@@ -234,7 +245,64 @@ export function PreviewCanvas() {
                 })}
               </div>
               <div className="min-w-0 flex-1 overflow-y-auto p-3">
-                {activeFile && parsed ? (
+                {activeFile && hunks.length > 0 && finished ? (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-micro text-text-2">
+                        {selectedHunkIds.length} of {hunks.length} hunks selected
+                      </span>
+                      <button
+                        type="button"
+                        disabled={selectedHunkIds.length === 0}
+                        onClick={() =>
+                          void applyRunHunks(activeFile, selectedHunkIds)
+                        }
+                        className="btn-accent rounded-[var(--radius-sm)] px-2.5 py-1 text-micro disabled:opacity-40"
+                      >
+                        Apply selected hunks
+                      </button>
+                    </div>
+                    {hunks.map((h) => {
+                      const checked = selectedHunkIds.includes(h.id);
+                      const preview = h.lines
+                        .filter((l) => l.startsWith("+") || l.startsWith("-"))
+                        .slice(0, 6)
+                        .join("\n");
+                      return (
+                        <label
+                          key={h.id}
+                          className="flex cursor-pointer gap-2 rounded-[var(--radius-sm)] border border-line bg-surface/40 px-3 py-2"
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-1 shrink-0"
+                            checked={checked}
+                            onChange={(e) => {
+                              setSelectedHunkIds((prev) =>
+                                e.target.checked
+                                  ? [...prev, h.id]
+                                  : prev.filter((id) => id !== h.id),
+                              );
+                            }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="font-mono text-micro text-text-2">{h.header}</div>
+                            <pre className="mt-1 overflow-x-auto whitespace-pre-wrap font-mono text-mini text-text">
+                              {preview || "(context only)"}
+                            </pre>
+                          </div>
+                        </label>
+                      );
+                    })}
+                    {parsed && (
+                      <DiffViewer
+                        file={activeFile}
+                        removed={parsed.removed}
+                        added={parsed.added}
+                      />
+                    )}
+                  </div>
+                ) : activeFile && parsed ? (
                   <DiffViewer file={activeFile} removed={parsed.removed} added={parsed.added} />
                 ) : patch ? (
                   <div className="rounded-[var(--radius-md)] border border-line bg-surface px-5 py-4">
@@ -272,9 +340,10 @@ export function PreviewCanvas() {
                       type="button"
                       disabled={runApplySelection.length === 0}
                       onClick={() => void applyRunChanges(runApplySelection)}
+                      data-testid="ship-apply-primary"
                       className="btn-accent rounded-[var(--radius-sm)] px-2.5 py-1 text-micro disabled:opacity-40"
                     >
-                      Apply selected
+                      Apply first change
                     </button>
                   </div>
                 </div>

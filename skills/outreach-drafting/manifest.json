@@ -3,12 +3,34 @@
   "name": "Outreach Drafting",
   "category": "outreach",
   "applies_when": {
-    "company_stage": ["idea", "prelaunch", "pre-launch", "launched", "growing", "scaling", "early", "growth"],
-    "channels_includes": ["email", "linkedin"],
-    "business_model": ["saas", "freemium", "agency", "tool", "marketplace"]
+    "company_stage": [
+      "idea",
+      "prelaunch",
+      "pre-launch",
+      "launched",
+      "growing",
+      "scaling",
+      "early",
+      "growth"
+    ],
+    "channels_includes": [
+      "email",
+      "linkedin"
+    ],
+    "business_model": [
+      "saas",
+      "freemium",
+      "agency",
+      "tool",
+      "marketplace"
+    ]
   },
   "do_not_use_when": {
-    "constraints_includes": ["no_outbound_allowed", "bulk_email_only", "no_cold_outreach"]
+    "constraints_includes": [
+      "no_outbound_allowed",
+      "bulk_email_only",
+      "no_cold_outreach"
+    ]
   },
   "required_inputs": [
     "product_name",
@@ -20,8 +42,40 @@
   "output_schema": "outreach_drafts",
   "primary_metric": "reply_rate",
   "playbook_selector": [
-    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
-    { "if": { "channels_includes": ["email"] }, "pick": "with-email-list" },
-    { "if": { "business_model": ["saas", "freemium", "tool"] }, "pick": "b2b-saas" }
+    {
+      "if": {
+        "sales_pipeline_empty": true
+      },
+      "pick": "sales-pipeline-empty"
+    },
+    {
+      "if": {
+        "current_users_lt": 100
+      },
+      "pick": "no-audience"
+    },
+    {
+      "if": {
+        "channels_includes": [
+          "email"
+        ]
+      },
+      "pick": "with-email-list"
+    },
+    {
+      "if": {
+        "business_model": [
+          "saas",
+          "freemium",
+          "tool"
+        ]
+      },
+      "pick": "b2b-saas"
+    }
+  ],
+  "version": "1.1.0",
+  "changelog": "Manifest v2 fields for Skill Excellence",
+  "aggression_playbooks": [
+    "aggressive-personalization-tiers"
   ]
 }

@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { Check, ClipboardCopy } from "lucide-react";
 import { useApp } from "@renderer/state/store";
 import { parseCanvasLink, splitStreamingMarkdown } from "@renderer/lib/canvasLinks";
+import { linkifyCodeCitations } from "@shared/codeCitation";
 import { CodeHighlight } from "@renderer/components/CodeHighlight";
 import { normalizeHighlightLang } from "@renderer/lib/codeHighlight";
 
@@ -54,9 +55,20 @@ export function AgentMarkdown({
     navigate("workspace");
   }, [navigate]);
 
-  const { markdown, streamingFence } = useMemo(
-    () => (streaming ? splitStreamingMarkdown(content) : { markdown: content, streamingFence: null }),
-    [content, streaming],
+  const { markdown, streamingFence } = useMemo(() => {
+    const linked = linkifyCodeCitations(content);
+    return streaming
+      ? splitStreamingMarkdown(linked)
+      : { markdown: linked, streamingFence: null };
+  }, [content, streaming]);
+
+  const project = useApp((s) => s.project);
+
+  const openInEditor = useCallback(
+    (absPath: string, line?: number) => {
+      void window.api.shell.openInEditor({ editor: "cursor", path: absPath, line });
+    },
+    [],
   );
 
   const onLinkClick = useCallback(
@@ -64,6 +76,14 @@ export function AgentMarkdown({
       const action = parseCanvasLink(href);
       if (!action) return;
       e.preventDefault();
+      if (action.type === "repo-file") {
+        const root =
+          project?.source.kind === "folder" ? project.source.path : project?.localPath;
+        if (!root) return;
+        const abs = `${root.replace(/[\\/]+$/, "")}/${action.path.replace(/\\/g, "/")}`;
+        openInEditor(abs, action.line);
+        return;
+      }
       openInWorkspace();
       if (action.type === "surface") {
         setWorkSurface(action.surface);
@@ -80,7 +100,7 @@ export function AgentMarkdown({
         void window.api.shell.openExternal(action.url);
       }
     },
-    [openInWorkspace, setWorkSurface, focusPlanTask, resolvePlanDeepLink],
+    [openInWorkspace, setWorkSurface, focusPlanTask, resolvePlanDeepLink, project, openInEditor],
   );
 
   if (!content && streaming) {

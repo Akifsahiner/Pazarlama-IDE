@@ -3,12 +3,38 @@
   "name": "Analytics & Measurement",
   "category": "analytics",
   "applies_when": {
-    "company_stage": ["prelaunch", "pre-launch", "launched", "growing", "scaling", "early", "growth"],
-    "channels_includes": ["seo", "email", "paid_ads", "product_hunt", "linkedin", "twitter"],
-    "business_model": ["saas", "freemium", "marketplace", "ecommerce", "mobile_app", "consumer", "tool"]
+    "company_stage": [
+      "prelaunch",
+      "pre-launch",
+      "launched",
+      "growing",
+      "scaling",
+      "early",
+      "growth"
+    ],
+    "channels_includes": [
+      "seo",
+      "email",
+      "paid_ads",
+      "product_hunt",
+      "linkedin",
+      "twitter"
+    ],
+    "business_model": [
+      "saas",
+      "freemium",
+      "marketplace",
+      "ecommerce",
+      "mobile_app",
+      "consumer",
+      "tool"
+    ]
   },
   "do_not_use_when": {
-    "constraints_includes": ["no_analytics_allowed", "stealth_mode"]
+    "constraints_includes": [
+      "no_analytics_allowed",
+      "stealth_mode"
+    ]
   },
   "required_inputs": [
     "hasAnalytics",
@@ -18,8 +44,34 @@
   "output_schema": "measurement_plan",
   "primary_metric": "kpi_coverage_ratio",
   "playbook_selector": [
-    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
-    { "if": { "channels_includes": ["email"] }, "pick": "with-email-list" },
-    { "if": { "business_model": ["saas", "freemium", "tool"] }, "pick": "b2b-saas" }
+    {
+      "if": {
+        "current_users_lt": 100
+      },
+      "pick": "no-audience"
+    },
+    {
+      "if": {
+        "channels_includes": [
+          "email"
+        ]
+      },
+      "pick": "with-email-list"
+    },
+    {
+      "if": {
+        "business_model": [
+          "saas",
+          "freemium",
+          "tool"
+        ]
+      },
+      "pick": "b2b-saas"
+    }
+  ],
+  "version": "1.1.0",
+  "changelog": "Manifest v2 fields for Skill Excellence",
+  "aggression_playbooks": [
+    "aggressive-ship-signal"
   ]
 }

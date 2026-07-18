@@ -49,19 +49,19 @@ export const COMPOSER_HINTS: Record<ComposerMode, string> = {
 export const COMPOSER_PLACEHOLDERS: Record<ComposerMode, { connected: string; offline: string }> = {
   auto: {
     connected: "Ask anything, or say “fix hero copy”, “day 3”, “next task”…",
-    offline: "Connect a backend to chat and run tasks…",
+    offline: "Enable AI to chat and run tasks…",
   },
   ask: {
     connected: "Ask for a plan, copy, or marketing decision…",
-    offline: "Connect a backend to chat with the agent…",
+    offline: "Enable AI to chat with the agent…",
   },
   edit: {
     connected: "Describe what to change in your project…",
-    offline: "Connect a backend to run the agent…",
+    offline: "Enable AI to run the agent…",
   },
   browse: {
     connected: "Describe a browser research task…",
-    offline: "Connect a backend to run browser tasks…",
+    offline: "Enable AI for live browser tasks…",
   },
 };
 
@@ -91,14 +91,14 @@ const QUICK_ACTIONS: Record<QuickActionId, QuickActionDef> = {
     draft: "",
     canvas: "plan",
     requires: "connected",
-    disabledReason: "Connect a backend to generate a plan.",
+    disabledReason: "Enable AI to generate a plan.",
   },
   landing_copy: {
     id: "landing_copy",
     mode: "auto",
     draft: QUICK_ACTION_GOALS.LANDING_COPY,
     requires: "connected",
-    disabledReason: "Connect a backend first.",
+    disabledReason: "Enable AI first.",
   },
   competitors: {
     id: "competitors",
@@ -106,7 +106,7 @@ const QUICK_ACTIONS: Record<QuickActionId, QuickActionDef> = {
     draft: QUICK_ACTION_GOALS.COMPETITORS,
     canvas: "browser",
     requires: "connected",
-    disabledReason: "Connect a backend first.",
+    disabledReason: "Enable AI for live browser research.",
   },
   icp: {
     id: "icp",
@@ -122,14 +122,14 @@ const QUICK_ACTIONS: Record<QuickActionId, QuickActionDef> = {
     draft: QUICK_ACTION_GOALS.LEADS_BROWSER,
     canvas: "browser",
     requires: "connected",
-    disabledReason: "Connect a backend first.",
+    disabledReason: "Enable AI for live browser research.",
   },
   outreach: {
     id: "outreach",
     mode: "ask",
     draft: QUICK_ACTION_GOALS.OUTREACH,
     requires: "connected",
-    disabledReason: "Connect a backend first.",
+    disabledReason: "Enable AI first.",
   },
 };
 
@@ -143,14 +143,14 @@ export function isQuickActionDisabled(
   opts: { connected: boolean; hasFolder: boolean },
 ): string | null {
   if (action.requires === "connected" && !opts.connected) {
-    return action.disabledReason ?? "Connect a backend first.";
+    return action.disabledReason ?? "Enable AI first.";
   }
   if (action.requires === "folder" && !opts.hasFolder) {
     return action.disabledReason ?? "Open a local folder to edit project files.";
   }
   if (action.requires === "folder+connected") {
     if (!opts.hasFolder) return "Open a local folder to edit project files.";
-    if (!opts.connected) return "Connect a backend to run the agent.";
+    if (!opts.connected) return "Enable AI to run the agent.";
   }
   return null;
 }
@@ -164,9 +164,9 @@ export const COMPOSER_QUICK_UI: {
 }[] = [
   { id: "plan_pill", label: "Generate plan", tier: "primary", icon: "Wand2" },
   { id: "landing_copy", label: "Landing copy", tier: "primary", icon: "PenLine" },
+  { id: "competitors", label: "Live research", tier: "primary", icon: "Compass" },
   { id: "launch", label: "Prepare for launch", tier: "more", icon: "Rocket" },
   { id: "scan", label: "Scan & summarize product", tier: "more", icon: "Search" },
-  { id: "competitors", label: "Scan competitors", tier: "more", icon: "Compass" },
   { id: "icp", label: "Build my ICP", tier: "more", icon: "Target" },
   { id: "leads", label: "Research leads", tier: "more", icon: "Search" },
   { id: "outreach", label: "Draft outreach (you send)", tier: "more", icon: "Mail" },

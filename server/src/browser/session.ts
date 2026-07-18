@@ -24,11 +24,13 @@ import {
 
   parseFinding,
 
+  parseValidation,
+
   type ComputerAction,
 
 } from "./actions.js";
 
-import type { Finding, FrameMeta, OperatorPhase, Persona } from "./types.js";
+import type { BrowserSessionReport, Finding, FrameMeta, OperatorPhase, Persona } from "./types.js";
 
 import { installNavigationGuard, isBlockedUrl, isCredentialFieldFocused } from "./policy.js";
 
@@ -74,7 +76,7 @@ export interface SessionCallbacks {
 
   onResumed: () => void;
 
-  onDone: () => void;
+  onDone: (report?: BrowserSessionReport) => void;
 
   onError: (message: string) => void;
 
@@ -105,6 +107,10 @@ const SYSTEM_BASE = [
   "<evidence> is what you actually saw; <suggestion> is one concrete fix. Do not invent findings;",
 
   "only report what is visible in the current view.",
+
+  "When verifying a checklist, emit one line per item in EXACTLY this format:",
+
+  "VALIDATION: <label> | pass|fail | <detail>",
 
   "Never enter credentials or payment details, and never read them aloud. Never make purchases,",
 
@@ -186,7 +192,13 @@ export class ComputerUseSession {
 
   private lastTs = "";
 
+  private findings: Finding[] = [];
 
+  private validations: BrowserSessionReport["validations"] = [];
+
+  private visitedUrls: string[] = [];
+
+  private startedAt = "";
 
   constructor(task: string, autoApprove: boolean, cb: SessionCallbacks, persona: Persona = "marketing") {
 
@@ -199,6 +211,32 @@ export class ComputerUseSession {
     this.cb = cb;
 
     this.persona = persona;
+
+    this.startedAt = new Date().toISOString();
+
+  }
+
+
+
+  private buildReport(outcome: BrowserSessionReport["outcome"]): BrowserSessionReport {
+
+    return {
+
+      goal: this.task,
+
+      evidence: [...this.findings],
+
+      validations: [...this.validations],
+
+      visitedUrls: [...this.visitedUrls],
+
+      outcome,
+
+      startedAt: this.startedAt || new Date().toISOString(),
+
+      endedAt: new Date().toISOString(),
+
+    };
 
   }
 
@@ -400,7 +438,7 @@ export class ComputerUseSession {
 
       await this.loop();
 
-      if (!this.cancelled) this.cb.onDone();
+      if (!this.cancelled) this.cb.onDone(this.buildReport("completed"));
 
     } catch (err) {
 
@@ -628,7 +666,7 @@ export class ComputerUseSession {
 
             if (f) {
 
-              this.cb.onFinding({
+              const finding: Finding = {
 
                 id: randomUUID(),
 
@@ -648,11 +686,25 @@ export class ComputerUseSession {
 
                 createdAt: new Date().toISOString(),
 
-              });
+              };
 
-            } else if (line.trim()) {
+              this.findings.push(finding);
 
-              this.cb.onStatus(line.trim());
+              this.cb.onFinding(finding);
+
+            } else {
+
+              const v = parseValidation(line);
+
+              if (v) {
+
+                this.validations.push(v);
+
+              } else if (line.trim()) {
+
+                this.cb.onStatus(line.trim());
+
+              }
 
             }
 
@@ -785,6 +837,7 @@ export class ComputerUseSession {
           });
 
           if (url !== this.prevUrl) {
+            if (url && !this.visitedUrls.includes(url)) this.visitedUrls.push(url);
             this.cb.onNavigated(url, title);
             this.prevUrl = url;
           }

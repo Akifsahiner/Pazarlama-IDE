@@ -3,6 +3,7 @@ import { env, hasAnthropic } from "../env.js";
 import { resolveUserFromToken } from "../auth/token.js";
 import { assertTierAndQuota } from "../middleware/tierGate.js";
 import { sendMeteringError } from "../middleware/meteringErrors.js";
+import { estimateCostCents } from "../billing/pricing.js";
 import * as usage from "../db/repos/usage.js";
 
 const ANTHROPIC_API = "https://api.anthropic.com";
@@ -38,6 +39,7 @@ export async function anthropicProxyRoutes(app: FastifyInstance): Promise<void> 
 
     const upstreamPath = req.url.replace(/^\/anthropic/, "");
     const upstreamUrl = `${ANTHROPIC_API}${upstreamPath}`;
+    const model = extractModel(req.body) || env.ANTHROPIC_MODEL;
 
     const headers = buildUpstreamHeaders(req);
     const body =
@@ -67,14 +69,14 @@ export async function anthropicProxyRoutes(app: FastifyInstance): Promise<void> 
 
     if (!upstream.body) {
       const text = await upstream.text();
-      void recordAgentUsage(userId, parseJsonUsage(text)).catch(() => {});
+      void recordAgentUsage(userId, parseJsonUsage(text), model).catch(() => {});
       reply.send(text);
       return;
     }
 
     if (!isSse) {
       const text = await upstream.text();
-      void recordAgentUsage(userId, parseJsonUsage(text)).catch(() => {});
+      void recordAgentUsage(userId, parseJsonUsage(text), model).catch(() => {});
       reply.send(text);
       return;
     }
@@ -102,9 +104,19 @@ export async function anthropicProxyRoutes(app: FastifyInstance): Promise<void> 
       /* client/upstream dropped */
     } finally {
       res.end();
-      void recordAgentUsage(userId, parseSseUsage(sseBuffer)).catch(() => {});
+      const tokens = parseSseUsage(sseBuffer);
+      if (tokens.tokensIn === 0 && tokens.tokensOut === 0 && sseBuffer.length > 0) {
+        app.log.debug({ userId, path: upstreamPath }, "anthropic_proxy_usage_empty");
+      }
+      void recordAgentUsage(userId, tokens, model).catch(() => {});
     }
   });
+}
+
+function extractModel(body: unknown): string | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  const model = (body as { model?: unknown }).model;
+  return typeof model === "string" && model.trim() ? model.trim() : undefined;
 }
 
 function buildUpstreamHeaders(req: FastifyRequest): Record<string, string> {
@@ -139,7 +151,7 @@ function parseJsonUsage(text: string): TokenPair {
   }
 }
 
-/** Parse Anthropic SSE for final message_delta / message_stop usage blocks. */
+/** Parse Anthropic SSE for message_start / message_delta usage blocks. */
 function parseSseUsage(buffer: string): TokenPair {
   let tokensIn = 0;
   let tokensOut = 0;
@@ -151,10 +163,19 @@ function parseSseUsage(buffer: string): TokenPair {
     try {
       const evt = JSON.parse(payload) as {
         type?: string;
-        usage?: { input_tokens?: number; output_tokens?: number };
-        message?: { usage?: { input_tokens?: number; output_tokens?: number } };
+        usage?: {
+          input_tokens?: number;
+          output_tokens?: number;
+          cache_creation_input_tokens?: number;
+          cache_read_input_tokens?: number;
+        };
+        message?: {
+          usage?: { input_tokens?: number; output_tokens?: number };
+          model?: string;
+        };
+        delta?: { usage?: { input_tokens?: number; output_tokens?: number } };
       };
-      const u = evt.usage ?? evt.message?.usage;
+      const u = evt.usage ?? evt.message?.usage ?? evt.delta?.usage;
       if (!u) continue;
       if (typeof u.input_tokens === "number") tokensIn = Math.max(tokensIn, u.input_tokens);
       if (typeof u.output_tokens === "number") tokensOut = Math.max(tokensOut, u.output_tokens);
@@ -165,10 +186,12 @@ function parseSseUsage(buffer: string): TokenPair {
   return { tokensIn, tokensOut };
 }
 
-async function recordAgentUsage(userId: string, tokens: TokenPair): Promise<void> {
+async function recordAgentUsage(userId: string, tokens: TokenPair, model: string): Promise<void> {
+  const cost_cents = estimateCostCents(model, tokens.tokensIn, tokens.tokensOut);
   await usage.insert(userId, {
     kind: "agent",
     tokens_in: tokens.tokensIn,
     tokens_out: tokens.tokensOut,
+    cost_cents,
   });
 }

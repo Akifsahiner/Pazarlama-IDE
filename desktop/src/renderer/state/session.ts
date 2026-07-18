@@ -27,6 +27,8 @@ export interface AuthInfo {
   user?: UserInfo;
   usage?: UsageInfo;
   quota?: QuotaInfo;
+  /** True when server has Stripe keys configured. */
+  billingConfigured?: boolean;
   /** Email currently being signed in / signed in. */
   email?: string;
   /** True after a one-time code has been sent (verify step). */
@@ -88,7 +90,9 @@ export type EventKind =
   | "proactive_suggestion"
   | "plan_task_complete"
   | "plan_complete"
-  | "plan_revision";
+  | "plan_revision"
+  | "turn_receipt"
+  | "executable_action";
 
 export interface SessionEvent {
   id: string;
@@ -108,6 +112,9 @@ export interface SessionEvent {
   draftQualityWarn?: boolean;
   proactiveTitle?: string;
   proactiveAction?: import("@shared/agentTurnContext").ProactiveSuggestionAction;
+  proactiveButtonLabel?: string;
+  answerCritique?: import("@shared/types").MarketingAnswerCritique;
+  answerQualityWarn?: boolean;
   missingQuestions?: string[];
   missingInfoState?: "open" | "answered" | "dismissed";
   thinkingPhase?: string;
@@ -131,6 +138,8 @@ export interface SessionEvent {
   planRevisionDiff?: import("@shared/planDiff").PlanRevisionDiff;
   planRevisionSummary?: string;
   sourcePlanId?: string;
+  turnReceipt?: import("@shared/turnReceipt").TurnReceipt;
+  executableActions?: import("@shared/executableAction").ExecutableAction[];
 }
 
 export interface ProviderReadiness {

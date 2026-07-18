@@ -3,13 +3,31 @@
   "name": "LinkedIn Founder-Led GTM",
   "category": "organic",
   "applies_when": {
-    "company_stage": ["pre-launch", "early", "growth"],
-    "channels_includes": ["linkedin"],
-    "business_model": ["saas", "agency_tool", "info_product", "marketplace", "open_source"]
+    "company_stage": [
+      "pre-launch",
+      "early",
+      "growth"
+    ],
+    "channels_includes": [
+      "linkedin"
+    ],
+    "business_model": [
+      "saas",
+      "agency_tool",
+      "info_product",
+      "marketplace",
+      "open_source"
+    ]
   },
   "do_not_use_when": {
-    "company_stage": ["enterprise_field_sales_only"],
-    "constraints_includes": ["founder_wont_post_publicly", "regulated_no_social_presence", "icp_not_on_linkedin"]
+    "company_stage": [
+      "enterprise_field_sales_only"
+    ],
+    "constraints_includes": [
+      "founder_wont_post_publicly",
+      "regulated_no_social_presence",
+      "icp_not_on_linkedin"
+    ]
   },
   "required_inputs": [
     "product_name",
@@ -22,7 +40,24 @@
   "output_schema": "marketing_decision",
   "primary_metric": "linkedin_icp_engagement_rate",
   "playbook_selector": [
-    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
-    { "if": { "business_model": ["saas"] }, "pick": "b2b-saas" }
+    {
+      "if": {
+        "current_users_lt": 100
+      },
+      "pick": "no-audience"
+    },
+    {
+      "if": {
+        "business_model": [
+          "saas"
+        ]
+      },
+      "pick": "b2b-saas"
+    }
+  ],
+  "version": "1.1.0",
+  "changelog": "Manifest v2 fields for Skill Excellence",
+  "aggression_playbooks": [
+    "aggressive-pipeline-30d"
   ]
 }

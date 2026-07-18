@@ -50,7 +50,7 @@ export function ConnectionBanner() {
     return (
       <div className="border-b border-warn/30 bg-warn/10 px-3 py-1.5 text-center text-mini text-warn">
         {msg}
-        <BannerAction label="Connect" onClick={openConnectFlow} />
+        <BannerAction label="Open connection settings" onClick={openConnectFlow} />
       </div>
     );
   }
@@ -58,14 +58,14 @@ export function ConnectionBanner() {
   if (runtime === "local" && !localOnlyMode && !workspaceHandoff) {
     return (
       <div className="border-b border-line bg-surface-2 px-3 py-1.5 text-center text-mini text-text-2">
-        Local mode — connect for AI features.
+        Local mode — enable AI when ready.
         {outboxCount > 0 && (
           <span className="text-warn">
             {" "}
             {outboxCount} message{outboxCount === 1 ? "" : "s"} queued.
           </span>
         )}
-        <BannerAction label="Connect" onClick={openConnectFlow} />
+        <BannerAction label="Retry connection" onClick={openConnectFlow} />
       </div>
     );
   }

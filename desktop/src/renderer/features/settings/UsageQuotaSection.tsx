@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { BarChart3, Loader2, RefreshCw } from "lucide-react";
+import { formatCostCents, formatTokenCount } from "@shared/contextBudget";
+import type { UsageHistoryItem } from "@shared/types";
 import { useApp } from "@renderer/state/store";
+import { apiUsageHistory } from "@renderer/lib/api";
 import { Card } from "@renderer/components/ui/Card";
 import { Button } from "@renderer/components/ui/Button";
 
@@ -40,13 +43,22 @@ function UsageRow({
 /** Monthly usage vs quota from GET /me — developer trust surface. */
 export function UsageQuotaSection() {
   const auth = useApp((s) => s.auth);
+  const settings = useApp((s) => s.settings);
   const loadMe = useApp((s) => s.loadMe);
   const runtime = useApp((s) => s.runtime);
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState<UsageHistoryItem[]>([]);
 
   useEffect(() => {
     if (runtime === "connected" && auth.authEnabled) void loadMe();
   }, [runtime, auth.authEnabled, loadMe]);
+
+  useEffect(() => {
+    if (runtime !== "connected" || !auth.authEnabled) return;
+    void apiUsageHistory(settings, auth.authEnabled, 20)
+      .then((r) => setHistory(r.events))
+      .catch(() => setHistory([]));
+  }, [runtime, auth.authEnabled, settings, auth.usage?.agent, auth.usage?.plan]);
 
   const usage = auth.usage;
   const quota = auth.quota;
@@ -55,6 +67,10 @@ export function UsageQuotaSection() {
     setLoading(true);
     try {
       await loadMe();
+      const r = await apiUsageHistory(settings, auth.authEnabled, 20);
+      setHistory(r.events);
+    } catch {
+      /* loadMe reports */
     } finally {
       setLoading(false);
     }
@@ -91,6 +107,7 @@ export function UsageQuotaSection() {
   const agentPct = quota.agent_limit < 9999 ? usage.agent / quota.agent_limit : 0;
   const planPct = quota.plan_limit < 9999 ? usage.plan / quota.plan_limit : 0;
   const nearLimit = agentPct >= 0.8 || planPct >= 0.8;
+  const tokens = (usage.tokens_in ?? 0) + (usage.tokens_out ?? 0);
 
   return (
     <Card className="space-y-4">
@@ -117,6 +134,21 @@ export function UsageQuotaSection() {
       <UsageRow label="Agent turns" used={usage.agent} limit={quota.agent_limit} />
       <UsageRow label="Browser minutes" used={usage.browser_min} limit={quota.browser_min_limit} />
 
+      <div className="grid grid-cols-3 gap-2 rounded-[var(--radius-md)] border border-line bg-surface-2 px-3 py-2 text-caption">
+        <div>
+          <div className="text-text-3">Tokens in</div>
+          <div className="font-mono text-text">{formatTokenCount(usage.tokens_in ?? 0)}</div>
+        </div>
+        <div>
+          <div className="text-text-3">Tokens out</div>
+          <div className="font-mono text-text">{formatTokenCount(usage.tokens_out ?? 0)}</div>
+        </div>
+        <div>
+          <div className="text-text-3">Est. cost</div>
+          <div className="font-mono text-text">{formatCostCents(usage.cost_cents ?? 0)}</div>
+        </div>
+      </div>
+
       {nearLimit && (
         <p className="rounded-[var(--radius-md)] border border-warn/30 bg-warn/10 px-3 py-2 text-mini text-warn">
           Approaching monthly limits. Prefer Sonnet, run one plan task at a time, and avoid
@@ -124,9 +156,33 @@ export function UsageQuotaSection() {
         </p>
       )}
 
+      {history.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-caption font-medium text-text-2">Recent events</div>
+          <ul className="max-h-40 space-y-1 overflow-y-auto text-mini text-text-3">
+            {history.map((ev) => (
+              <li key={ev.id} className="flex justify-between gap-2 font-mono">
+                <span>
+                  {ev.kind ?? "?"} · {formatTokenCount(ev.tokens_in + ev.tokens_out)}
+                </span>
+                <span>
+                  {formatCostCents(ev.cost_cents)} ·{" "}
+                  {new Date(ev.created_at).toLocaleString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <p className="text-caption text-text-3">
-        Agent turns are metered via the cloud Anthropic proxy. Streaming responses count as one
-        turn; token totals update when the API reports usage.
+        Agent turns are metered via the cloud Anthropic proxy. This month: {formatTokenCount(tokens)}{" "}
+        tokens · {formatCostCents(usage.cost_cents ?? 0)} estimated.
       </p>
     </Card>
   );

@@ -14,12 +14,18 @@ import { RunsPage } from "@renderer/features/runs/RunsPage";
 import { AssetsPage } from "@renderer/features/assets/AssetsPage";
 import { SettingsPage } from "@renderer/features/settings/SettingsPage";
 import { HelpPage } from "@renderer/components/HelpPage";
+import { CmoWeekReviewModal } from "@renderer/features/workspace/CmoPivotCard";
+import { MeasurementBaselineCard } from "@renderer/features/onboarding/MeasurementBaselineCard";
+import { MonetizationTaskProofModal } from "@renderer/features/workspace/MonetizationTaskProofModal";
+import { MonetizationIssueExportModal } from "@renderer/features/workspace/MonetizationIssueExportModal";
 
 /** Post-onboarding app shell: navigation rail + routed destination. */
 export function Shell() {
   const route = useApp((s) => s.route);
   const reducedMotion = useApp((s) => s.settings.reducedMotion);
   const restoredProjectName = useApp((s) => s.restoredProjectName);
+  const measurementIntakeOpen = useApp((s) => s.measurementIntakeOpen);
+  const closeMeasurementIntake = useApp((s) => s.closeMeasurementIntake);
   const { toast } = useToast();
 
   // Returning-user fast path lands here — greet once, then clear the flag.
@@ -42,6 +48,16 @@ export function Shell() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      <CmoWeekReviewModal />
+      {measurementIntakeOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/70 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-lg">
+            <MeasurementBaselineCard onDismiss={closeMeasurementIntake} />
+          </div>
+        </div>
+      )}
+      <MonetizationTaskProofModal />
+      <MonetizationIssueExportModal />
       <ConnectionBanner />
       <TierGateBanner />
       <div className="flex min-h-0 flex-1">

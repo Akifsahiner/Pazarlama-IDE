@@ -112,6 +112,13 @@ export function RunCanvas() {
     }
   }, [run, finished, files.join("|"), resetRunApplySelection]);
 
+  // When Computer Use goes live during an edit run, jump to the Browser tab.
+  useEffect(() => {
+    if (readOnly || !browserActive) return;
+    if (canvasMode === "preview" || canvasMode === "taskgraph") return;
+    if (canvasMode !== "browser") setActiveCanvas("browser");
+  }, [browserActive, readOnly, canvasMode, setActiveCanvas]);
+
   if (!run) return null;
 
   const visibleSegments = hasBrowser
@@ -235,7 +242,8 @@ export function RunCanvas() {
             </button>
             <button
               onClick={() => void applyRunChanges(runApplySelection.length ? runApplySelection : files)}
-              disabled={runApplySelection.length === 0}
+              disabled={runApplySelection.length === 0 && files.length === 0}
+              data-testid="ship-apply-primary"
               className="btn-accent flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-1.5 text-mini disabled:opacity-40"
             >
               <Check size={13} /> Apply {runApplySelection.length || files.length} file

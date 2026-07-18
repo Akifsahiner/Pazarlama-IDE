@@ -22,7 +22,7 @@ export function ResearchMapCanvas() {
   const profile = useApp((s) => s.marketingProfile);
   const findings = useApp((s) => s.browser.findings);
   const runBrowserTask = useApp((s) => s.runBrowserTask);
-  const connected = useApp((s) => s.connection.state === "connected");
+  const connected = useApp((s) => s.runtime === "connected");
 
   const grouped = useMemo(() => {
     const map = new Map<string, Finding[]>();

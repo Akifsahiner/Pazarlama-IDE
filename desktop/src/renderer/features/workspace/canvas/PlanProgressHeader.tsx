@@ -12,6 +12,9 @@ import {
   normalizePlan,
 } from "@shared/planPlaybooks";
 import { useApp } from "@renderer/state/store";
+import { EffortBadge } from "@renderer/components/EffortBadge";
+import { PeakDayWarning } from "@renderer/components/PeakDayWarning";
+import { estimatePlanEffort } from "@shared/effortEstimate";
 
 export function PlanProgressHeader({
   plan,
@@ -21,7 +24,7 @@ export function PlanProgressHeader({
   activePlaybookId?: string;
 }) {
   const snapshot = useApp((s) => s.planProgress);
-  const connected = useApp((s) => s.connection.state === "connected");
+  const connected = useApp((s) => s.runtime === "connected");
   const startPlaybook = useApp((s) => s.startPlaybook);
   const focusPlanTask = useApp((s) => s.focusPlanTask);
   const setActivePlaybook = useApp((s) => s.setActivePlaybook);
@@ -67,6 +70,16 @@ export function PlanProgressHeader({
 
   const playbookLabel = scopedPlan?.title;
 
+  const effort = estimatePlanEffort(plan, {
+    playbookId: activePlaybookId,
+    nextTaskId: next?.id,
+    byTaskId: snapshot
+      ? Object.fromEntries(
+          Object.entries(snapshot.byTaskId).map(([id, row]) => [id, { status: row.status }]),
+        )
+      : undefined,
+  });
+
   return (
     <div className="rounded-[var(--radius-lg)] border border-accent/25 bg-accent-soft/20 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -82,6 +95,13 @@ export function PlanProgressHeader({
               tasks complete
               {activePlaybookId ? " in this playbook" : ` · ${suite.playbooks.length} playbooks`}
             </span>
+            <EffortBadge
+              label={effort.label}
+              intensity={effort.intensity}
+              compact
+              title={`Founder execution estimate · peak ${effort.dailyPeakMinutes}m/day`}
+            />
+            {effort.peakDay && <PeakDayWarning peak={effort.peakDay} compact />}
           </div>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-elevated">
             <motion.div
@@ -164,6 +184,11 @@ export function PlanProgressHeader({
           )}
         </div>
       </div>
+      {effort.peakDay && (
+        <div className="mt-3">
+          <PeakDayWarning peak={effort.peakDay} />
+        </div>
+      )}
       {computed.failed > 0 && (
         <p className="mt-2 text-micro text-warn">
           {computed.failed} task{computed.failed === 1 ? "" : "s"} need attention — reopen or skip to continue.

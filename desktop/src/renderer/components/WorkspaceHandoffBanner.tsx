@@ -37,6 +37,31 @@ function runHandoffAction(action: WorkspaceHandoffAction) {
       if (intent) s.executeIntent(intent, { skipConfirm: true });
       break;
     }
+    case "ops_proof": {
+      const taskId = s.workspaceHandoff?.opsTaskId;
+      if (taskId) s.openOpsProofModal(taskId);
+      break;
+    }
+    case "human_proof": {
+      const ref = s.workspaceHandoff?.humanRef;
+      if (ref?.proof_surface === "lane_b_modal") s.openLaneBProofModal(ref.item_id);
+      else if (s.workspaceHandoff?.opsTaskId) s.openOpsProofModal(s.workspaceHandoff.opsTaskId);
+      break;
+    }
+    case "operator_proof": {
+      const ref = s.workspaceHandoff?.humanRef;
+      if (!ref) break;
+      if (ref.source === "distribution") s.openDistributionProofModal(ref.item_id);
+      else if (ref.source === "influencer") s.openInfluencerProofModal(ref.item_id);
+      else s.openDelegateRubricModal(ref.item_id);
+      break;
+    }
+    case "export_outreach":
+      s.focusBackstageAnchor("lane-b-panel-wrap");
+      break;
+    case "focus_lane_b":
+      s.focusBackstageAnchor("lane-b-panel-wrap");
+      break;
     default:
       break;
   }
@@ -122,12 +147,30 @@ export function WorkspaceHandoffBanner() {
   );
 }
 
+import type { ProjectProfile } from "@shared/types";
+import { resolveFirstShipTarget } from "@shared/firstHourWow";
+
 export function buildRevealHandoff(opts: {
   projectName: string;
   connected: boolean;
   persona: "marketing" | "sales";
+  project?: ProjectProfile | null;
 }): WorkspaceHandoff {
-  const { projectName, connected, persona } = opts;
+  const { projectName, connected, persona, project } = opts;
+  const hero = project ? resolveFirstShipTarget(project).heroPath : undefined;
+
+  if (hero) {
+    return {
+      eyebrow: "You're in",
+      title: "Review hero & ship your first change",
+      reason: `${projectName} — landing file ${hero} is pinned. Scout answer cites path:line; one click runs the edit.`,
+      primaryLabel: "Review hero",
+      primaryAction: "first_move",
+      secondaryLabel: connected ? "Launch plan" : "Preview outline",
+      secondaryAction: connected ? "generate_plan" : "preview_plan",
+    };
+  }
+
   if (connected) {
     return {
       eyebrow: "You're in",

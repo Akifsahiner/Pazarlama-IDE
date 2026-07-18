@@ -15,6 +15,8 @@ import { EmptyState } from "@renderer/components/EmptyState";
 import type { SessionEvent } from "@renderer/state/session";
 import { fabPop, messageEnter, systemCollapse } from "@renderer/design/animations";
 import { AgentMarkdown } from "./AgentMarkdown";
+import { AnswerQualityBadge } from "@renderer/components/AnswerQualityBadge";
+import { ContextCitationChips } from "@renderer/components/ContextCitationChips";
 import { ContextQueue } from "./ContextQueue";
 import { EventRow } from "./cards/EventRow";
 import {
@@ -53,7 +55,7 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
 function EditButton({ eventId, className }: { eventId: string; className?: string }) {
   const startEditMessage = useApp((s) => s.startEditMessage);
   const streaming = useApp((s) => s.agentStreaming);
-  const connected = useApp((s) => s.connection.state === "connected");
+  const connected = useApp((s) => s.runtime === "connected");
   return (
     <button
       type="button"
@@ -71,7 +73,7 @@ function EditButton({ eventId, className }: { eventId: string; className?: strin
 function RetryButton({ text, className }: { text: string; className?: string }) {
   const sendMessage = useApp((s) => s.sendMessage);
   const streaming = useApp((s) => s.agentStreaming);
-  const connected = useApp((s) => s.connection.state === "connected");
+  const connected = useApp((s) => s.runtime === "connected");
   return (
     <button
       type="button"
@@ -140,6 +142,12 @@ function TextBubble({
       <div className="text-micro italic text-text-3">{event.text}</div>
     ) : !event.text && streaming ? null : (
       <div className="group/msg relative" title={formatTime(event.ts)}>
+        {(event.answerCritique || event.answerQualityWarn) && !streaming && (
+          <div className="mb-1.5 flex flex-wrap items-center gap-2">
+            <AnswerQualityBadge critique={event.answerCritique} />
+          </div>
+        )}
+        {!streaming && event.text && <ContextCitationChips text={event.text} />}
         <AgentMarkdown content={event.text ?? ""} streaming={streaming} />
         {!streaming && event.text && (
           <div className="absolute -right-1 top-0">
@@ -316,7 +324,7 @@ function ThreadBlockRow({
 export function MessageList() {
   const thread = useApp((s) => s.thread);
   const streaming = useApp((s) => s.agentStreaming);
-  const connected = useApp((s) => s.connection.state === "connected");
+  const connected = useApp((s) => s.runtime === "connected");
   const activeSessionId = useApp((s) => s.activeSessionId);
   const reducedMotion = useApp((s) => s.settings.reducedMotion);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -410,7 +418,7 @@ export function MessageList() {
           description={
             connected
               ? "Steer strategy, tone, and approvals here — work surfaces and the execution feed show what happens."
-              : "Connect a backend to start working with the agent."
+              : "Enable AI to start working with the agent."
           }
         />
       </div>

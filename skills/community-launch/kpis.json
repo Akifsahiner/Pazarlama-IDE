@@ -1,0 +1,32 @@
+[
+  {
+    "name": "community_referral_sessions_72h",
+    "definition": "Sessions from news.ycombinator.com, indiehackers.com, reddit.com referrers in 72h post-launch.",
+    "target_hint": "Show HN front page (top 30): 2k–15k sessions in 48h. Average Show HN: 200–800. IH milestone alone: 50–300."
+  },
+  {
+    "name": "hn_points_4h",
+    "definition": "Hacker News points on Show HN post within first 4 hours.",
+    "target_hint": "100+ = strong discussion; 200+ = front-page candidate on a normal day; <30 = title or demo mismatch."
+  },
+  {
+    "name": "hn_comment_count_4h",
+    "definition": "Top-level comments on Show HN thread in first 4 hours (excluding maker).",
+    "target_hint": "25+ = healthy thread; <10 with low points = fix title or demo before retry."
+  },
+  {
+    "name": "community_to_signup_rate",
+    "definition": "Signups from community referrers / community sessions in launch week.",
+    "target_hint": "5–15% for dev tools with tight message match; <3% = landing page or ICP mismatch."
+  },
+  {
+    "name": "founder_reply_sla_met",
+    "definition": "% of HN comments replied within 60 minutes during H0–H+4.",
+    "target_hint": "≥90% during launch window — non-negotiable for thread quality."
+  },
+  {
+    "name": "cross_post_violations",
+    "definition": "Count of mod removals or rule warnings across communities in launch week.",
+    "target_hint": "0 is the only acceptable target; any removal → pause 30 days on that platform."
+  }
+]

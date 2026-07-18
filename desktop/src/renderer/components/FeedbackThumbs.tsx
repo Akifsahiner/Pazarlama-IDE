@@ -9,12 +9,15 @@ export function FeedbackThumbs({
   projectId,
   skillId,
   discipline,
+  tacticApplied,
 }: {
   targetKind: "decision" | "draft" | "run" | "plan_task";
   targetId: string;
   projectId?: string;
   skillId?: string;
   discipline?: string;
+  /** Tactic IDs shown on the decision (Skill Excellence telemetry). */
+  tacticApplied?: string[];
 }) {
   const settings = useApp((s) => s.settings);
   const authEnabled = useApp((s) => s.auth.authEnabled);
@@ -32,6 +35,7 @@ export function FeedbackThumbs({
         rating: value,
         skillId,
         discipline,
+        tacticApplied,
       });
       setRating(value);
     } catch {

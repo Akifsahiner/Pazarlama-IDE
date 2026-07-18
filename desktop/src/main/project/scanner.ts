@@ -40,8 +40,9 @@ interface WalkResult {
   routes: string[];
   excluded: string[];
   hasAnalytics: boolean;
-  packageJson?: string;
+  packageJsonCandidates: Array<{ rel: string; content: string }>;
   readme?: string;
+  appPackages: string[];
 }
 
 export interface ScanProgress {
@@ -58,6 +59,8 @@ async function walk(
     routes: [],
     excluded: [],
     hasAnalytics: false,
+    packageJsonCandidates: [],
+    appPackages: [],
   };
   let lastEmit = Date.now();
   let readmeEmitted = false;
@@ -115,8 +118,14 @@ async function walk(
           emitMilestone("README parsed");
         }
       }
-      if (lower === "package.json" && depth <= 1 && !result.packageJson) {
-        result.packageJson = await safeRead(full);
+      if (lower === "package.json" && depth <= 4) {
+        const content = await safeRead(full);
+        if (content) {
+          result.packageJsonCandidates.push({ rel: rel.replace(/\\/g, "/"), content });
+          if (/^apps\/[^/]+\/package\.json$/i.test(rel.replace(/\\/g, "/"))) {
+            result.appPackages.push(path.dirname(rel.replace(/\\/g, "/")));
+          }
+        }
       }
       if (/(page|route|index)\.(t|j)sx?$/.test(lower) && /(app|pages|routes)/.test(rel)) {
         const routeName = rel.replace(/\\/g, "/");
@@ -156,26 +165,50 @@ async function walk(
   return result;
 }
 
-function detectFramework(pkg?: string): { framework?: string; productType?: string } {
-  if (!pkg) return {};
+function detectFramework(pkg?: string): { framework?: string; productType?: string; score: number } {
+  if (!pkg) return { score: 0 };
   try {
-    const json = JSON.parse(pkg) as { dependencies?: Record<string, string> };
-    const deps = json.dependencies ?? {};
+    const json = JSON.parse(pkg) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+      name?: string;
+    };
+    const deps = { ...json.dependencies, ...json.devDependencies };
+    let score = 1;
     if (deps.next) {
       const ver = deps.next.replace(/^[\^~>=<]*/, "");
       const major = ver.split(".")[0];
       const label = major === "15" ? "Next.js 15" : major ? `Next.js ${major}` : "Next.js";
-      return { framework: label, productType: "Web app" };
+      score += 10;
+      return { framework: label, productType: "Web app", score };
     }
-    if (deps.nuxt) return { framework: "Nuxt", productType: "Web app" };
-    if (deps["react-native"] || deps.expo) return { framework: "React Native", productType: "Mobile app" };
-    if (deps.react) return { framework: "React", productType: "Web app" };
-    if (deps.vue) return { framework: "Vue", productType: "Web app" };
-    if (deps.svelte) return { framework: "Svelte", productType: "Web app" };
+    if (deps.nuxt) return { framework: "Nuxt", productType: "Web app", score: 8 };
+    if (deps["react-native"] || deps.expo)
+      return { framework: "React Native", productType: "Mobile app", score: 8 };
+    if (deps.react) return { framework: "React", productType: "Web app", score: 6 };
+    if (deps.vue) return { framework: "Vue", productType: "Web app", score: 6 };
+    if (deps.svelte) return { framework: "Svelte", productType: "Web app", score: 6 };
+    if (json.name) score += 1;
   } catch {
     /* ignore */
   }
-  return {};
+  return { score: 0 };
+}
+
+function pickBestPackage(candidates: Array<{ rel: string; content: string }>): {
+  content?: string;
+  rel?: string;
+} {
+  let best: { rel: string; content: string; score: number } | null = null;
+  for (const c of candidates) {
+    const det = detectFramework(c.content);
+    const pathBoost = /^apps\//i.test(c.rel) ? 3 : c.rel === "package.json" ? 1 : 2;
+    const total = det.score + pathBoost;
+    if (!best || total > best.score) {
+      best = { rel: c.rel, content: c.content, score: total };
+    }
+  }
+  return best ? { content: best.content, rel: best.rel } : {};
 }
 
 export async function scanProject(
@@ -231,7 +264,12 @@ export async function scanProject(
   const root = source.path;
   onProgress?.({ message: "Opening project folder…", pct: 10 });
   const walked = await walk(root, onProgress);
-  const { framework, productType } = detectFramework(walked.packageJson);
+  const bestPkg = pickBestPackage(walked.packageJsonCandidates);
+  const { framework, productType } = detectFramework(bestPkg.content);
+  const monorepoRoot =
+    bestPkg.rel && bestPkg.rel !== "package.json"
+      ? path.dirname(bestPkg.rel).replace(/\\/g, "/")
+      : undefined;
 
   onProgress?.({ message: `Scanning ${walked.fileCount} files…`, pct: 93 });
   if (framework) onProgress?.({ message: `${framework} detected`, pct: 94 });
@@ -254,8 +292,10 @@ export async function scanProject(
     id: hashId(root),
     source,
     name: path.basename(root),
-    framework,
-    productType,
+    framework: framework || undefined,
+    productType: productType || undefined,
+    monorepoRoot,
+    appPackages: walked.appPackages.length ? walked.appPackages : undefined,
     readmeSummary,
     routes: walked.routes,
     hasAnalytics: walked.hasAnalytics,

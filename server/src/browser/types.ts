@@ -58,3 +58,19 @@ export interface Finding {
   frameRef?: string;
   createdAt: string;
 }
+
+export interface BrowserValidation {
+  label: string;
+  passed: boolean;
+  detail?: string;
+}
+
+export interface BrowserSessionReport {
+  goal: string;
+  evidence: Finding[];
+  validations: BrowserValidation[];
+  visitedUrls: string[];
+  outcome: "completed" | "stopped" | "error";
+  startedAt: string;
+  endedAt: string;
+}

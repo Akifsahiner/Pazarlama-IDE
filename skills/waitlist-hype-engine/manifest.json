@@ -3,13 +3,37 @@
   "name": "Waitlist & Hype Engine",
   "category": "pre-launch",
   "applies_when": {
-    "company_stage": ["pre-launch", "early", "relaunch"],
-    "channels_includes": ["landing_page", "email", "twitter", "linkedin", "referral", "product_hunt"],
-    "business_model": ["saas", "mobile_app", "marketplace", "info_product", "open_source"]
+    "company_stage": [
+      "pre-launch",
+      "early",
+      "relaunch"
+    ],
+    "channels_includes": [
+      "landing_page",
+      "email",
+      "twitter",
+      "linkedin",
+      "referral",
+      "product_hunt"
+    ],
+    "business_model": [
+      "saas",
+      "mobile_app",
+      "marketplace",
+      "info_product",
+      "open_source"
+    ]
   },
   "do_not_use_when": {
-    "company_stage": ["enterprise_field_sales_only", "post_pmf_scale"],
-    "constraints_includes": ["product_already_public_no_waitlist", "regulated_no_referral_tracking", "stealth_mode_no_public_signup"]
+    "company_stage": [
+      "enterprise_field_sales_only",
+      "post_pmf_scale"
+    ],
+    "constraints_includes": [
+      "product_already_public_no_waitlist",
+      "regulated_no_referral_tracking",
+      "stealth_mode_no_public_signup"
+    ]
   },
   "required_inputs": [
     "product_name",
@@ -22,7 +46,24 @@
   "output_schema": "marketing_decision",
   "primary_metric": "waitlist_signups_with_referral_rate",
   "playbook_selector": [
-    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
-    { "if": { "business_model": ["saas"] }, "pick": "b2b-saas" }
+    {
+      "if": {
+        "current_users_lt": 100
+      },
+      "pick": "no-audience"
+    },
+    {
+      "if": {
+        "business_model": [
+          "saas"
+        ]
+      },
+      "pick": "b2b-saas"
+    }
+  ],
+  "version": "1.1.0",
+  "changelog": "Manifest v2 fields for Skill Excellence",
+  "aggression_playbooks": [
+    "aggressive-viral-loop"
   ]
 }

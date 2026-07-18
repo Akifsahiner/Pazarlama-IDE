@@ -10,9 +10,16 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --import tsx --test src/tier/tiers.test.ts",
+    "test": "node --import tsx --test src/tier/tiers.test.ts src/billing/pricing.test.ts src/brain/marketingStrategyRoute.test.ts src/brain/answerCritic.test.ts src/brain/executionClassifier.test.ts",
     "eval:gtm": "npm run build && node evals/gtm-golden.mjs && node evals/gtm-behavioral.mjs",
     "eval:skill-coverage": "npm run build && node evals/skill-coverage.mjs",
+    "skill:audit": "node scripts/skill-audit.mjs",
+    "skill:scaffold": "node scripts/skill-scaffold.mjs",
+    "eval:skills": "npm run eval:skill-coverage && npm run skill:audit",
+    "eval:skill-quality-ph": "npm run build && node evals/skill-quality-ph.mjs",
+    "eval:skill-quality": "npm run build && node evals/skill-quality.mjs",
+    "eval:p0-plan-smoke": "npm run build && node evals/p0-plan-smoke.mjs",
+    "eval:devflow-plan-smoke": "npm run build && node evals/devflow-plan-smoke.mjs",
     "browser:install": "playwright install chromium"
   },
   "dependencies": {
@@ -22,6 +29,7 @@
     "fastify": "^5.8.5",
     "openai": "^6.44.0",
     "playwright": "^1.61.1",
+    "stripe": "^18.5.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

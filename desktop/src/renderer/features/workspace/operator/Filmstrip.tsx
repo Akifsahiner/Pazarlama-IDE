@@ -10,7 +10,7 @@ interface FilmstripProps {
 
 /** Horizontal scrubber of recent frames; click to pin, "Live" returns to latest. */
 export function Filmstrip({ frames, selectedTs, onSelect, onLive }: FilmstripProps) {
-  if (frames.length <= 1) return null;
+  if (frames.length === 0) return null;
   const selectedIndex = selectedTs ? frames.findIndex((f) => f.ts === selectedTs) : -1;
 
   return (
@@ -23,11 +23,9 @@ export function Filmstrip({ frames, selectedTs, onSelect, onLive }: FilmstripPro
       >
         <Radio size={11} /> Live
       </button>
-      {selectedIndex >= 0 && (
-        <span className="shrink-0 rounded-full border border-line bg-surface-2 px-1.5 py-0.5 text-[9px] text-text-2">
-          Step {selectedIndex + 1}/{frames.length}
-        </span>
-      )}
+      <span className="shrink-0 rounded-full border border-line bg-surface-2 px-1.5 py-0.5 text-[9px] text-text-2">
+        {selectedIndex >= 0 ? `Step ${selectedIndex + 1}/${frames.length}` : `${frames.length} frame${frames.length === 1 ? "" : "s"}`}
+      </span>
       <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
         {frames.map((f) => (
           <button

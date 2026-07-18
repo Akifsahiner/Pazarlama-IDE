@@ -14,7 +14,9 @@ import {
   Wand2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useMemo } from "react";
 import { useApp } from "@renderer/state/store";
+import { assessMeasurementBaseline, isMeasurementGateHard } from "@shared/measurementBaseline";
 import { Page } from "@renderer/components/ui/Page";
 import { Card } from "@renderer/components/ui/Card";
 import { Button } from "@renderer/components/ui/Button";
@@ -32,7 +34,24 @@ import {
   CAMPAIGN_PHASE_LABELS,
   campaignProgressPercent,
 } from "@shared/campaignSession";
+import { isContinuousReplanReady } from "@shared/cmoContinuous";
+import { isCommandSurfaceActive } from "@shared/cmoCommandSurface";
+import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
+import { shouldDeferFullCmoIntake } from "@shared/quickStartWedge";
+import { ShipFirstWinBanner } from "./ShipFirstWinBanner";
+import { ShipWinCard } from "@renderer/features/workspace/ShipWinCard";
+import { nextActionableTask } from "@shared/planProgress";
 import type { CampaignSession } from "@shared/types";
+import { CmoIntakeCard } from "@renderer/features/onboarding/CmoIntakeCard";
+import { CmoStrategicIntakeFlow } from "@renderer/features/onboarding/CmoStrategicIntakeFlow";
+import { BudgetSetupCard } from "@renderer/features/onboarding/BudgetSetupCard";
+import { ProductActivationCard } from "@renderer/features/onboarding/ProductActivationCard";
+import { RevenueSetupCard } from "@renderer/features/onboarding/RevenueSetupCard";
+import { GrowthCommandSurface } from "@renderer/features/workspace/GrowthCommandSurface";
+import { CmoBackstage } from "@renderer/features/workspace/CmoBackstage";
+import { isDistributionOperatorGate } from "@shared/cmoDistributionOperator";
+import { isInfluencerOperatorGate } from "@shared/cmoInfluencerOperator";
+import { isDelegateOperatorGate, resolveDelegateOperator } from "@shared/cmoDelegateOperator";
 import { GtmKnowledgeStrip } from "./GtmKnowledgeStrip";
 
 interface Move {
@@ -71,7 +90,96 @@ export function HomePage() {
   const campaignSession = useApp((s) => s.marketingProfile?.campaign_session ?? null);
   const openRunReplay = useApp((s) => s.openRunReplay);
   const focusArtifact = useApp((s) => s.focusArtifact);
+  const focusPlanTask = useApp((s) => s.focusPlanTask);
+  const setWorkSurface = useApp((s) => s.setWorkSurface);
+  const setActiveCanvas = useApp((s) => s.setActiveCanvas);
+  const firstShipAt = useApp((s) => s.firstShipAt);
+  const sessionOutcomes = useApp((s) => s.sessionOutcomes);
+  const channelThesis = useApp((s) => s.channelThesis ?? s.marketingProfile?.channel_thesis);
+  const marketingProfile = useApp((s) => s.marketingProfile);
+  const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
+  const laneBWorkspace = useApp((s) => s.laneBWorkspace ?? s.marketingProfile?.lane_b_workspace);
+  const laneAWorkspace = useApp((s) => s.laneAWorkspace ?? s.marketingProfile?.lane_a_workspace);
+  const laneDWorkspace = useApp((s) => s.laneDWorkspace ?? s.marketingProfile?.lane_d_workspace);
+  const monetizationWorkspace = useApp(
+    (s) => s.monetizationWorkspace ?? s.marketingProfile?.monetization_workspace,
+  );
+  const revenueProfile = useApp((s) => s.revenueProfile ?? s.marketingProfile?.revenue_profile);
+  const productActivation = useApp(
+    (s) => s.productActivation ?? s.marketingProfile?.product_activation,
+  );
+  const cmoContinuous = useApp((s) => s.cmoContinuous ?? s.marketingProfile?.cmo_continuous);
+  const growthMemory = useApp((s) => s.growthMemory ?? s.marketingProfile?.growth_memory);
+  const delegateRaw = useApp(
+    (s) =>
+      s.delegateOperator ??
+      s.delegateWorkspace ??
+      s.marketingProfile?.delegate_operator ??
+      s.marketingProfile?.lane_c_workspace,
+  );
+  const delegateWorkspace = useMemo(
+    () => resolveDelegateOperator(delegateRaw, channelThesis),
+    [delegateRaw, channelThesis],
+  );
+  const growthControlPlane = useApp(
+    (s) => s.growthControlPlane ?? s.marketingProfile?.growth_control_plane,
+  );
+  const warRoomExpanded = useApp((s) => s.warRoomExpanded);
+  const distributionOperator = useApp(
+    (s) => s.distributionOperator ?? s.marketingProfile?.distribution_operator,
+  );
+  const influencerOperator = useApp(
+    (s) => s.influencerOperator ?? s.marketingProfile?.influencer_operator,
+  );
+  const beginCmoWeek1 = useApp((s) => s.beginCmoWeek1);
+  const beginFirstHour = useApp((s) => s.beginFirstHour);
+  const firstShipLedger = useApp((s) => s.firstShipLedger);
+  const onboardingTrack = useApp((s) => s.onboardingTrack);
+  const openStrategicIntake = useApp((s) => s.openStrategicIntake);
 
+  const baselineReady = assessMeasurementBaseline(marketingProfile, project).ready;
+  const week1Ready = Boolean(
+    productActivation &&
+      revenueProfile &&
+      (!isMeasurementGateHard() || baselineReady),
+  );
+  const needsPreWeek1Setup =
+    Boolean(channelThesis) &&
+    !opsCadence &&
+    isStrategicDecisionSealed(marketingProfile) &&
+    !week1Ready;
+  const showCmoIntakeSection =
+    Boolean(channelThesis) &&
+    !opsCadence &&
+    !campaignSession &&
+    (!plan || needsPreWeek1Setup) &&
+    !shouldDeferFullCmoIntake({ firstShipAt, onboardingTrack });
+
+  const shippedToday =
+    firstShipLedger &&
+    new Date(firstShipLedger.at).toDateString() === new Date().toDateString();
+
+  const commandSurfaceActive = isCommandSurfaceActive({ growthControlPlane, opsCadence });
+  const distOperatorActive =
+    !!distributionOperator &&
+    isDistributionOperatorGate({
+      thesis: channelThesis,
+      opsCadence,
+      growthPlane: growthControlPlane,
+    });
+  const infOperatorActive =
+    !!influencerOperator &&
+    isInfluencerOperatorGate({
+      thesis: channelThesis,
+      opsCadence,
+      growthPlane: growthControlPlane,
+    });
+  const delegateOperatorActive =
+    !!delegateWorkspace &&
+    isDelegateOperatorGate({
+      thesis: channelThesis,
+      opsCadence,
+    });
   if (!project) {
     return (
       <Page title="Dashboard" eyebrow="Marketing IDE">
@@ -153,8 +261,8 @@ export function HomePage() {
     },
     {
       icon: Compass,
-      title: "Scan competitors",
-      desc: "Live browser research on positioning.",
+      title: "Live Computer Use",
+      desc: "Watch the agent research competitors on Google — live sandbox stage.",
       quickAction: "competitors",
     },
   ];
@@ -195,6 +303,22 @@ export function HomePage() {
 
   const primary = persona === "sales" ? salesMoves : marketingMoves;
   const secondary = persona === "sales" ? marketingMoves : salesMoves;
+  const planHourStarted = Boolean(plan && planProgress);
+  const nextPlanTask =
+    plan && planProgress ? nextActionableTask(plan, planProgress.byTaskId) : null;
+  const planDone = planProgress?.computed.done ?? 0;
+  const planTotal = planProgress?.computed.total ?? plan?.taskGraph.length ?? 0;
+
+  const continueFirstHour = () => {
+    navigate("workspace");
+    setWorkSurface("campaign-plan");
+    setActiveCanvas("campaign-plan");
+    if (nextPlanTask) {
+      focusPlanTask({ playbookId: nextPlanTask.playbookId, taskId: nextPlanTask.id });
+    } else {
+      focusArtifact({ mode: "plan" });
+    }
+  };
 
   return (
     <Page
@@ -229,6 +353,114 @@ export function HomePage() {
         )}
       </Card>
 
+      {!firstShipAt && hasFolder && <ShipFirstWinBanner />}
+
+      {firstShipAt && firstShipLedger && (
+        <>
+          {shippedToday && (
+            <Card className="border-ok/25 bg-ok-soft/10 p-3" data-testid="home-today-shipped">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-ok">
+                Today you shipped
+              </p>
+              <p className="mt-1 text-body-sm text-text">{firstShipLedger.summary}</p>
+            </Card>
+          )}
+          <ShipWinCard
+            ledger={firstShipLedger}
+            compact
+            onContinueCmo={
+              channelThesis && !isStrategicDecisionSealed(marketingProfile)
+                ? openStrategicIntake
+                : undefined
+            }
+          />
+        </>
+      )}
+
+      {commandSurfaceActive && growthControlPlane && opsCadence && (
+        <GrowthCommandSurface
+          plane={growthControlPlane}
+          cadence={opsCadence}
+          laneBWorkspace={laneBWorkspace}
+          laneDWorkspace={laneDWorkspace}
+          distributionOperator={distOperatorActive ? distributionOperator : null}
+          influencerOperator={infOperatorActive ? influencerOperator : null}
+          delegateOperator={delegateOperatorActive ? delegateWorkspace : null}
+          continuous={cmoContinuous}
+          campaignSession={campaignSession}
+          growthMemory={growthMemory}
+          monetizationWorkspace={monetizationWorkspace}
+          revenueProfile={revenueProfile}
+        />
+      )}
+
+      {commandSurfaceActive && warRoomExpanded && growthControlPlane && opsCadence && (
+        <CmoBackstage
+          cadence={opsCadence}
+          thesis={channelThesis}
+          plane={growthControlPlane}
+          laneAWorkspace={laneAWorkspace}
+          laneBWorkspace={laneBWorkspace}
+          laneDWorkspace={laneDWorkspace}
+          monetizationWorkspace={monetizationWorkspace}
+          distributionOperator={distOperatorActive ? distributionOperator : null}
+          influencerOperator={infOperatorActive ? influencerOperator : null}
+          delegateOperator={delegateOperatorActive ? delegateWorkspace : null}
+          continuous={cmoContinuous}
+          campaignSession={campaignSession}
+          growthMemory={growthMemory}
+        />
+      )}
+      {!commandSurfaceActive && growthControlPlane && opsCadence && (
+        <CmoBackstage
+          cadence={opsCadence}
+          thesis={channelThesis}
+          plane={growthControlPlane}
+          laneAWorkspace={laneAWorkspace}
+          laneBWorkspace={laneBWorkspace}
+          laneDWorkspace={laneDWorkspace}
+          monetizationWorkspace={monetizationWorkspace}
+          distributionOperator={distOperatorActive ? distributionOperator : null}
+          influencerOperator={infOperatorActive ? influencerOperator : null}
+          delegateOperator={delegateOperatorActive ? delegateWorkspace : null}
+          continuous={cmoContinuous}
+          campaignSession={campaignSession}
+          growthMemory={growthMemory}
+        />
+      )}
+
+      {showCmoIntakeSection && (
+        channelThesis!.verdict === "not_ready" ? (
+          <CmoIntakeCard thesis={channelThesis!} />
+        ) : isStrategicDecisionSealed(marketingProfile) ? (
+          <>
+            {needsPreWeek1Setup && (
+              <>
+                <BudgetSetupCard />
+                <ProductActivationCard />
+                <RevenueSetupCard />
+              </>
+            )}
+            <CmoIntakeCard
+              thesis={channelThesis!}
+              narrative={marketingProfile?.growth_narrative}
+              strategicDecision={marketingProfile?.strategic_decision}
+              onStartWeek1={week1Ready ? () => beginCmoWeek1() : undefined}
+              onFullPlan={() => beginFirstHour()}
+              week1BlockedReason={
+                !week1Ready
+                  ? !productActivation
+                    ? "Complete product activation above before Week 1."
+                    : "Complete revenue intake above before Week 1."
+                  : undefined
+              }
+            />
+          </>
+        ) : (
+          <CmoStrategicIntakeFlow />
+        )
+      )}
+
       {campaignSession && (
         <ActiveCampaignCard
           session={campaignSession}
@@ -237,6 +469,17 @@ export function HomePage() {
           onContinue={() => {
             navigate("workspace");
           }}
+        />
+      )}
+
+      {planHourStarted && !campaignSession && (
+        <FirstHourProgressCard
+          done={planDone}
+          total={planTotal}
+          planPreviewMode={planPreviewMode}
+          nextTask={nextPlanTask}
+          firstShipAt={firstShipAt}
+          onContinue={continueFirstHour}
         />
       )}
 
@@ -257,6 +500,7 @@ export function HomePage() {
 
       <RecentActivityStrip
         runs={runsArchive.slice(0, 2)}
+        lastShip={sessionOutcomes.find((o) => o.commitSha || o.filesApplied)?.label}
         sessionTitle={sessions.find((s) => s.id === activeSessionId)?.title}
         hasPlan={!!plan}
         planPreviewMode={planPreviewMode}
@@ -270,61 +514,144 @@ export function HomePage() {
         <GtmKnowledgeStrip />
       </div>
 
-      <div className="mt-8">
-        <h2 className="mb-3 text-h3 text-text">Suggested moves</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {primary.map((m) => {
-            const disabled = moveDisabled(m);
-            const softDisabled = !!disabled && !m.offlineCapable;
-            return (
-              <Card
-                key={m.title}
-                interactive
-                onClick={() => runMove(m)}
-                padded
-                className={softDisabled ? "cursor-not-allowed opacity-50" : undefined}
-                title={disabled ?? undefined}
-              >
-                <div className="flex items-start gap-3">
-                  <span
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] ${
-                      m.tone === "sales" ? "bg-sales-soft text-sales" : "bg-accent-soft text-accent"
-                    }`}
+      {!planHourStarted && (
+        <>
+          <div className="mt-8">
+            <h2 className="mb-3 text-h3 text-text">Suggested moves</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {primary.map((m) => {
+                const disabled = moveDisabled(m);
+                const softDisabled = !!disabled && !m.offlineCapable;
+                return (
+                  <Card
+                    key={m.title}
+                    interactive
+                    onClick={() => runMove(m)}
+                    padded
+                    className={softDisabled ? "cursor-not-allowed opacity-50" : undefined}
+                    title={disabled ?? undefined}
                   >
-                    <m.icon size={17} />
-                  </span>
-                  <div className="min-w-0">
-                    <div className="text-body font-medium text-text">{m.title}</div>
-                    <div className="text-body-sm text-text-2">{m.desc}</div>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
+                    <div className="flex items-start gap-3">
+                      <span
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] ${
+                          m.tone === "sales" ? "bg-sales-soft text-sales" : "bg-accent-soft text-accent"
+                        }`}
+                      >
+                        <m.icon size={17} />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-body font-medium text-text">{m.title}</div>
+                        <div className="text-body-sm text-text-2">{m.desc}</div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
 
-      <div className="mt-8">
-        <h2 className="mb-3 text-h3 text-text-2">More</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {secondary.map((m) => {
-            const disabled = moveDisabled(m);
-            return (
-              <button
-                key={m.title}
-                onClick={disabled ? undefined : () => runMove(m)}
-                disabled={!!disabled}
-                title={disabled ?? undefined}
-                className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-line bg-surface-2 px-4 py-3 text-left transition-colors hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <m.icon size={16} className={m.tone === "sales" ? "text-sales" : "text-accent"} />
-                <span className="text-body text-text-2">{m.title}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+          <div className="mt-8">
+            <h2 className="mb-3 text-h3 text-text-2">More</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {secondary.map((m) => {
+                const disabled = moveDisabled(m);
+                return (
+                  <button
+                    key={m.title}
+                    onClick={disabled ? undefined : () => runMove(m)}
+                    disabled={!!disabled}
+                    title={disabled ?? undefined}
+                    className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-line bg-surface-2 px-4 py-3 text-left transition-colors hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <m.icon size={16} className={m.tone === "sales" ? "text-sales" : "text-accent"} />
+                    <span className="text-body text-text-2">{m.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
     </Page>
+  );
+}
+
+function FirstHourProgressCard({
+  done,
+  total,
+  planPreviewMode,
+  nextTask,
+  firstShipAt,
+  onContinue,
+}: {
+  done: number;
+  total: number;
+  planPreviewMode: boolean;
+  nextTask: { id: string; day: number; title: string } | null;
+  firstShipAt?: number;
+  onContinue: () => void;
+}) {
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const firstShipLabel = firstShipAt
+    ? "First change applied ✓"
+    : !firstShipAt && done === 0
+      ? "Ship one patch from reveal"
+      : undefined;
+  const ctaLabel = nextTask
+    ? done === 0
+      ? `Start Day ${nextTask.day}`
+      : `Continue · Day ${nextTask.day}`
+    : done >= total
+      ? "Review plan"
+      : "Open plan studio";
+
+  return (
+    <Card
+      className="mt-4 border-accent/20 bg-accent-soft/10"
+      data-testid="first-hour-progress-card"
+      role="region"
+      aria-label="First hour progress"
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-accent">
+              Your first hour
+            </span>
+            <Badge tone={planPreviewMode ? "warn" : "accent"}>
+              {planPreviewMode ? "Outline" : "Launch plan"}
+            </Badge>
+          </div>
+          <h2 className="mt-1 text-h3 text-text">
+            {nextTask ? `Next: Day ${nextTask.day} · ${nextTask.title}` : "Plan ready — pick your next task"}
+          </h2>
+          <p className="mt-1 text-mini text-text-3">
+            {done}/{total} tasks complete
+            {firstShipLabel ? ` · ${firstShipLabel}` : ""}
+            {planPreviewMode ? " · Connect for full AI personalization" : ""}
+          </p>
+          <div className="mt-3">
+            <div className="mb-1 flex items-center justify-between text-[10px] text-text-3">
+              <span>Hour-one progress</span>
+              <span className="font-medium tabular-nums text-text-2">{pct}%</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-line">
+              <div
+                className="h-full rounded-full bg-accent transition-all duration-500"
+                style={{ width: `${Math.max(done > 0 ? 8 : 4, pct)}%` }}
+                role="progressbar"
+                aria-valuenow={pct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              />
+            </div>
+          </div>
+        </div>
+        <Button variant="primary" iconRight={<ArrowRight size={15} />} onClick={onContinue} className="shrink-0">
+          {ctaLabel}
+        </Button>
+      </div>
+    </Card>
   );
 }
 
@@ -340,14 +667,36 @@ function ActiveCampaignCard({
   onContinue: () => void;
 }) {
   const phaseLabel = CAMPAIGN_PHASE_LABELS[session.phase];
+  const cmoContinuous = useApp((s) => s.cmoContinuous ?? s.marketingProfile?.cmo_continuous);
+  const startNextCmoCycle = useApp((s) => s.startNextCmoCycle);
+  const appendEvent = useApp((s) => s.appendEvent);
+  const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
   const ctaLabel =
     session.phase === "measuring"
-      ? "Review outcomes"
+      ? "Start next week"
       : session.phase === "reviewing"
         ? "Review & apply"
         : session.phase === "planning"
           ? "Open plan studio"
           : "Continue campaign";
+
+  const replanReady = isContinuousReplanReady(cmoContinuous, opsCadence, session.phase);
+
+  const handleContinue = () => {
+    if (session.phase === "measuring" && replanReady) {
+      const pivot = opsCadence?.pivot_suggestion;
+      const suggested =
+        pivot && !pivot.dismissed_at ? pivot.suggested_thesis_ids[0] : undefined;
+      const err = startNextCmoCycle({
+        thesisId: suggested,
+        mode: suggested && pivot?.verdict === "flat" ? "pivot" : "double_down",
+      });
+      if (err) {
+        appendEvent({ role: "system", kind: "error", text: err });
+      }
+    }
+    onContinue();
+  };
 
   return (
     <Card
@@ -395,7 +744,7 @@ function ActiveCampaignCard({
         <Button
           variant="primary"
           iconRight={<ArrowRight size={15} />}
-          onClick={onContinue}
+          onClick={handleContinue}
           className="shrink-0"
         >
           {ctaLabel}
@@ -407,6 +756,7 @@ function ActiveCampaignCard({
 
 function RecentActivityStrip({
   runs,
+  lastShip,
   sessionTitle,
   hasPlan,
   planPreviewMode,
@@ -416,6 +766,7 @@ function RecentActivityStrip({
   onWorkspace,
 }: {
   runs: { id: string; goal: string; status: string; kind: string }[];
+  lastShip?: string;
   sessionTitle?: string;
   hasPlan: boolean;
   planPreviewMode: boolean;
@@ -426,6 +777,16 @@ function RecentActivityStrip({
 }) {
   const items: { key: string; label: string; sub?: string; onClick: () => void; icon: LucideIcon }[] =
     [];
+
+  if (lastShip) {
+    items.push({
+      key: "last-ship",
+      label: lastShip.slice(0, 72),
+      sub: "Last shipped change",
+      onClick: onWorkspace,
+      icon: Rocket,
+    });
+  }
 
   for (const r of runs) {
     items.push({

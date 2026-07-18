@@ -2,6 +2,9 @@
   "id": "ph_launch",
   "name": "Product Hunt Launch",
   "category": "launch",
+  "version": "1.1.0",
+  "changelog": "Added aggressive-top-1 war-room, case studies, email/hunter templates, decision-tree v2",
+  "aggression_playbooks": ["aggressive-top-1"],
   "applies_when": {
     "company_stage": ["pre-launch", "early", "growth", "relaunch"],
     "channels_includes": ["product_hunt", "twitter", "linkedin", "email", "indie_hackers"],
@@ -22,6 +25,7 @@
   "output_schema": "marketing_decision",
   "primary_metric": "ph_rank_day_one",
   "playbook_selector": [
+    { "if": { "email_list_size_gte": 5000 }, "pick": "aggressive-top-1" },
     { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
     { "if": { "channels_includes": ["email"] }, "pick": "with-email-list" },
     { "if": { "business_model": ["saas"] }, "pick": "b2b-saas" }

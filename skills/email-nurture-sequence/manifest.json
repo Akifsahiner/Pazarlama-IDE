@@ -1,0 +1,33 @@
+{
+  "id": "email-nurture-sequence",
+  "name": "Email Nurture Sequence (pre-launch → launch → onboarding)",
+  "category": "retention",
+  "version": "1.0.0",
+  "changelog": "Initial sequence: 14d pre-launch drip, launch week 3 waves (PH-synced), post-launch onboarding — distinct from cold outreach and waitlist referral loop",
+  "aggression_playbooks": ["aggressive-launch-nurture"],
+  "applies_when": {
+    "company_stage": ["prelaunch", "pre-launch", "early", "growth", "relaunch"],
+    "signals": ["email_list_size_gt_0", "waitlist_active"],
+    "channels_includes": ["email"]
+  },
+  "do_not_use_when": {
+    "constraints_includes": ["no_email", "stealth_no_list", "cold_outbound_only"],
+    "company_stage": ["enterprise_field_sales_only"]
+  },
+  "required_inputs": [
+    "product_name",
+    "main_value_proposition",
+    "target_audience",
+    "email_list_size",
+    "available_channels",
+    "marketing_goals"
+  ],
+  "output_schema": "marketing_decision",
+  "primary_metric": "launch_week_revenue_or_activation",
+  "playbook_selector": [
+    { "if": { "email_list_size_gte": 5000 }, "pick": "aggressive-launch-nurture" },
+    { "if": { "email_list_size_lt": 200 }, "pick": "no-audience" },
+    { "if": { "email_list_size_gte": 1000 }, "pick": "with-email-list" },
+    { "if": { "business_model": ["saas", "tool"] }, "pick": "b2b-saas" }
+  ]
+}

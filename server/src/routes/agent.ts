@@ -9,6 +9,8 @@ import { assertTierAndQuota } from "../middleware/tierGate.js";
 import { sendMeteringError } from "../middleware/meteringErrors.js";
 import { classifyError } from "../llm/errors.js";
 import { runTurn } from "../brain/turn.js";
+import { estimateCostCents } from "../billing/pricing.js";
+import { env } from "../env.js";
 import * as marketingProfileRepo from "../db/repos/marketingProfile.js";
 import * as sessions from "../db/repos/sessions.js";
 import * as messages from "../db/repos/messages.js";
@@ -83,6 +85,18 @@ export async function agentRoutes(app: FastifyInstance): Promise<void> {
       });
 
       if (sse.closed()) return;
+
+      const costCents = estimateCostCents(
+        env.ANTHROPIC_MODEL,
+        usageSink.input,
+        usageSink.output,
+      );
+      emit({
+        type: "usage",
+        tokens_in: usageSink.input,
+        tokens_out: usageSink.output,
+        cost_cents: costCents,
+      });
       emit({ type: "done" });
 
       const persist = result.persist;
@@ -91,7 +105,12 @@ export async function agentRoutes(app: FastifyInstance): Promise<void> {
       if (result.revisedPlan && persistenceEnabled && user && projectId) {
         try {
           await plans.insert(user.id, projectId, result.revisedPlan);
-          await usage.insert(user.id, { kind: "plan" });
+          await usage.insert(user.id, {
+            kind: "plan",
+            tokens_in: usageSink.input,
+            tokens_out: usageSink.output,
+            cost_cents: costCents,
+          });
         } catch (persistErr) {
           app.log.warn({ err: persistErr }, "failed to persist revised plan");
         }
@@ -106,41 +125,50 @@ export async function agentRoutes(app: FastifyInstance): Promise<void> {
           kind: persist.kind,
           discipline: result.intent.discipline,
           assets: collectedAssets.length,
+          tokens_in: usageSink.input,
+          tokens_out: usageSink.output,
+          cost_cents: costCents,
         },
         "llm_turn",
       );
 
-      if (persistenceEnabled && user && sessionId) {
+      if (persistenceEnabled && user) {
         try {
-          if (message.trim() || !context?.proactive_trigger) {
-            await messages.insert(sessionId, {
-              role: "user",
-              kind: "chat",
-              content_json: { text: message.trim() || "[proactive]" },
-            });
-          }
-          await messages.insert(sessionId, {
-            role: "agent",
-            kind: persist.kind ?? "chat",
-            content_json: persist,
-          });
-          if (projectId) {
-            for (const asset of collectedAssets) {
-              await assets.insert(user.id, {
-                projectId,
-                sessionId,
-                type: asset.type,
-                targetFile: asset.targetFile,
-                beforeText: asset.before,
-                afterText: asset.after,
+          if (sessionId) {
+            if (message.trim() || !context?.proactive_trigger) {
+              await messages.insert(sessionId, {
+                role: "user",
+                kind: "chat",
+                content_json: { text: message.trim() || "[proactive]" },
               });
             }
+            await messages.insert(sessionId, {
+              role: "agent",
+              kind: persist.kind ?? "chat",
+              content_json: persist,
+            });
+            if (projectId) {
+              for (const asset of collectedAssets) {
+                await assets.insert(user.id, {
+                  projectId,
+                  sessionId,
+                  type: asset.type,
+                  targetFile: asset.targetFile,
+                  beforeText: asset.before,
+                  afterText: asset.after,
+                });
+              }
+            }
           }
-          await usage.insert(user.id, {
-            kind: "agent",
-            tokens_in: usageSink.input,
-            tokens_out: usageSink.output,
-          });
+          // Always meter the turn (even without a session).
+          if (!result.revisedPlan) {
+            await usage.insert(user.id, {
+              kind: "agent",
+              tokens_in: usageSink.input,
+              tokens_out: usageSink.output,
+              cost_cents: costCents,
+            });
+          }
         } catch (persistErr) {
           app.log.warn({ err: persistErr }, "failed to persist agent turn");
         }

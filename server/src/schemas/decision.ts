@@ -37,6 +37,21 @@ export const marketingDecisionSchema = z.object({
   channel_priority: z.array(z.string()).max(3).default([]),
   next_playbook: z.string().optional(),
   tactic_you_may_not_know: z.string().optional(),
+  recommended_aggression: z.enum(["conservative", "standard", "aggressive"]).optional(),
+  honest_ceiling: z.string().optional(),
+  tactic_stack: z
+    .array(
+      z.object({
+        id: z.string(),
+        phase: z.string().optional(),
+        action: z.string(),
+        metric: z.string().optional(),
+      }),
+    )
+    .min(5)
+    .max(12)
+    .optional(),
+  profile_citations: z.array(z.string()).min(3).max(8).optional(),
   options_compared: z.array(decisionOptionSchema).min(1).max(4),
   decision: z.string().min(4),
   rationale: z.string().min(8),
@@ -90,6 +105,38 @@ export const DECISION_JSON_SCHEMA = {
     tactic_you_may_not_know: {
       type: "string",
       description: "Name one specific tactic the founder may not know (e.g. PH supporter comment cadence).",
+    },
+    recommended_aggression: {
+      type: "string",
+      enum: ["conservative", "standard", "aggressive"],
+      description: "Honest intensity level for this profile's assets.",
+    },
+    honest_ceiling: {
+      type: "string",
+      description: "What is realistically achievable (e.g. Top 1 unlikely without 5k+ engaged list).",
+    },
+    tactic_stack: {
+      type: "array",
+      minItems: 5,
+      maxItems: 12,
+      items: {
+        type: "object",
+        required: ["id", "action"],
+        properties: {
+          id: { type: "string", description: "Registry tactic id e.g. ph_email_wave_2_9am" },
+          phase: { type: "string", description: "T-14, H+6, D+1, etc." },
+          action: { type: "string" },
+          metric: { type: "string" },
+        },
+      },
+      description: "≥5 measurable tactics from skill playbook — not generic advice.",
+    },
+    profile_citations: {
+      type: "array",
+      minItems: 3,
+      maxItems: 8,
+      items: { type: "string" },
+      description: "Profile field names cited (product_name, current_users, email_list_size, …).",
     },
     options_compared: {
       type: "array",

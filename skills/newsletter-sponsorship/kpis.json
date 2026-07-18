@@ -1,0 +1,32 @@
+[
+  {
+    "name": "nl_sponsor_signups_7d",
+    "definition": "Signups or trial starts attributed to newsletter sponsor UTMs within 7 days of each send date.",
+    "target_hint": "Strong niche fit (React/JS dev tool): 40–120 signups per $1.5k slot. Average fit: 15–40. Poor fit: <10 — kill and rewrite."
+  },
+  {
+    "name": "nl_sponsor_ctr",
+    "definition": "Sponsor block clicks / estimated opens (from publisher report or clicks ÷ stated open rate × list size).",
+    "target_hint": "≥0.8% = healthy native creative. 0.5–0.8% = test hook B. <0.5% = audience or copy mismatch — pause rebook."
+  },
+  {
+    "name": "nl_sponsor_cpa_7d",
+    "definition": "Total slot cost + production / attributed signups in 7d post-send.",
+    "target_hint": "B2B dev SaaS: $50–150 CPA signup is strong; $150–300 acceptable for high-LTV. >$400 after 200+ clicks → kill rule fires."
+  },
+  {
+    "name": "nl_audience_overlap_score",
+    "definition": "Weighted 1–5 score: job title match, stack match, geography, and stated open rate vs ICP.",
+    "target_hint": "Only book ≥4/5 on first sprint; 3/5 only as cheap learning slot ($500–800)."
+  },
+  {
+    "name": "nl_sponsor_activation_rate_14d",
+    "definition": "% of newsletter-attributed signups completing core activation (first project, API call, or paid trial) within 14d.",
+    "target_hint": "≥25% for dev tools with tight message match; <15% → LP or onboarding mismatch, not newsletter fault alone."
+  },
+  {
+    "name": "nl_consecutive_slot_violations",
+    "definition": "Count of newsletters booked >2 consecutive issues without skip.",
+    "target_hint": "0 is target; violation predicts CTR decay >40% on issue 3."
+  }
+]

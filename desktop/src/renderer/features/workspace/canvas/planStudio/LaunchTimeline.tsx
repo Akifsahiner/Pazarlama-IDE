@@ -9,8 +9,10 @@ import {
   type PlanProgressSnapshot,
   type PlanTaskStatus,
 } from "@shared/planProgress";
+import { peakLaunchDayFromTasks } from "@shared/effortEstimate";
 import { milestonePop, statusPulse } from "@renderer/design/animations";
 import { useApp } from "@renderer/state/store";
+import { PeakDayWarning } from "@renderer/components/PeakDayWarning";
 import { PLAYBOOK_ACCENT_VAR } from "./PlaybookCard";
 
 interface LaneTask {
@@ -128,6 +130,8 @@ export function LaunchTimeline({ plan }: { plan: MarketingPlanSuite }) {
 
   const computed = planProgress?.computed;
 
+  const peakDay = useMemo(() => peakLaunchDayFromTasks(plan.taskGraph), [plan.taskGraph]);
+
   const pctForDay = (day: number) => `${((day - 0.5) / maxDay) * 100}%`;
 
   return (
@@ -140,6 +144,12 @@ export function LaunchTimeline({ plan }: { plan: MarketingPlanSuite }) {
           {maxDay} days · {plan.taskGraph.length} tasks — click a node to focus it
         </span>
       </div>
+
+      {peakDay && (
+        <div className="mb-4">
+          <PeakDayWarning peak={peakDay} />
+        </div>
+      )}
 
       {/* Week headers with real weekDone/weekTotal counts. */}
       <div className="mb-1 flex pl-32">
@@ -183,12 +193,27 @@ export function LaunchTimeline({ plan }: { plan: MarketingPlanSuite }) {
             .map((day) => (
               <span
                 key={day}
-                className="absolute top-0 -translate-x-1/2 text-[9px] tabular-nums text-text-3"
+                className={`absolute top-0 -translate-x-1/2 text-[9px] tabular-nums ${
+                  peakDay?.day === day ? "font-semibold text-warn" : "text-text-3"
+                }`}
                 style={{ left: `${((day - 0.5) / maxDay) * 100}%` }}
               >
                 D{day}
+                {peakDay?.day === day && peakDay.minutes >= 90 ? " ⚡" : ""}
               </span>
             ))}
+          {peakDay &&
+            peakDay.minutes >= 90 &&
+            ![1, 7, 14, 21, 28].includes(peakDay.day) &&
+            peakDay.day <= maxDay && (
+              <span
+                className="absolute top-0 z-[1] -translate-x-1/2 rounded-full border border-warn/40 bg-warn/10 px-1.5 py-px text-[9px] font-semibold text-warn"
+                style={{ left: `${((peakDay.day - 0.5) / maxDay) * 100}%` }}
+                title={peakDay.warning}
+              >
+                D{peakDay.day} peak
+              </span>
+            )}
           {todayDay != null && (
             <span
               className="absolute -top-0.5 z-[2] -translate-x-1/2 rounded-full bg-accent px-1.5 py-px text-[9px] font-semibold text-white"
@@ -225,6 +250,14 @@ export function LaunchTimeline({ plan }: { plan: MarketingPlanSuite }) {
                   className="absolute top-0 z-0 h-full w-px bg-accent/50"
                   style={{ left: `${((todayDay - 0.5) / maxDay) * 100}%` }}
                   aria-hidden
+                />
+              )}
+              {peakDay && peakDay.minutes >= 90 && (
+                <span
+                  className="absolute top-0 z-0 h-full w-px bg-warn/45"
+                  style={{ left: `${((peakDay.day - 0.5) / maxDay) * 100}%` }}
+                  aria-hidden
+                  title={`Peak day D${peakDay.day}`}
                 />
               )}
               {Array.from({ length: weeks - 1 }).map((_, i) => (

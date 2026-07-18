@@ -4,11 +4,15 @@ export type RunKind = "edit" | "browse" | "ask";
 
 export interface RunSummaryJson {
   filesChanged?: number;
+  filesApplied?: number;
   findingsCount?: number;
   durationMs?: number;
   intentPreview?: string;
   browserSteps?: number;
   planTaskId?: string;
+  linesAdded?: number;
+  linesRemoved?: number;
+  commitSha?: string;
 }
 
 export interface ArchiveRunItem {
@@ -94,20 +98,40 @@ export function runChangedFiles(events: RunEvent[]): string[] {
   return [...files];
 }
 
-export function computeRunSummary(events: RunEvent[]): RunSummaryJson {
+export function computeRunSummary(
+  events: RunEvent[],
+  opts?: { appliedFiles?: string[]; commitSha?: string },
+): RunSummaryJson {
   const files = new Set(runChangedFiles(events));
+  const stats = aggregatePatchStatsFromEvents(events);
   let findings = 0;
   let browserSteps = 0;
   for (const e of events) {
-    if (e.type === "file.patch_created" || e.type === "file.patch_updated") {
-      /* counted via runChangedFiles */
-    }
     if (e.type === "issue.detected" || e.type === "evidence.captured") findings++;
     if (e.type.startsWith("browser.")) browserSteps++;
   }
   return {
     filesChanged: files.size,
+    filesApplied: opts?.appliedFiles?.length,
     findingsCount: findings,
     browserSteps: browserSteps || undefined,
+    linesAdded: stats.linesAdded || undefined,
+    linesRemoved: stats.linesRemoved || undefined,
+    commitSha: opts?.commitSha,
   };
+}
+
+function aggregatePatchStatsFromEvents(events: RunEvent[]): {
+  linesAdded: number;
+  linesRemoved: number;
+} {
+  let linesAdded = 0;
+  let linesRemoved = 0;
+  for (const e of events) {
+    if (e.type !== "file.patch_created" && e.type !== "file.patch_updated") continue;
+    const p = e.payload as { additions?: number; deletions?: number };
+    linesAdded += p.additions ?? 0;
+    linesRemoved += p.deletions ?? 0;
+  }
+  return { linesAdded, linesRemoved };
 }

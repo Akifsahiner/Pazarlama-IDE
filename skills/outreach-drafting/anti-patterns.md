@@ -10,3 +10,7 @@
 - **Don't:** Pitch features instead of outcome for the recipient's role. **Why:** Buyers care about their KPI, not your roadmap.
 - **Don't:** Schedule or send via API from this skill. **Why:** Out of scope — drafts only; user sends manually.
 - **Don't:** Reuse one email for all candidates with name swap only. **Why:** Recipients in the same community compare notes; batch sameness kills pipeline.
+
+- **Don't:** Ship generic advice untied to this product profile. **Why:** Founders already have ChatGPT. **Cost:** Trust and retention.
+
+- **Don't:** Recommend five channels at once. **Why:** Dilutes learning. **Cost:** No clear kill signal.

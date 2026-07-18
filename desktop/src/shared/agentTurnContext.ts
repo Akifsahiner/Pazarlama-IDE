@@ -15,7 +15,7 @@ export interface AgentTurnContext {
 }
 
 export interface ProactiveSuggestionAction {
-  kind: "continue_plan" | "log_kpi" | "focus_run" | "open_plan";
+  kind: "continue_plan" | "log_kpi" | "focus_run" | "open_plan" | "generate_plan";
   taskId?: string;
   playbookId?: string;
   presetId?: string;

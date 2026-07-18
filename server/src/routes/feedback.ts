@@ -10,6 +10,8 @@ const feedbackBody = z.object({
   comment: z.string().max(2000).optional(),
   skillId: z.string().optional(),
   discipline: z.string().optional(),
+  /** Skill Excellence telemetry — tactics user saw / applied on this decision. */
+  tacticApplied: z.array(z.string()).max(20).optional(),
 });
 
 export async function feedbackRoutes(app: FastifyInstance): Promise<void> {
@@ -20,12 +22,17 @@ export async function feedbackRoutes(app: FastifyInstance): Promise<void> {
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid_request", detail: parsed.error.flatten() });
     }
+    const tacticNote =
+      parsed.data.tacticApplied && parsed.data.tacticApplied.length > 0
+        ? `[tactic_applied:${parsed.data.tacticApplied.join(",")}]`
+        : "";
+    const comment = [tacticNote, parsed.data.comment].filter(Boolean).join(" ").trim() || undefined;
     const row = await feedbackRepo.insert(user.id, {
       projectId: parsed.data.projectId,
       targetKind: parsed.data.targetKind,
       targetId: parsed.data.targetId,
       rating: parsed.data.rating,
-      comment: parsed.data.comment,
+      comment,
       skillId: parsed.data.skillId,
       discipline: parsed.data.discipline,
     });

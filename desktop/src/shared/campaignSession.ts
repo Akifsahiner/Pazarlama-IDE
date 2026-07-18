@@ -38,7 +38,8 @@ export type CampaignPhaseEvent =
   | { type: "plan_generate_success"; planId: string }
   | { type: "awaiting_apply"; taskId: string }
   | { type: "task_done"; taskId: string; allTasksDone: boolean }
-  | { type: "log_kpi" };
+  | { type: "log_kpi" }
+  | { type: "cmo_cycle_restart"; cycleIndex: number; thesisTitle: string };
 
 export const CAMPAIGN_PHASE_LABELS: Record<CampaignPhase, string> = {
   intake: "Intake",
@@ -142,6 +143,12 @@ export function applyCampaignPhaseEvent(
     }
     case "log_kpi":
       return appendMilestone({ ...session, phase: "measuring" }, "KPI logged", "kpi");
+    case "cmo_cycle_restart":
+      return appendMilestone(
+        { ...session, phase: "executing", activeTaskId: undefined },
+        `Week ${event.cycleIndex} — ${event.thesisTitle}`,
+        "phase",
+      );
     default:
       return session;
   }

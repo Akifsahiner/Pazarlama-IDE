@@ -21,11 +21,13 @@ import {
 import { withRetry } from "../llm/retry.js";
 import { modelFor } from "./modelTier.js";
 import { retrieveSkills, retrieveSkillsForPlaybook, renderSkillContext } from "./skillRetrieval.js";
+import { isRegisteredTactic } from "./tacticRegistry.js";
 import {
   outlineSystemPrompt,
   playbookDetailSystemPrompt,
   profileFromScan,
   readinessSystemPrompt,
+  PLAYBOOK_CATALOG,
   type PlanContext,
 } from "./planSuitePrompts.js";
 import {
@@ -42,6 +44,7 @@ import {
   TACTIC_SNAKE_CASE_RE,
 } from "./gtmCatalog.js";
 import { inferBottleneckFromDecision } from "./bottleneck.js";
+import { addMessageUsage, type TokenUsageSink } from "./tokenUsage.js";
 
 let _client: Anthropic | null = null;
 function client(): Anthropic {
@@ -60,6 +63,7 @@ export interface GeneratePlanSuiteOpts {
   planHorizon?: 14 | 30;
   emit: (e: PlanStreamEvent) => void;
   signal?: AbortSignal;
+  usageSink?: TokenUsageSink;
 }
 
 async function toolCall<T>(
@@ -68,6 +72,7 @@ async function toolCall<T>(
   userMessage: string,
   tool: Anthropic.Tool,
   signal?: AbortSignal,
+  usageSink?: TokenUsageSink,
 ): Promise<T> {
   const choice = modelFor(tier, tier === "fast" ? "router" : "decision");
   return withRetry(
@@ -84,6 +89,7 @@ async function toolCall<T>(
         { signal, timeout: env.LLM_TIMEOUT_MS },
       );
       const final = await stream.finalMessage();
+      addMessageUsage(usageSink, final);
       const block = final.content.find((c) => c.type === "tool_use");
       if (!block || block.type !== "tool_use") throw new Error(`Missing tool: ${tool.name}`);
       return block.input as T;
@@ -146,12 +152,13 @@ async function generatePlaybookDetail(
   stub: PlaybookStub,
   signal?: AbortSignal,
   revisionNotes?: string[],
+  usageSink?: TokenUsageSink,
 ): Promise<PlanPlaybook> {
   const packs = await retrieveSkillsForPlaybook(stub.id, ctx.marketing);
   const skillContext = renderSkillContext(packs);
   const revision =
     revisionNotes?.length ? `\nFix these issues:\n${revisionNotes.map((n) => `- ${n}`).join("\n")}` : "";
-  const raw = await toolCall<Record<string, unknown>>(
+  let raw = await toolCall<Record<string, unknown>>(
     "main",
     playbookDetailSystemPrompt(ctx, stub, skillContext) + revision,
     `Generate full detail for playbook "${stub.title}" (${stub.id}).`,
@@ -161,7 +168,24 @@ async function generatePlaybookDetail(
       input_schema: PLAN_PLAYBOOK_TOOL.input_schema as unknown as Anthropic.Tool.InputSchema,
     },
     signal,
+    usageSink,
   );
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const tasks = raw.tasks;
+    if (Array.isArray(tasks) && tasks.length >= 8) break;
+    raw = await toolCall<Record<string, unknown>>(
+      "main",
+      playbookDetailSystemPrompt(ctx, stub, skillContext) + revision,
+      `Return plan_playbook_detail with tasks: array of 8–15 items. Each task needs title, day, deliverable, acceptance_criteria, instructions_md (start with "Tactic: <id>"), execution_mode, tactic (registry id), phaseLabel.`,
+      {
+        name: PLAN_PLAYBOOK_TOOL.name,
+        description: PLAN_PLAYBOOK_TOOL.description,
+        input_schema: PLAN_PLAYBOOK_TOOL.input_schema as unknown as Anthropic.Tool.InputSchema,
+      },
+      signal,
+      usageSink,
+    );
+  }
   const partial = planPlaybookSchema.parse({
     id: stub.id,
     slug: slugify(stub.id),
@@ -175,7 +199,66 @@ async function generatePlaybookDetail(
   return attachPlaybookIds(partial, stub);
 }
 
-function lintPlaybook(pb: PlanPlaybook, productName: string): string[] {
+async function finalizePlaybookWithLint(
+  ctx: PlanContext,
+  stub: PlaybookStub,
+  signal?: AbortSignal,
+  usageSink?: TokenUsageSink,
+  onStatus?: (msg: string) => void,
+): Promise<PlanPlaybook> {
+  let pb = await generatePlaybookDetail(ctx, stub, signal, undefined, usageSink);
+  const productName = ctx.marketing.product_name || ctx.scan.name;
+  let lintIssues = lintPlaybook(pb, productName);
+  const reviewIssues =
+    lintIssues.length === 0 ? await reviewPlaybook(ctx, pb, signal, usageSink) : [];
+  lintIssues = [...lintIssues, ...reviewIssues];
+  if (lintIssues.length > 0) {
+    onStatus?.(`Strengthening ${stub.title}…`);
+    pb = await generatePlaybookDetail(ctx, stub, signal, lintIssues, usageSink);
+    const secondLint = lintPlaybook(pb, productName);
+    if (secondLint.length > 0) {
+      pb = await generatePlaybookDetail(ctx, stub, signal, secondLint, usageSink);
+    }
+  }
+  return pb;
+}
+
+/** Generate full playbook detail for catalog stubs (skill injection + lint loop). */
+export async function generatePlaybooksForStubIds(opts: {
+  scanProfile: ProjectProfile;
+  marketingProfile?: MarketingProfile | null;
+  stubIds: string[];
+  signal?: AbortSignal;
+  usageSink?: TokenUsageSink;
+  onStatus?: (msg: string) => void;
+}): Promise<PlanPlaybook[]> {
+  const ctx: PlanContext = {
+    scan: opts.scanProfile,
+    marketing: profileFromScan(opts.scanProfile, opts.marketingProfile),
+    persona: "marketing",
+    horizonDays: 14,
+  };
+  const playbooks: PlanPlaybook[] = [];
+  for (let i = 0; i < opts.stubIds.length; i++) {
+    const id = opts.stubIds[i]!;
+    const entry = PLAYBOOK_CATALOG.find((p) => p.id === id);
+    if (!entry) throw new Error(`Unknown playbook stub: ${id}`);
+    const stub = playbookStubSchema.parse({
+      id: entry.id,
+      title: entry.title,
+      subtitle: entry.subtitle,
+      phase: entry.phase,
+      iconKey: entry.iconKey,
+      sortOrder: i,
+      whyIncluded: `${entry.title} for ${ctx.marketing.product_name || ctx.scan.name} launch.`,
+    });
+    opts.onStatus?.(`Structuring ${stub.title}…`);
+    playbooks.push(await finalizePlaybookWithLint(ctx, stub, opts.signal, opts.usageSink, opts.onStatus));
+  }
+  return playbooks;
+}
+
+export function lintPlaybook(pb: PlanPlaybook, productName: string): string[] {
   const issues: string[] = [];
   const blob = `${pb.executiveSummary} ${pb.tasks.map((t) => t.title).join(" ")}`.toLowerCase();
   const name = productName.trim().toLowerCase();
@@ -194,7 +277,9 @@ function lintPlaybook(pb: PlanPlaybook, productName: string): string[] {
     issues.push("Add instructions_md (5–10 step checklist) to ≥50% of tasks");
   }
   const generic = pb.tasks.filter((t) => GENERIC_TASK_TITLE_RE.test(t.title));
-  if (generic.length > 0) issues.push("Replace generic task titles with channel-specific actions");
+  if (generic.length > 0) {
+    issues.push("HARD: Replace generic task titles with channel-specific actions");
+  }
   if (PH_MANIPULATION_RE.test(pb.executiveSummary)) {
     issues.push("Remove PH upvote manipulation language — ethical supporter comments only");
   }
@@ -206,19 +291,66 @@ function lintPlaybook(pb: PlanPlaybook, productName: string): string[] {
       issues.push(`Task "${t.title}" tactic must be snake_case (got "${t.tactic}")`);
     }
   }
+  const withTactic = pb.tasks.filter((t) => t.tactic?.trim()).length;
   if (pb.id === "ph-number-one" || pb.id === "ph-launch") {
-    const hasPhase = pb.tasks.some((t) => t.phaseLabel && /T-|H\+/i.test(t.phaseLabel));
+    const hasPhase = pb.tasks.some((t) => t.phaseLabel && /T-|H\+|D\+/i.test(t.phaseLabel));
     if (!hasPhase) issues.push("PH playbook needs launch timeline phaseLabel (T-7d, H+0, H+3)");
+    const missingPhase = pb.tasks.filter((t) => !t.phaseLabel || !/T-|H\+|D\+/i.test(t.phaseLabel));
+    if (missingPhase.length > 0) {
+      issues.push("PH playbook: every task needs phaseLabel matching T-|H+|D+");
+    }
+    if (pb.tasks.length > 0 && withTactic / pb.tasks.length < 1) {
+      issues.push("PH playbook requires tactic on 100% of tasks");
+    }
+  }
+  if (pb.id === "community-launch") {
+    const hasPhase = pb.tasks.some((t) => t.phaseLabel && /T-|H\+|D\+/i.test(t.phaseLabel));
+    if (!hasPhase) issues.push("Community launch playbook needs phaseLabel (T-14, H0, H+48, D+1)");
+    if (pb.tasks.length > 0 && withTactic / pb.tasks.length < 1) {
+      issues.push("Community launch playbook requires tactic on 100% of tasks");
+    }
+  }
+  if (pb.id === "seo-foundation" || pb.id === "seo-content-engine") {
+    if (pb.tasks.length > 0 && withTactic / pb.tasks.length < 1) {
+      issues.push("SEO content playbook requires tactic on 100% of tasks");
+    }
+  }
+  if (pb.id === "email-nurture") {
+    const hasPhase = pb.tasks.some((t) => t.phaseLabel && /T-|H\+|D\+/i.test(t.phaseLabel));
+    if (!hasPhase) issues.push("Email nurture playbook needs phaseLabel (T-14, H+6, D+1)");
+    if (pb.tasks.length > 0 && withTactic / pb.tasks.length < 1) {
+      issues.push("Email nurture playbook requires tactic on 100% of tasks");
+    }
+  }
+  const p1FullTactic = [
+    "twitter-x-gtm",
+    "newsletter-sponsorship",
+    "press-pr-launch",
+    "devrel-open-source-launch",
+  ];
+  if (p1FullTactic.includes(pb.id) && pb.tasks.length > 0 && withTactic / pb.tasks.length < 1) {
+    issues.push(`${pb.id} requires tactic on 100% of tasks`);
+  }
+  // Skill Excellence: any declared tactic must be registered; instructions start with Tactic:
+  for (const t of pb.tasks) {
+    if (t.tactic?.trim()) {
+      if (!isRegisteredTactic(t.tactic)) {
+        issues.push(`Task "${t.title}" tactic "${t.tactic}" is not in tacticRegistry`);
+      }
+      const instr = t.instructions_md?.trim() ?? "";
+      if (instr && !instr.toLowerCase().startsWith("tactic:")) {
+        issues.push(`Task "${t.title}" instructions_md must start with "Tactic: ${t.tactic}"`);
+      }
+    }
   }
   const withMode = pb.tasks.filter((t) => t.execution_mode?.trim()).length;
   if (pb.tasks.length > 0 && withMode / pb.tasks.length < 0.8) {
     issues.push("Set execution_mode (repo|browser|asset|run|connector_read) on ≥80% of tasks");
   }
-  const withTactic = pb.tasks.filter((t) => t.tactic?.trim()).length;
   if (pb.tasks.length > 0 && withTactic / pb.tasks.length < 0.7) {
     issues.push("Set tactic (snake_case) on ≥70% of tasks");
   }
-  const browserPlaybooks = ["ph-number-one", "ph-launch", "linkedin-gtm", "waitlist-hype"];
+  const browserPlaybooks = ["ph-number-one", "ph-launch", "community-launch", "seo-foundation", "twitter-x-gtm", "linkedin-gtm", "waitlist-hype", "newsletter-sponsorship", "press-pr-launch"];
   if (browserPlaybooks.includes(pb.id)) {
     const browserTasks = pb.tasks.filter((t) => t.execution_mode === "browser").length;
     if (browserTasks < 2) {
@@ -232,6 +364,7 @@ async function reviewPlaybook(
   ctx: PlanContext,
   pb: PlanPlaybook,
   signal?: AbortSignal,
+  usageSink?: TokenUsageSink,
 ): Promise<string[]> {
   const productName = ctx.marketing.product_name || ctx.scan.name;
   const summary = [
@@ -251,6 +384,7 @@ async function reviewPlaybook(
         input_schema: PLAN_REVIEW_TOOL.input_schema as unknown as Anthropic.Tool.InputSchema,
       },
       signal,
+      usageSink,
     );
     if (raw.approve) return [];
     return (raw.mustFix ?? []).filter((s) => s.length > 4);
@@ -285,7 +419,7 @@ export async function generatePlanSuite(opts: GeneratePlanSuiteOpts): Promise<Ma
   const launchSkills = await retrieveSkills("launch_plan", ctx.marketing, 1);
   const skillAntiPatterns = antiPatternsFromSkills(launchSkills);
 
-  const outlineRaw = await toolCall<Record<string, unknown>>(
+  let outlineRaw = await toolCall<Record<string, unknown>>(
     "fast",
     outlineSystemPrompt(ctx),
     "Produce the launch plan outline now.",
@@ -295,7 +429,52 @@ export async function generatePlanSuite(opts: GeneratePlanSuiteOpts): Promise<Ma
       input_schema: PLAN_OUTLINE_TOOL.input_schema as unknown as Anthropic.Tool.InputSchema,
     },
     opts.signal,
+    opts.usageSink,
   );
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const pbs = outlineRaw.playbooks;
+    if (Array.isArray(pbs) && pbs.length > 0) break;
+    opts.emit({
+      type: "status",
+      message: "Revising outline — playbooks array required (4–7 catalog items)…",
+    });
+    outlineRaw = await toolCall<Record<string, unknown>>(
+      "fast",
+      outlineSystemPrompt(ctx),
+      "Return plan_outline with a non-empty playbooks array (4–7 items). Each item needs id, title, subtitle, phase, iconKey, sortOrder, whyIncluded.",
+      {
+        name: PLAN_OUTLINE_TOOL.name,
+        description: PLAN_OUTLINE_TOOL.description,
+        input_schema: PLAN_OUTLINE_TOOL.input_schema as unknown as Anthropic.Tool.InputSchema,
+      },
+      opts.signal,
+      opts.usageSink,
+    );
+  }
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const stubTitles = ((outlineRaw.playbooks as unknown[]) ?? [])
+      .map((s) => String((s as { title?: string }).title ?? ""))
+      .filter((t) => GENERIC_TASK_TITLE_RE.test(t));
+    if (stubTitles.length === 0) break;
+    opts.emit({
+      type: "status",
+      message: `Revising outline — replace generic playbook titles (${stubTitles.length})…`,
+    });
+    outlineRaw = await toolCall<Record<string, unknown>>(
+      "fast",
+      `${outlineSystemPrompt(ctx)}\n\nANTI-PATTERNS (do not use generic titles):\n${skillAntiPatterns.join("\n")}`,
+      `Revise outline. Replace generic titles: ${stubTitles.join("; ")}. Use channel-specific playbook names.`,
+      {
+        name: PLAN_OUTLINE_TOOL.name,
+        description: PLAN_OUTLINE_TOOL.description,
+        input_schema: PLAN_OUTLINE_TOOL.input_schema as unknown as Anthropic.Tool.InputSchema,
+      },
+      opts.signal,
+      opts.usageSink,
+    );
+  }
 
   const thesis = String(outlineRaw.thesis ?? ctx.marketing.main_value_proposition);
   const narrativeHook = String(outlineRaw.narrativeHook ?? thesis);
@@ -310,9 +489,12 @@ export async function generatePlanSuite(opts: GeneratePlanSuiteOpts): Promise<Ma
     ]),
   ];
 
-  const stubs = (outlineRaw.playbooks as unknown[]).map((s, i) =>
+  const stubs = ((outlineRaw.playbooks as unknown[]) ?? []).map((s, i) =>
     playbookStubSchema.parse({ sortOrder: i, ...(s as object) }),
   );
+  if (stubs.length === 0) {
+    throw new Error("Plan outline returned no playbooks after revision");
+  }
 
   const stubIds = stubs.map((s) => s.id);
   const primaryBottleneckRaw = outlineRaw.primaryBottleneck as string | undefined;
@@ -348,19 +530,9 @@ export async function generatePlanSuite(opts: GeneratePlanSuiteOpts): Promise<Ma
           type: "status",
           message: `Structuring ${stub.title}…`,
         });
-        let pb = await generatePlaybookDetail(ctx, stub, opts.signal);
-        const productName = ctx.marketing.product_name || ctx.scan.name;
-        let lintIssues = lintPlaybook(pb, productName);
-        const reviewIssues = lintIssues.length === 0 ? await reviewPlaybook(ctx, pb, opts.signal) : [];
-        lintIssues = [...lintIssues, ...reviewIssues];
-        if (lintIssues.length > 0) {
-          opts.emit({ type: "status", message: `Strengthening ${stub.title}…` });
-          pb = await generatePlaybookDetail(ctx, stub, opts.signal, lintIssues);
-          const secondLint = lintPlaybook(pb, productName);
-          if (secondLint.length > 0) {
-            pb = await generatePlaybookDetail(ctx, stub, opts.signal, secondLint);
-          }
-        }
+        let pb = await finalizePlaybookWithLint(ctx, stub, opts.signal, opts.usageSink, (msg) =>
+          opts.emit({ type: "status", message: msg }),
+        );
         opts.emit({ type: "plan.playbook", playbook: pb, index: idx, total: stubs.length });
         return pb;
       }),
@@ -379,6 +551,7 @@ export async function generatePlanSuite(opts: GeneratePlanSuiteOpts): Promise<Ma
       input_schema: PLAN_READINESS_TOOL.input_schema as unknown as Anthropic.Tool.InputSchema,
     },
     opts.signal,
+    opts.usageSink,
   );
   const readiness = (readinessRaw.readiness ?? []).map((r) =>
     readinessWithRationaleSchema.parse(enrichReadinessRow(r as Parameters<typeof enrichReadinessRow>[0])),
@@ -414,6 +587,7 @@ export interface RevisePlanSuiteOpts {
   persona?: "marketing" | "sales";
   emit: (e: PlanStreamEvent) => void;
   signal?: AbortSignal;
+  usageSink?: TokenUsageSink;
 }
 
 /** Chat-driven plan revision — append-only new version with diff (Faz 11). Anthropic only. */
@@ -448,6 +622,7 @@ Apply the smallest change set that satisfies the request. Prefer adding tasks to
       input_schema: PLAN_REVISION_TOOL.input_schema as unknown as Anthropic.Tool.InputSchema,
     },
     opts.signal,
+    opts.usageSink,
   );
 
   const ops: PlanRevisionOps = {

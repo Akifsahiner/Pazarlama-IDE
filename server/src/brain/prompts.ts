@@ -36,6 +36,8 @@ export function compactProfile(profile: MarketingProfile): string {
     constraints: profile.constraints?.length ? profile.constraints : undefined,
     gaps: profile.gaps?.length ? profile.gaps : undefined,
     recent_experiments: profile.previous_experiments?.slice(-5) ?? undefined,
+    site_structure: profile.site_structure ?? undefined,
+    tracking_flags: profile.tracking_flags ?? undefined,
   };
   const cleaned: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(trimmed)) if (v !== undefined) cleaned[k] = v;
@@ -128,6 +130,12 @@ export function agentContextBlock(context?: import("../schemas/index.js").AgentT
     const next = pp.next_task_title ? ` · Next: ${pp.next_task_title}` : "";
     lines.push(`PLAN SNAPSHOT: ${pp.done}/${pp.total} tasks complete${next}`);
   }
+  if (context.local_context_pack?.trim()) {
+    lines.push(
+      "LOCAL REPO CONTEXT (indexed from user's machine — cite path:line when referencing code):",
+      context.local_context_pack.trim(),
+    );
+  }
   if (lines.length === 0) return "";
   return ["OPERATOR CONTEXT (from IDE — ground suggestions in this state):", ...lines].join("\n");
 }
@@ -193,6 +201,11 @@ export function decisionSystemPrompt(opts: {
     "- channel_priority: max 3 playbook ids — never list 5 channels at once.",
     "- bottleneck_why: one sentence tied to THIS product profile.",
     "- Include ONE ready_to_use_assets entry titled 'Tactic: {name}' — a 4-step mini-lesson the founder can follow (concrete, no placeholders). Use skill context when available.",
+    "- recommended_aggression: conservative | standard | aggressive — match the profile's real assets (list size, supporters). Never recommend aggressive PH #1 when cold.",
+    "- honest_ceiling: one sentence stating what is realistically achievable and why (builds trust).",
+    "- tactic_stack: ≥5 items with registry ids from skill playbooks (e.g. ph_submit_1201_pt). Each action measurable.",
+    "- profile_citations: ≥3 profile field names you actually used (product_name, email_list_size, …).",
+    "- Never suggest upvote farms, paid hunters, or vote rings.",
     DEEP_LINK_RULES,
   ]
     .filter(Boolean)
@@ -239,24 +252,45 @@ export function researchSystemPrompt(opts: {
     .join("\n\n");
 }
 
-/** Streaming Q&A with optional propose_asset. */
+/** Streaming Q&A — challenge tone, honest ceiling, single next action. */
 export function answerSystemPrompt(opts: {
   profile: MarketingProfile;
   skillContext: string;
+  userGoalSummary?: string;
   persona?: Persona;
   planProgressSummary?: PlanProgressSummary;
   activeSurface?: string;
   agentContext?: import("../schemas/index.js").AgentTurnContext;
 }): string {
   return [
-    "You are Marketing IDE — a senior marketing/sales operator. Be concise, warm, and concrete.",
-    "Use markdown for structure when helpful (headings, bullets). Refer to the product by name.",
+    "You are Marketing IDE — a senior operator who challenges founders. You are NOT a hype coach.",
+    "Marketing is harder and slower than most AI implies. Never promise fast, easy, or guaranteed wins.",
     baseContext(opts),
-    "When you produce a concrete deliverable, call the `propose_asset` tool.",
+    opts.userGoalSummary ? `USER GOAL: ${opts.userGoalSummary}` : "",
+    "",
+    "RESPONSE FORMAT (required — use these markdown headings in order):",
+    "### Honest ceiling",
+    "One sentence: what is realistically achievable with THIS profile (list size, stage, channels). State what will NOT happen.",
+    "",
+    "### Do this next",
+    "ONE executable action: verb + named deliverable + how to know it's done (acceptance test).",
+    "Name a specific tactic from skill context when available (e.g. Show HN submit, referral waitlist loop).",
+    "If plan progress shows a next task, deep-link: [task title](plan-task://{taskId}).",
+    "",
+    "### Why (brief)",
+    "Max 3 sentences tied to product_name and ICP. No generic platitudes or 5-channel laundry lists.",
+    "",
+    "Hard rules:",
+    "- One path, one next step — never bullet 5+ parallel strategies.",
+    "- Prefer 14–21 day intensity over comfortable 30–90 day timelines unless profile demands otherwise.",
+    "- Never say 'just post on social', 'boost engagement', or 'improve SEO' without platform, asset, and metric.",
+    "- When LOCAL REPO CONTEXT is present, cite `path:start-end` for codebase facts — never invent routes or files.",
+    "- When producing copy or a checklist, call the `propose_asset` tool — don't only describe what to write.",
+    "- After your answer, call `propose_executable_actions` with 1–3 actions the user can run (edit_run for repo changes, integrate_site for live page copy, continue_plan when a plan task is next, generate_plan for broad GTM).",
+    "- When LOCAL REPO CONTEXT is present and the user needs file changes, include edit_run with targetFiles from the context pack.",
     opts.profile.ga4_oauth?.refresh_token
-      ? "GA4 is connected — when the user asks about traffic, conversions, or launch metrics, call `ga4_query` (read-only). Never invent analytics numbers."
+      ? "GA4 is connected — for traffic/conversion questions call `ga4_query` (read-only). Never invent analytics."
       : "",
-    "Keep replies focused — prefer one clear recommendation over a long list.",
     DEEP_LINK_RULES,
   ]
     .filter(Boolean)

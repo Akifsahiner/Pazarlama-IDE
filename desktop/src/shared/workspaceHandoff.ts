@@ -1,5 +1,7 @@
 import type { ConversationIntent, ResolvedConversationIntent } from "./conversationIntent";
 
+import type { HumanExecutionRef } from "./humanExecutionPlan";
+
 /** One-shot banner after onboarding reveal → workspace, or agent-suggested handoff. */
 export type WorkspaceHandoffAction =
   | "generate_plan"
@@ -8,7 +10,12 @@ export type WorkspaceHandoffAction =
   | "composer"
   | "home"
   | "first_move"
-  | "execute_intent";
+  | "execute_intent"
+  | "ops_proof"
+  | "human_proof"
+  | "operator_proof"
+  | "export_outreach"
+  | "focus_lane_b";
 
 export interface HandoffPayload {
   intent: ConversationIntent;
@@ -29,6 +36,10 @@ export interface WorkspaceHandoff {
   payload?: HandoffPayload;
   /** Edit runs show acknowledgement checkbox before execute. */
   requireAcknowledge?: boolean;
+  /** P1 — user ops task to mark done from handoff banner. */
+  opsTaskId?: string;
+  /** Faz 3 — frozen human execution ref for Lane B / operator proof routing. */
+  humanRef?: HumanExecutionRef;
 }
 
 export interface HandoffConfirmState {

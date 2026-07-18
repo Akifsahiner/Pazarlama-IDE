@@ -1,6 +1,17 @@
+import { formatCostCents, formatTokenCount } from "@shared/contextBudget";
 import { useApp } from "@renderer/state/store";
 
-function Bar({ label, used, limit, color }: { label: string; used: number; limit: number; color: string }) {
+function Bar({
+  label,
+  used,
+  limit,
+  color,
+}: {
+  label: string;
+  used: number;
+  limit: number;
+  color: string;
+}) {
   const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   const warn = pct >= 80;
   return (
@@ -18,10 +29,19 @@ function Bar({ label, used, limit, color }: { label: string; used: number; limit
 
 export function UsageMeter() {
   const auth = useApp((s) => s.auth);
+  const navigate = useApp((s) => s.navigate);
   if (!auth.usage || !auth.quota) return null;
 
+  const tokens = (auth.usage.tokens_in ?? 0) + (auth.usage.tokens_out ?? 0);
+  const cost = auth.usage.cost_cents ?? 0;
+
   return (
-    <div className="hidden items-center gap-3 md:flex">
+    <button
+      type="button"
+      className="hidden items-center gap-3 md:flex"
+      onClick={() => navigate("settings", "usage")}
+      title="View usage & quota"
+    >
       <Bar label="Plan" used={auth.usage.plan} limit={auth.quota.plan_limit} color="bg-accent" />
       <Bar label="Agent" used={auth.usage.agent} limit={auth.quota.agent_limit} color="bg-accent" />
       <Bar
@@ -30,6 +50,11 @@ export function UsageMeter() {
         limit={auth.quota.browser_min_limit}
         color="bg-accent"
       />
-    </div>
+      {(tokens > 0 || cost > 0) && (
+        <span className="text-[10px] tabular-nums text-text-3">
+          {formatTokenCount(tokens)} · {formatCostCents(cost)}
+        </span>
+      )}
+    </button>
   );
 }

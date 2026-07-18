@@ -1,13 +1,48 @@
 # Playbook: PH Launch for B2B SaaS
 
-PH skews indie/prosumer. For B2B SaaS, treat it as a *bonus channel* — it earns awareness and a few customers, but the rank is rarely the right primary KPI.
+PH skews indie/prosumer. For B2B SaaS, treat it as a *bonus channel* — awareness and a few customers; rank is rarely the primary KPI.
 
-- **First, validate the fit.** If your ICP is "VP of Compliance at insurance carriers," skip PH. If it's "ops lead at <100-person SaaS," PH works. Check 5 recent successful launches in your category — what audience did they actually reach?
-- **Reposition the launch for the PH audience.** Lead the tagline with the *practitioner* outcome, not the enterprise pitch. "AI for customer support teams" beats "Enterprise-grade customer experience platform."
-- **Bring B2B social proof into the gallery.** Slide 1: hero shot. Slide 2: workflow. Slide 3: named customer logos. Slide 4: a real before/after metric ("Reduced first-response time from 14h to 19min at [Customer]"). PH viewers respect specifics; corporate adjectives flop.
-- **Offer a PH-specific lifetime/discount deal** ($50 lifetime, 6 months free, etc.) ONLY on the launch day, ONLY linked from PH. This converts maker-curious lurkers into paying users and creates trackable PH attribution.
-- **Mobilize customers, not just supporters.** Email your 20 most-engaged customers asking them to leave honest comments. Customer voices on PH outweigh founder voices 5:1 for B2B credibility.
-- **Run a parallel LinkedIn play.** Same morning, founder publishes a LinkedIn post about the launch (3 paragraphs: problem → product → metric). LinkedIn = where the actual B2B buyer is; PH = where the buzz is. They reinforce each other.
-- **Sales prep**: brief the SDR/AE team for a spike in inbound demo requests. The launch will surface 30–80 cold inbound leads that need fast routing.
+## Preconditions
+- [ ] ICP check: ops/dev/design leads at <100-person SaaS fit PH; VP Compliance at carriers usually do not
+- [ ] Practitioner-facing tagline (not enterprise brochure)
+- [ ] At least one named proof metric or logo willing to show
 
-Realistic outcome: ranks #5–15, 3k–8k visits, 500–1,500 signups (lower volume than indie tools, higher quality), 10–30 demo requests, 2–8 closed deals attributable within 60 days.
+## Aggression dial
+
+| Level | When | Focus |
+|-------|------|-------|
+| conservative | Enterprise-only ICP | Skip PH; use LinkedIn + outbound |
+| standard | Practitioner ICP on PH | This playbook |
+| aggressive | Strong list + PH fit | `aggressive-top-1` + parallel LinkedIn |
+
+## Timeline
+- **T-14**: Validate 5 recent category launches' real audiences
+- **T-7**: Gallery with logos + before/after metric slide
+- **T-3**: Brief SDR/AE for inbound spike
+- **H0**: Practitioner tagline launch
+- **Same morning**: Founder LinkedIn (problem → product → metric)
+- **D+1…D+60**: Attribute demos with UTM
+
+## Tactic stack
+1. Validate PH fit — if ICP isn't on PH, skip
+2. Reposition tagline for practitioner outcome
+3. Gallery: hero, workflow, logos, real before/after metric
+4. PH-specific lifetime/discount **only** launch day, linked from PH
+5. Mobilize customers for honest comments (5:1 credibility vs founder)
+6. Parallel LinkedIn founder post same morning
+7. Sales prep for 30–80 cold inbound demos
+
+## Orchestration
+- PH = buzz; LinkedIn = buyer; CRM ready for routing
+- Do not make day-rank the OKR for enterprise sales teams
+
+## Realistic outcomes
+Ranks **#5–15**, 3k–8k visits, 500–1,500 signups (lower volume, higher quality), 10–30 demos, 2–8 closed deals in 60 days attributable.
+
+## Kill / pivot rules
+- If category recent winners don't match ICP → cancel PH, reallocate to LinkedIn GTM
+- If demos are tire-kickers only → change PH deal / ICP messaging next cycle
+
+## Ethics line
+- No fake logos or fabricated metrics on gallery slides
+- No upvote manipulation — customer comments must be voluntary and honest

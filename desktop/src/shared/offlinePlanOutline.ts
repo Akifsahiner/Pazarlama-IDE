@@ -1,3 +1,4 @@
+import { inferIntegrateRoute } from "./assetTarget";
 import type { Persona, ProjectProfile } from "./types";
 import type { MarketingPlanSuite, PlanPlaybook } from "./planPlaybooks";
 import { playbookTitle } from "./gtmCatalog";
@@ -53,12 +54,7 @@ const STUB_PLAYBOOKS: Array<{
 ];
 
 function primaryRoute(profile: ProjectProfile): string | undefined {
-  const routes = profile.routes ?? [];
-  const preferred = ["app/page.tsx", "pages/index.tsx", "src/app/page.tsx"];
-  for (const p of preferred) {
-    if (routes.includes(p)) return p;
-  }
-  return routes.find((r) => /(page|index)\.(tsx|jsx)$/i.test(r)) ?? routes[0];
+  return inferIntegrateRoute(profile.routes ?? []);
 }
 
 function inferIcp(profile: ProjectProfile, persona?: Persona): string {

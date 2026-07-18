@@ -6,6 +6,7 @@ import {
   primaryPlaybookFor,
   type GtmBottleneck,
 } from "./bottleneck.js";
+import { isBroadMarketingStrategy, normalizeBroadStrategy } from "./marketingStrategyRoute.js";
 
 export type Discipline =
   | "positioning"
@@ -95,9 +96,11 @@ const SYSTEM = [
   "You are a router. Read the user's marketing/sales request and classify it.",
   "Choose ONE discipline (the closest match). 'meta_question' is for non-marketing chatter.",
   "task_kind: diagnose=analyze a problem; decide=pick a path; draft=write copy/asset;",
-  "audit=review existing; research=external lookups; answer=quick Q&A.",
-  "urgency=deep ONLY for strategic decisions (positioning, ICP, launch plan, PH launch).",
-  "Everything else → urgency=fast.",
+  "audit=review existing; research=external lookups; answer=quick factual Q&A ONLY.",
+  "BROAD STRATEGY RULE: 'how do I market/grow/launch/get users/traction' → discipline=launch_plan, task_kind=decide, urgency=deep.",
+  "Never use answer for open-ended GTM strategy — that belongs in decide + launch_plan.",
+  "urgency=deep for strategic decisions (positioning, ICP, launch plan, PH launch, broad GTM).",
+  "urgency=fast for narrow drafts, audits, or single factual questions.",
   "Also classify gtm_bottleneck (ONE of awareness|conversion|distribution|revenue|measurement).",
   "Set primary_playbook_id to the ONE playbook to focus on first — no channel spam.",
   "bottleneck_why: ≤20 words tied to the user's situation.",
@@ -146,13 +149,13 @@ export async function route(
       signal,
       usageSink,
     });
-    const value = enrichRoutedIntent(raw, persona);
+    const value = normalizeBroadStrategy(message, enrichRoutedIntent(raw, persona));
     CACHE.set(key, { at: Date.now(), value });
     return value;
   } catch {
     /* fall through to heuristic */
   }
-  return enrichRoutedIntent(heuristicRoute(message, persona), persona);
+  return normalizeBroadStrategy(message, enrichRoutedIntent(heuristicRoute(message, persona), persona));
 }
 
 function inferBottleneckFromMessage(message: string): GtmBottleneck {
@@ -177,6 +180,16 @@ function enrichRoutedIntent(
 function heuristicRoute(message: string, persona: "marketing" | "sales" = "marketing"): RoutedIntent {
   const m = message.toLowerCase();
   const summary = message.trim().slice(0, 100);
+
+  if (isBroadMarketingStrategy(message)) {
+    return {
+      discipline: "launch_plan",
+      task_kind: "decide",
+      urgency: "deep",
+      user_goal_summary: summary,
+    };
+  }
+
   const matches: Array<[RegExp, Discipline]> = [
     [/positioning|value\s*prop|what.+does.+do/i, "positioning"],
     [/icp|ideal customer|target audience|buyer persona/i, "icp"],

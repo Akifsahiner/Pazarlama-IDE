@@ -1,0 +1,35 @@
+{
+  "root": "is_big_launch",
+  "nodes": {
+    "is_big_launch": {
+      "q": "Is this a major launch (not a minor feature) with days_until_launch ≥ 7 and real proof (metric, funding, partnership, or named design partner)?",
+      "yes": "has_press_kit_assets",
+      "no": "OUTPUT:skip-press-use-community-or-changelog"
+    },
+    "has_press_kit_assets": {
+      "q": "Can you ship press kit PDF + 3 product screenshots + approved founder quote within 5 business days?",
+      "yes": "has_embargo_datetime",
+      "no": "OUTPUT:build-assets-first-postpone-pitch-7d"
+    },
+    "has_embargo_datetime": {
+      "q": "Is launch_datetime_utc fixed and shareable under embargo with all stakeholders aligned?",
+      "yes": "press_relationship_check",
+      "no": "OUTPUT:lock-launch-datetime-before-pitching"
+    },
+    "press_relationship_check": {
+      "q": "Do you have ≥1 warm reporter intro OR prior coverage in the last 18 months?",
+      "yes": "aggressive_ready_check",
+      "no": "have_customer_proof_permission"
+    },
+    "have_customer_proof_permission": {
+      "q": "Do you have named customer proof (logo, metric, or quote) with written permission?",
+      "yes": "OUTPUT:no-audience-with-honest-ceiling",
+      "no": "OUTPUT:secure-proof-first-or-skip-press"
+    },
+    "aggressive_ready_check": {
+      "q": "Is days_until_launch ≥ 14 and can you personalize 5 reporter pitches with beat-specific hooks?",
+      "yes": "OUTPUT:aggressive-press-war-room",
+      "no": "OUTPUT:with-email-list-or-b2b-saas"
+    }
+  }
+}

@@ -17,6 +17,7 @@ import { installSkills } from "../skills/install";
 import { AgentHost } from "./host";
 import { appendLocalRun } from "../activity/localArchive";
 import { computeRunSummary } from "../../shared/runs";
+import { patchCountFromEvents } from "../../shared/shipPipeline";
 import { IPC } from "../../shared/ipc";
 import type { RunKind } from "../../shared/runs";
 
@@ -33,6 +34,10 @@ export interface StartRunRequest {
   sessionId?: string;
   planTaskId?: string;
   kind?: RunKind;
+  /** Prepended ContextPack text for the agent prompt. */
+  contextPrefix?: string;
+  /** Quick Start wedge — emit NO_PATCHES failure when diff is empty. */
+  guaranteedShip?: boolean;
 }
 
 interface RunContext {
@@ -153,8 +158,38 @@ class AgentCoordinator {
           sessionToken: req.sessionToken,
           skills: req.skills ?? (installedSkills.length ? installedSkills : undefined),
           pluginPaths: req.pluginPaths,
+          contextPrefix: req.contextPrefix,
+          browserVerify: async ({ url, checklist }) => {
+            const { executeTool } = await import("../orchestration/toolRouter");
+            const result = await executeTool(
+              "browser.verify_checklist",
+              {
+                runId,
+                cwd: workspace.workspace,
+                projectId: req.projectId ?? "",
+                serverUrl: req.serverUrl,
+                sessionToken: req.sessionToken,
+                bus: this.bus,
+              },
+              { url, checklist },
+            );
+            return { ok: result.ok, summary: result.summary };
+          },
         });
         await this.emitFinalDiff(runId, workspace);
+        if (req.guaranteedShip) {
+          const events = this.bus.getSince(runId, 0);
+          if (patchCountFromEvents(events) === 0) {
+            this.bus.emit({
+              runId,
+              type: "run.failed",
+              status: "failed",
+              title: "No patches produced",
+              summary: "NO_PATCHES: Narrow the goal to hero headline or meta title only.",
+              payload: { code: "NO_PATCHES" },
+            });
+          }
+        }
       } catch (err) {
         runFailed = true;
         this.bus.emit({
@@ -504,8 +539,39 @@ class AgentCoordinator {
     }
   }
 
+  /**
+   * Apply selected hunks for one file from a stored unified patch onto the project root.
+   */
+  async applyHunks(
+    runId: string,
+    file: string,
+    patch: string,
+    hunkIds: string[],
+  ): Promise<{ ok: boolean; reason?: string; applied: string[] }> {
+    const ctx = this.contexts.get(runId);
+    if (!ctx) return { ok: false, reason: "Run workspace gone", applied: [] };
+    const { applyWorkspaceHunks } = await import("../git/applyHunks");
+    const result = await applyWorkspaceHunks(ctx.workspace, file, patch, hunkIds);
+    if (result.ok) {
+      this.bus.emit({
+        runId,
+        type: "file.patch_applied",
+        status: "success",
+        title: `Applied hunks in ${file}`,
+        summary: `${hunkIds.length} hunk(s)`,
+        payload: { file, hunkIds },
+      });
+    }
+    return result;
+  }
+
   since(runId: string, afterSeq: number): RunEvent[] {
     return this.bus.getSince(runId, afterSeq);
+  }
+
+  /** Shared event bus — orchestrator / browser tools emit here. */
+  getEventBus(): RunEventBus {
+    return this.bus;
   }
 
   /** Stop all previews + remove all run worktrees (call on app quit). */

@@ -25,8 +25,12 @@ import {
   isConnectorReadPlanTask,
 } from "@shared/planPlaybooks";
 import { isTaskBlocked, taskStatusFromSnapshot, weekForDay } from "@shared/planProgress";
+import { tacticLabel, tacticTeachingFor } from "@shared/gtmCatalog";
 import { AgentMarkdown } from "@renderer/features/agent/AgentMarkdown";
 import { useApp } from "@renderer/state/store";
+import { EffortBadge } from "@renderer/components/EffortBadge";
+import { PeakDayWarning } from "@renderer/components/PeakDayWarning";
+import { estimatePlanEffort } from "@shared/effortEstimate";
 import { IconButton } from "@renderer/components/ui/IconButton";
 import { TaskStatusBadge } from "../PlanProgressHeader";
 
@@ -183,7 +187,7 @@ export function PlaybookDetailPanel({
   const playbook = getPlaybook(plan, playbookId);
   const planProgress = useApp((s) => s.planProgress);
   const project = useApp((s) => s.project);
-  const connected = useApp((s) => s.connection.state === "connected");
+  const connected = useApp((s) => s.runtime === "connected");
   const hasAgentCwd =
     project?.source.kind === "folder" || Boolean(project?.localPath);
   const startRun = useApp((s) => s.startRun);
@@ -257,6 +261,14 @@ export function PlaybookDetailPanel({
   const next = nextActionableTaskInPlaybook(plan, playbookId, byTaskId);
   const blockedPlaybook = !playbookDependsSatisfied(plan, playbookId, byTaskId);
 
+  const effort = estimatePlanEffort(plan, {
+    playbookId,
+    nextTaskId: next?.id,
+    byTaskId: Object.fromEntries(
+      Object.entries(byTaskId).map(([id, row]) => [id, { status: row.status }]),
+    ),
+  });
+
   const toggleWeek = (week: number) => {
     setCollapsedWeeks((prev) => {
       const nextSet = new Set(prev);
@@ -288,6 +300,10 @@ export function PlaybookDetailPanel({
           <div>
             <h3 className="text-h3 text-text">{playbook.title}</h3>
             <p className="mt-0.5 text-mini text-text-2">{playbook.subtitle}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <EffortBadge label={effort.label} intensity={effort.intensity} />
+              {effort.peakDay && <PeakDayWarning peak={effort.peakDay} compact />}
+            </div>
             {playbook.dependsOnPlaybookIds.length > 0 && (
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <span className="text-[10px] font-medium uppercase tracking-wider text-text-3">
@@ -468,11 +484,22 @@ export function PlaybookDetailPanel({
                                   Done when · {t.acceptance_criteria}
                                 </div>
                               )}
-                              {(t.tactic || t.channel || t.kpi) && (
+                              {(t.tactic || t.phaseLabel || t.channel || t.kpi) && (
                                 <div className="mt-1 flex flex-wrap gap-1.5">
+                                  {t.phaseLabel && (
+                                    <span
+                                      className="rounded-full border border-accent/30 bg-accent-soft/20 px-1.5 py-0.5 font-mono text-[9px] text-accent"
+                                      title="Launch phase"
+                                    >
+                                      {t.phaseLabel}
+                                    </span>
+                                  )}
                                   {t.tactic && (
-                                    <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[9px] text-text-3">
-                                      {t.tactic}
+                                    <span
+                                      className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[9px] text-text-2"
+                                      title={tacticTeachingFor(t.tactic)?.why ?? `Registry tactic: ${t.tactic}`}
+                                    >
+                                      {tacticLabel(t.tactic)}
                                     </span>
                                   )}
                                   {t.channel && (

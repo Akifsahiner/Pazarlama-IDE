@@ -10,3 +10,7 @@
 - **Don't:** Conflate framework/stack with customer value. **Why:** "Built with Next.js" is not a differentiator unless the buyer is choosing dev tools.
 - **Don't:** Assume B2B because the repo is B2B-shaped. **Why:** Prosumer and indie tools often ship Electron/desktop — verify from copy and onboarding.
 - **Don't:** Run shell commands or modify files during intelligence gathering. **Why:** This skill is read-only inspection under `read_inspect` scope.
+
+- **Don't:** Ship generic advice untied to this product profile. **Why:** Founders already have ChatGPT. **Cost:** Trust and retention.
+
+- **Don't:** Recommend five channels at once. **Why:** Dilutes learning. **Cost:** No clear kill signal.

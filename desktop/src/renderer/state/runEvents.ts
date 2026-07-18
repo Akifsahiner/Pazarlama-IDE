@@ -36,6 +36,10 @@ export function applyRunEvent(prev: RunInfo, event: RunEvent): RunReduction {
   const status = RUN_STATUS_BY_TYPE[event.type];
   if (status) run.status = status;
 
+  if (event.runId && (!prev.runId || prev.runId === "")) {
+    run.runId = event.runId;
+  }
+
   let canvas: CanvasMode | undefined;
 
   switch (event.type) {

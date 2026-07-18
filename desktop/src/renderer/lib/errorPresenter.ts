@@ -36,7 +36,7 @@ const RULES: { test: RegExp; present: (raw: string) => PresentedError }[] = [
           }
         : {
             message: "Can't connect right now. Sign in or check your network connection.",
-            action: { label: "Connect", kind: "settings" },
+            action: { label: "Retry connection", kind: "settings" },
           },
   },
   {

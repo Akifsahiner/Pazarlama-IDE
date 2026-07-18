@@ -18,7 +18,10 @@ export const critiqueSchema = z.object({
   realism: z.number().min(0).max(10),
   brand_voice_match: z.number().min(0).max(10),
   generality_penalty: z.number().min(0).max(10),
-  total: z.number().min(0).max(60),
+  tactic_density: z.number().min(0).max(10).default(5),
+  ethics_compliance: z.number().min(0).max(10).default(8),
+  aggression_honesty: z.number().min(0).max(10).default(5),
+  total: z.number().min(0).max(90),
   revisions: z.array(z.string()).max(5).default([]),
   approve: z.boolean(),
 });
@@ -89,7 +92,7 @@ const DRAFT_SYSTEM = [
 
 const TOOL = {
   name: "critique_decision",
-  description: "Score a marketing decision against six dimensions and decide if it ships.",
+  description: "Score a marketing decision against nine dimensions and decide if it ships.",
   input_schema: {
     type: "object",
     required: [
@@ -99,6 +102,9 @@ const TOOL = {
       "realism",
       "brand_voice_match",
       "generality_penalty",
+      "tactic_density",
+      "ethics_compliance",
+      "aggression_honesty",
       "total",
       "approve",
     ],
@@ -114,9 +120,30 @@ const TOOL = {
         maximum: 10,
         description: "Higher = more generic 'evergreen' advice (subtract).",
       },
-      total: { type: "number", minimum: 0, maximum: 60 },
+      tactic_density: {
+        type: "number",
+        minimum: 0,
+        maximum: 10,
+        description: "≥5 measurable tactic steps? Higher = denser.",
+      },
+      ethics_compliance: {
+        type: "number",
+        minimum: 0,
+        maximum: 10,
+        description: "10 = no PH/ads manipulation or ToS risks.",
+      },
+      aggression_honesty: {
+        type: "number",
+        minimum: 0,
+        maximum: 10,
+        description: "Ceiling stated when aggressive goals are unrealistic?",
+      },
+      total: { type: "number", minimum: 0, maximum: 90 },
       revisions: { type: "array", items: { type: "string" }, maxItems: 5 },
-      approve: { type: "boolean", description: "true iff total >= 45 and no critical issue." },
+      approve: {
+        type: "boolean",
+        description: "true iff total >= 65, ethics_compliance >= 7, and no critical issue.",
+      },
     },
   },
 } as const;
@@ -124,7 +151,9 @@ const TOOL = {
 const SYSTEM = [
   "You are a senior marketing critic. Score the proposed marketing decision against",
   "the user's product profile. Be strict — penalize generic SaaS advice, vague metrics,",
-  "and placeholder copy. Use the `critique_decision` tool.",
+  "and placeholder copy. Score tactic_density (≥5 measurable steps), ethics_compliance",
+  "(PH upvote farms / undisclosed ads = fail), aggression_honesty (state ceiling when",
+  "aggressive goals lack assets). Use the `critique_decision` tool.",
 ].join(" ");
 
 /** Critique a decision; never throws (returns null on failure). */

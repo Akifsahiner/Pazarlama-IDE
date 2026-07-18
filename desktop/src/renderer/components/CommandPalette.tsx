@@ -85,6 +85,7 @@ export function CommandPalette() {
   const setActiveCanvas = useApp((s) => s.setActiveCanvas);
   const setWorkSurface = useApp((s) => s.setWorkSurface);
   const navigate = useApp((s) => s.navigate);
+  const runBrowserTask = useApp((s) => s.runBrowserTask);
   const checkConnection = useApp((s) => s.checkConnection);
   const previewFile = useApp((s) => s.previewFile);
   const project = useApp((s) => s.project);
@@ -146,13 +147,18 @@ export function CommandPalette() {
       { id: "surface-research", label: "Open Research Map", hint: "Surface", keywords: "findings competitors", icon: MapIcon, enabled: hasProject, run: () => { setWorkSurface("research-map"); navigate("workspace"); } },
       { id: "surface-content", label: "Open Content Set", hint: "Surface", keywords: "assets copy", icon: Library, enabled: hasProject, run: () => { setWorkSurface("content-set"); navigate("workspace"); } },
       { id: "plan", label: "Generate plan", hint: "Agent", keywords: "launch playbook", icon: Wand2, enabled: hasProject && connected, run: () => { void generatePlan(); navigate("workspace"); } },
-      { id: "browser", label: "Browser task", hint: "Agent", keywords: "computer use operator", icon: Globe, enabled: connected, run: () => { setActiveCanvas("browser"); navigate("workspace"); } },
+      { id: "browser", label: "Browser task", hint: "Agent", keywords: "computer use operator research google", icon: Globe, enabled: connected, run: () => {
+        navigate("workspace");
+        runBrowserTask(
+          "Open Google and search for our top 2 competitors. Open their marketing sites, capture positioning and primary CTAs, and list 3 findings we can act on.",
+        );
+      } },
       { id: "new-session", label: "New session", icon: MessageSquarePlus, shortcut: ["Ctrl", "N"], run: () => void createNewSession() },
       { id: "close", label: "Close project", icon: XCircle, enabled: hasProject, run: () => closeProject() },
-      { id: "connect", label: "Connect to backend", hint: "Settings", icon: Plug, run: () => { navigate("settings"); void checkConnection(); } },
+      { id: "connect", label: "Retry connection", hint: "Settings", icon: Plug, run: () => { navigate("settings"); void checkConnection(); } },
       { id: "settings", label: "Settings", icon: SettingsIcon, shortcut: ["Ctrl", ","], run: () => navigate("settings") },
     ],
-    [openFolderDialog, openProjectPicker, generatePlan, createNewSession, closeProject, setActiveCanvas, setWorkSurface, navigate, checkConnection, hasProject, connected, projectRoot, fileSearchHint],
+    [openFolderDialog, openProjectPicker, generatePlan, createNewSession, closeProject, setActiveCanvas, setWorkSurface, navigate, runBrowserTask, checkConnection, hasProject, connected, projectRoot, fileSearchHint],
   );
 
   useEffect(() => {

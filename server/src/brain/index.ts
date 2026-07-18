@@ -20,6 +20,12 @@ const CRITIC_DISCIPLINES = new Set<Discipline>([
   "launch_plan",
   "ph_launch",
   "landing",
+  "ads",
+  "growth",
+  "outreach",
+  "content",
+  "cro",
+  "social",
 ]);
 
 export interface BrainEvent {

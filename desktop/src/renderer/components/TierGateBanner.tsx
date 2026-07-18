@@ -20,6 +20,7 @@ export function TierGateBanner() {
   const auth = useApp((s) => s.auth);
   const tierFeatures = useApp((s) => s.tierFeatures);
   const navigate = useApp((s) => s.navigate);
+  const startCheckout = useApp((s) => s.startCheckout);
 
   if (runtime !== "connected" || !auth.authEnabled || auth.state !== "signed-in") return null;
 
@@ -37,7 +38,16 @@ export function TierGateBanner() {
       data-testid="tier-gate-banner"
     >
       {presentError("tier_free_scan_preview").message}
-      <BannerAction label={`Upgrade to ${upgrade}`} onClick={() => navigate("settings", "account")} />
+      <BannerAction
+        label={`Upgrade to ${upgrade}`}
+        onClick={() => {
+          if (auth.billingConfigured) {
+            void startCheckout("pro").catch(() => navigate("settings", "account"));
+          } else {
+            navigate("settings", "account");
+          }
+        }}
+      />
     </div>
   );
 }

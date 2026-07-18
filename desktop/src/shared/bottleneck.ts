@@ -15,9 +15,9 @@ export interface BottleneckResolution {
 }
 
 export const BOTTLENECK_PLAYBOOKS: Record<GtmBottleneck, string[]> = {
-  awareness: ["waitlist-hype", "short-form-viral", "influencer", "content-engine"],
+  awareness: ["seo-content-engine", "waitlist-hype", "short-form-viral", "influencer", "content-engine"],
   conversion: ["landing-conversion", "paid-ads-opt", "paid-ads"],
-  distribution: ["ph-number-one", "ph-launch", "linkedin-gtm", "content-engine"],
+  distribution: ["community-launch", "ph-number-one", "ph-launch", "linkedin-gtm", "content-engine"],
   revenue: ["sales-outbound"],
   measurement: ["analytics-measurement"],
 };
@@ -35,7 +35,7 @@ export function resolveBottleneckFromText(text: string): GtmBottleneck {
   if (/revenue|sales|deal|close|pipeline|demo request/i.test(t)) return "revenue";
   if (/convert|signup|landing|cta|cr\b|bounce/i.test(t)) return "conversion";
   if (/analytics|measure|track|kpi|data/i.test(t)) return "measurement";
-  if (/launch|product hunt|ph\b|distribution|reach/i.test(t)) return "distribution";
+  if (/launch|product hunt|ph\b|hacker news|show hn|reddit|distribution|reach/i.test(t)) return "distribution";
   if (/waitlist|awareness|traffic|viral|influencer|audience/i.test(t)) return "awareness";
   return "awareness";
 }

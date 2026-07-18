@@ -9,9 +9,9 @@ export type GtmBottleneck =
   | "measurement";
 
 export const BOTTLENECK_PLAYBOOKS: Record<GtmBottleneck, string[]> = {
-  awareness: ["waitlist-hype", "short-form-viral", "influencer", "content-engine"],
+  awareness: ["seo-content-engine", "waitlist-hype", "short-form-viral", "influencer", "content-engine"],
   conversion: ["landing-conversion", "paid-ads-opt", "paid-ads"],
-  distribution: ["ph-number-one", "ph-launch", "linkedin-gtm", "content-engine"],
+  distribution: ["community-launch", "ph-number-one", "ph-launch", "linkedin-gtm", "content-engine"],
   revenue: ["sales-outbound"],
   measurement: ["analytics-measurement"],
 };
@@ -21,7 +21,7 @@ export function inferBottleneckFromDecision(bottleneckText: string): GtmBottlene
   if (/revenue|sales|deal|close|pipeline|cold email|reply rate|outbound/i.test(t)) return "revenue";
   if (/convert|signup|landing|cta|cr\b|cpa|paid ads|meta ads|ads creative|bounce/i.test(t)) return "conversion";
   if (/analytics|measure|track|kpi|ga4|attribution|what works|events not/i.test(t)) return "measurement";
-  if (/launch|product hunt|distribution|\breach\b|ph\b|no users|ready no user/i.test(t)) return "distribution";
+  if (/launch|product hunt|distribution|\breach\b|ph\b|hacker news|show hn|reddit|indie hackers|no users|ready no user/i.test(t)) return "distribution";
   if (/influencer|linkedin|viral|waitlist|awareness|audience/i.test(t)) return "awareness";
   return "awareness";
 }

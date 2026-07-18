@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Circle, Loader2, Server, Sparkles, BarChart3 } from "lucide-react";
 import { useApp } from "@renderer/state/store";
-import { isSelfHostServerUrl } from "@shared/defaults";
+import { isSelfHostServerUrl, normalizeDevServerUrl } from "@shared/defaults";
 import { buildSetupChecklist, type SetupChecklistStatus } from "@shared/runtimeCapability";
 import { Field, Input } from "@renderer/components/ui/Field";
 import { Button } from "@renderer/components/ui/Button";
@@ -71,9 +71,17 @@ export function ConnectionSetupWizard({
   const runtime = useApp((s) => s.runtime);
   const updateSettings = useApp((s) => s.updateSettings);
   const checkConnection = useApp((s) => s.checkConnection);
-  const [serverDraft, setServerDraft] = useState(settings.serverUrl);
+  const normalizedUrl = normalizeDevServerUrl(settings.serverUrl);
+  const [serverDraft, setServerDraft] = useState(normalizedUrl);
   const [testing, setTesting] = useState(false);
-  const [urlSaved, setUrlSaved] = useState(!showServerField);
+  const [urlSaved, setUrlSaved] = useState(
+    !showServerField || normalizedUrl === settings.serverUrl.trim().replace(/\/$/, ""),
+  );
+  const [savingUrl, setSavingUrl] = useState(false);
+  const portHint =
+    isSelfHostServerUrl(serverDraft) && serverDraft.includes(":8799")
+      ? "Port 8799 is outdated — use 8787 (npm run dev in /server)."
+      : undefined;
 
   const checklist = buildSetupChecklist({
     connectionState: connection.state,
@@ -85,6 +93,16 @@ export function ConnectionSetupWizard({
   const step1Done = urlSaved || !showServerField;
   const step2Done = checklist.server === "ok";
   const step3Done = connected && checklist.anthropic === "ok";
+
+  useEffect(() => {
+    if (!showServerField) return;
+    const fixed = normalizeDevServerUrl(settings.serverUrl);
+    if (fixed !== settings.serverUrl) {
+      void updateSettings({ serverUrl: fixed });
+      setServerDraft(fixed);
+      setUrlSaved(true);
+    }
+  }, [showServerField, settings.serverUrl, updateSettings]);
 
   useEffect(() => {
     if (!connected && connection.state !== "checking" && urlSaved) {
@@ -102,11 +120,17 @@ export function ConnectionSetupWizard({
   };
 
   const saveUrlAndTest = async () => {
-    const trimmed = serverDraft.trim();
+    const trimmed = normalizeDevServerUrl(serverDraft);
     if (!trimmed) return;
-    await updateSettings({ serverUrl: trimmed });
-    setUrlSaved(true);
-    await runTest();
+    setSavingUrl(true);
+    try {
+      await updateSettings({ serverUrl: trimmed });
+      setServerDraft(trimmed);
+      setUrlSaved(true);
+      await runTest();
+    } finally {
+      setSavingUrl(false);
+    }
   };
 
   const ga4Detail =
@@ -125,12 +149,13 @@ export function ConnectionSetupWizard({
           </div>
           <p className="mt-1 text-body-sm text-text-2">
             Talk-through marketing needs a backend connection — your project files never leave this device.
+            After this (or skip), you choose which project to open: local folder, git repo, or live URL.
           </p>
         </div>
 
         <WizardStep
           done={step1Done}
-          active={showServerField && !step1Done}
+          active={savingUrl}
           label="Step 1 — Backend server URL"
           detail={
             showServerField
@@ -142,7 +167,7 @@ export function ConnectionSetupWizard({
         />
 
         {showServerField && !step1Done && (
-          <Field label="Server URL">
+          <Field label="Server URL" error={portHint}>
             <div className="flex gap-2">
               <Input
                 type="url"
@@ -150,8 +175,13 @@ export function ConnectionSetupWizard({
                 onChange={(e) => setServerDraft(e.target.value)}
                 placeholder="http://127.0.0.1:8787"
               />
-              <Button variant="secondary" size="sm" onClick={() => void saveUrlAndTest()}>
-                Save & continue
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={savingUrl || !serverDraft.trim()}
+                onClick={() => void saveUrlAndTest()}
+              >
+                {savingUrl ? "Saving…" : "Save & test"}
               </Button>
             </div>
           </Field>
@@ -228,7 +258,7 @@ export function ConnectionSetupWizard({
 
       {onContinueOffline && (
         <Button variant="secondary" className="w-full" onClick={onContinueOffline}>
-          Continue with preview outline only (no AI)
+          Skip connection — choose project next (offline preview)
         </Button>
       )}
     </div>

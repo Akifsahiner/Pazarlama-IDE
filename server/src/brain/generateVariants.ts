@@ -17,6 +17,11 @@ import {
 } from "../connectors/metaAdsQuery.js";
 import OpenAI from "openai";
 import { forcedToolCall, openaiChatRoundWithTools, streamTextAnswer, type ForcedToolDef } from "./llmClient.js";
+import {
+  EXECUTABLE_ACTIONS_TOOL,
+  executableActionsBundleSchema,
+  type ExecutableAction,
+} from "./executionClassifier.js";
 
 let _client: Anthropic | null = null;
 function client(): Anthropic {
@@ -150,6 +155,7 @@ export async function generateResearchBrief(opts: VariantGenerateOpts): Promise<
 export interface AnswerCallbacks {
   onToken: (text: string) => void;
   onAsset?: (asset: ReturnType<typeof marketingAssetSchema.parse>) => void;
+  onExecutableActions?: (actions: ExecutableAction[]) => void;
   onTool?: (name: string, status: "start" | "done", detail?: string) => void;
 }
 
@@ -296,6 +302,87 @@ async function runOpenAiConnectorAnswerLoop(
   return accumulated;
 }
 
+const OPENAI_ASSET_TOOL: ForcedToolDef = {
+  name: "propose_asset",
+  description: "Propose a concrete marketing asset for review.",
+  input_schema: {
+    type: "object",
+    required: ["type", "after"],
+    properties: {
+      type: { type: "string", enum: ["landing-copy", "tweet", "email", "ad"] },
+      targetFile: { type: "string" },
+      before: { type: "string" },
+      after: { type: "string" },
+    },
+  },
+};
+
+async function runOpenAiAnswerWithTools(
+  opts: VariantGenerateOpts,
+  cb: AnswerCallbacks,
+): Promise<string> {
+  const baseMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    ...(opts.history ?? []).map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    })),
+    { role: "user", content: opts.userMessage },
+  ];
+  let messages = baseMessages;
+  let accumulated = "";
+  let rounds = 0;
+
+  while (rounds < 3) {
+    const round = await openaiChatRoundWithTools({
+      provider: "openai",
+      tier: "main",
+      kind: "chat",
+      system: opts.system,
+      userMessage: opts.userMessage,
+      history: opts.history,
+      signal: opts.signal,
+      usageSink: opts.usageSink,
+      onToken: (t) => cb.onToken(t),
+      tools: [OPENAI_ASSET_TOOL, EXECUTABLE_ACTIONS_TOOL],
+      messages,
+    });
+    accumulated += round.text;
+
+    for (const tool of round.toolCalls) {
+      if (tool.name === "propose_asset") {
+        try {
+          const input = JSON.parse(tool.arguments || "{}");
+          const asset = marketingAssetSchema.parse({ id: randomUUID(), ...input });
+          cb.onAsset?.(asset);
+        } catch {
+          /* skip invalid asset */
+        }
+      }
+      if (tool.name === "propose_executable_actions") {
+        try {
+          const input = JSON.parse(tool.arguments || "{}");
+          const bundle = executableActionsBundleSchema.parse(input);
+          cb.onExecutableActions?.(bundle.actions);
+        } catch {
+          /* skip invalid actions */
+        }
+      }
+    }
+
+    if (round.toolCalls.length === 0) return accumulated;
+
+    const toolMessages: OpenAI.Chat.ChatCompletionToolMessageParam[] = round.toolCalls.map((tool) => ({
+      role: "tool",
+      tool_call_id: tool.id,
+      content: JSON.stringify({ ok: true }),
+    }));
+    messages = [...baseMessages, round.assistantMessage, ...toolMessages];
+    rounds += 1;
+  }
+
+  return accumulated;
+}
+
 export async function generateAnswer(
   opts: VariantGenerateOpts,
   cb: AnswerCallbacks,
@@ -309,17 +396,7 @@ export async function generateAnswer(
     if (hasConnectors && connectorCtx) {
       return runOpenAiConnectorAnswerLoop(opts, cb, connectorCtx);
     }
-    return streamTextAnswer({
-      provider: "openai",
-      tier: "main",
-      kind: "chat",
-      system: opts.system,
-      userMessage: opts.userMessage,
-      history: opts.history,
-      signal: opts.signal,
-      usageSink: opts.usageSink,
-      onToken: (t) => cb.onToken(t),
-    });
+    return runOpenAiAnswerWithTools(opts, cb);
   }
 
   const choice = modelFor("main", "decision");
@@ -350,7 +427,7 @@ export async function generateAnswer(
         model,
         max_tokens: env.ANTHROPIC_MAX_TOKENS_CHAT,
         system: opts.system,
-        tools: [ASSET_TOOL as unknown as Anthropic.Tool, ...connectorTools],
+        tools: [ASSET_TOOL as unknown as Anthropic.Tool, EXECUTABLE_ACTIONS_TOOL as unknown as Anthropic.Tool, ...connectorTools],
         messages,
       },
       { signal: opts.signal, timeout: env.LLM_TIMEOUT_MS },
@@ -366,6 +443,10 @@ export async function generateAnswer(
       if (block.type === "tool_use" && block.name === "propose_asset") {
         const asset = marketingAssetSchema.parse({ id: randomUUID(), ...(block.input as object) });
         cb.onAsset?.(asset);
+      }
+      if (block.type === "tool_use" && block.name === "propose_executable_actions") {
+        const bundle = executableActionsBundleSchema.parse(block.input);
+        cb.onExecutableActions?.(bundle.actions);
       }
     }
     return { text, final };

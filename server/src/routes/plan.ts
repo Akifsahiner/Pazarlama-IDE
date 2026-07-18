@@ -15,6 +15,8 @@ import * as plans from "../db/repos/plans.js";
 import * as usage from "../db/repos/usage.js";
 import * as marketingProfiles from "../db/repos/marketingProfile.js";
 import { generatePlanSuite } from "../brain/planSuite.js";
+import { estimateCostCents } from "../billing/pricing.js";
+import { env } from "../env.js";
 
 const planBody = z.object({
   projectId: z.string().optional(),
@@ -66,6 +68,7 @@ export async function planRoutes(app: FastifyInstance): Promise<void> {
     const emit = (e: PlanStreamEvent) => sse.send(e);
     const t0 = Date.now();
     const resolvedProvider = provider ?? "anthropic";
+    const usageSink = { input: 0, output: 0 };
 
     if (resolvedProvider === "openai") {
       emit({
@@ -91,20 +94,47 @@ export async function planRoutes(app: FastifyInstance): Promise<void> {
         planHorizon,
         emit,
         signal: sse.signal,
+        usageSink,
       });
       if (sse.closed()) return;
+
+      const costCents = estimateCostCents(
+        env.ANTHROPIC_MODEL,
+        usageSink.input,
+        usageSink.output,
+      );
+      emit({
+        type: "usage",
+        tokens_in: usageSink.input,
+        tokens_out: usageSink.output,
+        cost_cents: costCents,
+      });
       emit({ type: "done" });
 
       const durationMs = Date.now() - t0;
       app.log.info(
-        { route: "/plan", provider: resolvedProvider, durationMs, status: "ok", playbooks: plan.playbooks?.length },
+        {
+          route: "/plan",
+          provider: resolvedProvider,
+          durationMs,
+          status: "ok",
+          playbooks: plan.playbooks?.length,
+          tokens_in: usageSink.input,
+          tokens_out: usageSink.output,
+          cost_cents: costCents,
+        },
         "llm_turn",
       );
 
-      if (persistenceEnabled && user && projectId) {
+      if (persistenceEnabled && user) {
         try {
-          await plans.insert(user.id, projectId, plan);
-          await usage.insert(user.id, { kind: "plan" });
+          if (projectId) await plans.insert(user.id, projectId, plan);
+          await usage.insert(user.id, {
+            kind: "plan",
+            tokens_in: usageSink.input,
+            tokens_out: usageSink.output,
+            cost_cents: costCents,
+          });
         } catch (persistErr) {
           app.log.warn({ err: persistErr }, "failed to persist plan");
         }

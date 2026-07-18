@@ -12,10 +12,12 @@ export function EmptyCanvas() {
   const focusPlanTask = useApp((s) => s.focusPlanTask);
   const setActiveCanvas = useApp((s) => s.setActiveCanvas);
   const setWorkSurface = useApp((s) => s.setWorkSurface);
-  const navigate = useApp((s) => s.navigate);
+  const openConnectFlow = useApp((s) => s.openConnectFlow);
   const openProjectPicker = useApp((s) => s.openProjectPicker);
   const togglePalette = useApp((s) => s.togglePalette);
-  const connected = useApp((s) => s.connection.state === "connected");
+  const runBrowserTask = useApp((s) => s.runBrowserTask);
+  const connected = useApp((s) => s.runtime === "connected");
+  const canBrowse = useApp((s) => s.capabilityMatrix.canBrowse);
   const project = useApp((s) => s.project);
   const plan = useApp((s) => s.plan);
   const planProgress = useApp((s) => s.planProgress);
@@ -94,6 +96,19 @@ export function EmptyCanvas() {
             >
               <Command size={12} /> Command palette <Kbd>Ctrl K</Kbd>
             </button>
+            {canBrowse && (
+              <button
+                type="button"
+                onClick={() =>
+                  runBrowserTask(
+                    "Open Google and search for our top 2 competitors. Open their marketing sites, capture positioning and primary CTAs, and list 3 findings we can act on.",
+                  )
+                }
+                className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-accent/40 bg-accent-soft px-3 py-2 text-mini text-accent transition-colors hover:brightness-110"
+              >
+                Watch Computer Use live
+              </button>
+            )}
           </div>
         )}
 
@@ -132,10 +147,10 @@ export function EmptyCanvas() {
           <div className="mt-5 flex items-center justify-center">
             <button
               type="button"
-              onClick={() => navigate("settings")}
+              onClick={() => openConnectFlow()}
               className="inline-flex items-center gap-2 rounded-[var(--radius-md)] border border-line px-4 py-2 text-body-sm text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
             >
-              <Plug size={14} /> Connect a backend
+              <Plug size={14} /> Retry connection
             </button>
           </div>
         )}

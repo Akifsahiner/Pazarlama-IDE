@@ -3,13 +3,36 @@
   "name": "Paid Ads Optimization",
   "category": "paid",
   "applies_when": {
-    "company_stage": ["early", "growth", "relaunch"],
-    "channels_includes": ["google_ads", "meta_ads", "linkedin_ads", "twitter_ads"],
-    "business_model": ["saas", "ecommerce", "mobile_app", "marketplace", "info_product"]
+    "company_stage": [
+      "early",
+      "growth",
+      "relaunch"
+    ],
+    "channels_includes": [
+      "google_ads",
+      "meta_ads",
+      "linkedin_ads",
+      "twitter_ads"
+    ],
+    "business_model": [
+      "saas",
+      "ecommerce",
+      "mobile_app",
+      "marketplace",
+      "info_product"
+    ]
   },
   "do_not_use_when": {
-    "company_stage": ["pre-launch", "enterprise_field_sales_only"],
-    "constraints_includes": ["no_paid_budget", "landing_page_not_ready", "no_conversion_tracking", "cac_must_be_zero"]
+    "company_stage": [
+      "pre-launch",
+      "enterprise_field_sales_only"
+    ],
+    "constraints_includes": [
+      "no_paid_budget",
+      "landing_page_not_ready",
+      "no_conversion_tracking",
+      "cac_must_be_zero"
+    ]
   },
   "required_inputs": [
     "product_name",
@@ -22,7 +45,24 @@
   "output_schema": "marketing_decision",
   "primary_metric": "paid_cpa_qualified_conversion",
   "playbook_selector": [
-    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
-    { "if": { "business_model": ["saas"] }, "pick": "b2b-saas" }
+    {
+      "if": {
+        "current_users_lt": 100
+      },
+      "pick": "no-audience"
+    },
+    {
+      "if": {
+        "business_model": [
+          "saas"
+        ]
+      },
+      "pick": "b2b-saas"
+    }
+  ],
+  "version": "1.1.0",
+  "changelog": "Manifest v2 fields for Skill Excellence",
+  "aggression_playbooks": [
+    "aggressive-hypothesis-sprint"
   ]
 }

@@ -52,3 +52,20 @@ export function isSelfHostServerUrl(url: string): boolean {
     return true;
   }
 }
+
+/** Fix stale local dev URLs (e.g. old 8799 port) to the current default. */
+export function normalizeDevServerUrl(url: string): string {
+  const fallback = defaultServerUrl;
+  if (!url?.trim()) return fallback;
+  try {
+    const u = new URL(url.trim());
+    const local = u.hostname === "127.0.0.1" || u.hostname === "localhost";
+    if (local && (u.port === "8799" || u.port === "")) {
+      u.port = new URL(fallback).port || "8787";
+      return u.toString().replace(/\/$/, "");
+    }
+    return url.trim().replace(/\/$/, "");
+  } catch {
+    return fallback;
+  }
+}

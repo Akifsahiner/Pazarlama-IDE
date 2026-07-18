@@ -10,8 +10,9 @@ import type { PermissionScope } from "../../shared/types";
 export function scopeForTool(toolName: string): PermissionScope {
   const name = toolName.toLowerCase();
 
-  // Read-only inspection
+  // Read-only inspection + mid-run browser verify (Faz 4)
   if (
+    name === "browser_verify" ||
     name === "read" ||
     name === "grep" ||
     name === "glob" ||

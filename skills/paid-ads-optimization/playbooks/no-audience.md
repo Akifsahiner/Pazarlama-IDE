@@ -13,3 +13,45 @@ No pixel data, no retargeting pool, no lookalikes. Cold-start paid means search 
 - **Days 27–30: Scale or pivot decision.** If CPA ≤ target with 20+ conversions: increase budget 15%/week. If CPA 1.5–2× target: one more LP test, then pause if no improvement. If CPA >2× with 30+ conversions: wrong channel — shift budget to organic or different platform.
 
 Realistic outcome: $900–1,500 first-month spend, 15–40 qualified conversions, $40–$120 CPA if fit exists, clear kill/scale data for month 2. No retargeting until 1k monthly uniques.
+
+## Preconditions
+- [ ] Marketing profile complete for paid-ads-optimization
+- [ ] Primary metric named before execution
+- [ ] Honest aggression dial matches real assets (list, proof, team hours)
+
+## Aggression dial
+
+| Level | When | Focus |
+|-------|------|-------|
+| conservative | Thin assets / solo | One channel, learning metrics |
+| standard | Warm channel or list | Best-practice cadence from narrative above |
+| aggressive | Strong proof + distribution | Execute full tactic stack with kill rules |
+
+## Timeline
+- **T-14**: Instrument leading metric; lock ICP + offer
+- **T-7**: Ship assets referenced in narrative
+- **T-1**: Final checklist + supporter warm-up
+- **H0**: Primary launch motion
+- **D+1…D+7**: Measure, teardown, kill or scale
+
+## Tactic stack
+1. Name bottleneck with 3 profile citations
+2. Ship one measurable experiment this week
+3. Tie Plan Studio tasks to registry tactic ids
+4. Cap parallel channels at 2
+5. Predefine kill/pivot rule before spend or blast
+
+## Orchestration
+- One primary channel from narrative; ≤2 support channels
+- Repo/browser/asset tasks split by execution_mode
+
+## Realistic outcomes
+- State honest bands — do not promise #1 PH or viral without assets
+- Leading metric moves in 7–14d when playbook matches profile
+
+## Kill / pivot rules
+- Leading metric misses after agreed sample → stop and rewrite hypothesis
+- Never add channels when primary motion underperforms
+
+## Ethics line
+- No fake metrics, fake social proof, undisclosed ads, or ToS-breaking growth hacks

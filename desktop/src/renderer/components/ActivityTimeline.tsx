@@ -25,7 +25,13 @@ function iconFor(type: RunEventType) {
 }
 
 /** Chronological strip of what happened in the run (newest at the bottom). */
-export function ActivityTimeline({ events }: { events: RunEvent[] }) {
+export function ActivityTimeline({
+  events,
+  className,
+}: {
+  events: RunEvent[];
+  className?: string;
+}) {
   if (events.length === 0) {
     return (
       <EmptyState
@@ -38,7 +44,7 @@ export function ActivityTimeline({ events }: { events: RunEvent[] }) {
   }
 
   return (
-    <div className="max-h-40 overflow-y-auto px-2 py-2">
+    <div className={className ?? "max-h-40 overflow-y-auto px-2 py-2"}>
       {events.map((e) => {
         const Icon = e.status === "running" ? Loader2 : iconFor(e.type);
         const tone =

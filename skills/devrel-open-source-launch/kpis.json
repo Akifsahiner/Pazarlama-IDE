@@ -1,0 +1,42 @@
+[
+  {
+    "name": "github_stars_30d",
+    "definition": "Net new GitHub stars in 30 days from launch anchor (tag, Show HN, or list PR merge).",
+    "target_hint": "Aggressive OSS + Show HN: 200–800 in 30d. Cold repo runway: 30–120. Awesome-list merge alone: 50–200 over 60d."
+  },
+  {
+    "name": "github_clones_14d",
+    "definition": "Repository clone count (GitHub Insights) in 14d post-launch spike.",
+    "target_hint": "Stars × 0.3–1.2 clones typical for dev tools; clones without stars = README/install friction."
+  },
+  {
+    "name": "awesome_list_pr_merge_rate",
+    "definition": "Merged awesome-list PRs / PRs opened in launch window.",
+    "target_hint": "20–40% with personalized PRs; <10% = boilerplate or wrong list fit."
+  },
+  {
+    "name": "registry_installs_7d",
+    "definition": "npm/PyPI/crates weekly downloads in 7d post-release (registry analytics).",
+    "target_hint": "Show HN spike: 500–5k downloads week 1 for niche tool; track vs prior baseline."
+  },
+  {
+    "name": "release_notes_referrer_sessions",
+    "definition": "Sessions from blog/Dev.to/GitHub Releases landing in 7d after tagged release.",
+    "target_hint": "200–1.5k per major release post when cross-posted; <50 = thin release notes."
+  },
+  {
+    "name": "show_hn_to_star_conversion",
+    "definition": "New stars in H0–H+72h / HN referrer sessions (community-launch paired).",
+    "target_hint": "3–8% when README CTA placed after install proof; <1% = CTA too early or broken install."
+  },
+  {
+    "name": "good_first_issue_pickup_30d",
+    "definition": "External contributors closing good-first-issue labeled PRs within 30d.",
+    "target_hint": "≥1 merged external PR = healthy; 0 with 50+ stars = labeling or docs gap."
+  },
+  {
+    "name": "maintainer_dm_incidents",
+    "definition": "Count of public callouts, blocks, or list maintainer rejections citing spam in launch window.",
+    "target_hint": "0 is the only acceptable target; any incident → pause DMs 60d."
+  }
+]

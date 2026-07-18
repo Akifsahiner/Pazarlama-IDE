@@ -1,0 +1,32 @@
+{
+  "id": "community-launch",
+  "name": "Community Launch (HN / IH / Reddit)",
+  "category": "distribution",
+  "version": "1.0.0",
+  "changelog": "Initial war-room: Show HN + Indie Hackers + ethical Reddit with phase tactics",
+  "aggression_playbooks": ["aggressive-community-blitz"],
+  "applies_when": {
+    "company_stage": ["pre-launch", "early", "growth", "relaunch"],
+    "channels_includes": ["hacker_news", "reddit", "indie_hackers", "dev_to"],
+    "business_model": ["saas", "open_source", "tool", "freemium", "developer_tool"]
+  },
+  "do_not_use_when": {
+    "company_stage": ["enterprise_field_sales_only"],
+    "constraints_includes": ["stealth_mode", "no_public_demo", "regulated_no_community"]
+  },
+  "required_inputs": [
+    "product_name",
+    "main_value_proposition",
+    "target_audience",
+    "differentiators",
+    "available_assets"
+  ],
+  "output_schema": "marketing_decision",
+  "primary_metric": "community_referral_sessions_72h",
+  "playbook_selector": [
+    { "if": { "days_until_launch_gte": 7 }, "pick": "aggressive-community-blitz" },
+    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
+    { "if": { "channels_includes": ["indie_hackers"] }, "pick": "with-email-list" },
+    { "if": { "business_model": ["saas", "tool"] }, "pick": "b2b-saas" }
+  ]
+}

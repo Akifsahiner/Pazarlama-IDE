@@ -1,5 +1,6 @@
 /**
  * Thin client for the backend browser-agent WebSocket.
+ * @deprecated Prefer orchestrator `browser.session` / `BrowserToolSession` — direct `.start()` is legacy.
  * Auth: first message `{ type:'auth', token }` when JWT mode; legacy `?token=` also supported.
  * Server responds `{ type:'ready' }` before accepting `start`.
  */
@@ -11,6 +12,9 @@ import type {
   Persona,
   RunReport,
 } from "@shared/types";
+import { browserWsUrl } from "@shared/browserWs";
+
+export { browserWsUrl };
 
 /** Server → client operator events. */
 export type BrowserClientEvent =
@@ -25,10 +29,6 @@ export type BrowserClientEvent =
   | { type: "error"; message: string };
 
 type ServerEvent = BrowserClientEvent | { type: "ready" };
-
-export function browserWsUrl(serverUrl: string): string {
-  return `${serverUrl.replace(/^http/i, "ws").replace(/\/+$/, "")}/browser`;
-}
 
 function closeHint(code: number, reason: string): string | null {
   if (code === 1000) return null;

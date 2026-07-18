@@ -86,7 +86,7 @@ export function ProjectRail() {
   const planProgress = useApp((s) => s.planProgress);
   const launchComposerAction = useApp((s) => s.launchComposerAction);
   const generatePlan = useApp((s) => s.generatePlan);
-  const connected = useApp((s) => s.connection.state === "connected");
+  const connected = useApp((s) => s.runtime === "connected");
 
   const profileIncomplete = isProfileIncomplete(marketingProfile);
 

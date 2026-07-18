@@ -6,6 +6,7 @@ import {
   normalizeCanvasMode,
   normalizeToWorkSurface,
 } from "@shared/workSurfaces";
+import { ShipPipelineBar } from "@renderer/features/workspace/ShipPipelineBar";
 import { EmptyCanvas } from "./canvas/EmptyCanvas";
 import { BrowserCanvas } from "./canvas/BrowserCanvas";
 import { RunCanvas } from "./canvas/RunCanvas";
@@ -21,6 +22,7 @@ export function Canvas() {
 
   return (
     <main className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-bg">
+      <ShipPipelineBar />
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={mode}

@@ -1,0 +1,34 @@
+{
+  "id": "newsletter-sponsorship",
+  "name": "Niche Dev Newsletter Sponsorship",
+  "category": "distribution",
+  "version": "1.0.0",
+  "changelog": "Initial war-room: niche dev newsletter sponsorship (Bytes/React Status style) with native creative, UTM scheme, and CPA kill rules — not paid ads",
+  "aggression_playbooks": ["aggressive-sponsor-sprint"],
+  "applies_when": {
+    "company_stage": ["prelaunch", "pre-launch", "early", "growth", "relaunch"],
+    "business_model": ["saas", "tool", "freemium", "developer_tool", "open_source"]
+  },
+  "do_not_use_when": {
+    "company_stage": ["enterprise_field_sales_only"],
+    "constraints_includes": ["no_paid_distribution", "stealth_mode", "consumer_only_icp"],
+    "channels_excludes": ["newsletter"]
+  },
+  "required_inputs": [
+    "product_name",
+    "main_value_proposition",
+    "target_audience",
+    "differentiators",
+    "monthly_marketing_budget",
+    "landing_page_url",
+    "has_analytics_utm"
+  ],
+  "output_schema": "marketing_decision",
+  "primary_metric": "nl_sponsor_signups_7d",
+  "playbook_selector": [
+    { "if": { "email_list_size_gte": 5000 }, "pick": "aggressive-sponsor-sprint" },
+    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
+    { "if": { "email_list_size_gte": 500 }, "pick": "with-email-list" },
+    { "if": { "business_model": ["saas", "tool", "developer_tool"] }, "pick": "b2b-saas" }
+  ]
+}

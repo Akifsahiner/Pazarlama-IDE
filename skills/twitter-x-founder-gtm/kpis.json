@@ -1,0 +1,22 @@
+[
+  {
+    "name": "x_icp_engagement_rate",
+    "definition": "Meaningful replies + quote-tweets from ICP accounts / founder posts per week.",
+    "target_hint": "≥5 ICP engagements/post during runway; launch thread ≥15 substantive replies in 4h."
+  },
+  {
+    "name": "x_thread_completion_rate",
+    "definition": "Analytics thread reads completing to tweet 7 / thread starts (if available) or proxy: clicks on tweet 7 link.",
+    "target_hint": "≥25% click-through on CTA tweet for dev-tool threads."
+  },
+  {
+    "name": "x_reply_sla_met",
+    "definition": "% of mentions/replies answered within 2h during H0–H+8 launch window.",
+    "target_hint": "≥85% — non-negotiable on launch day."
+  },
+  {
+    "name": "x_utm_signups",
+    "definition": "Signups with utm_source=twitter in launch week.",
+    "target_hint": "Track per thread; 20–200 for 1k–10k follower accounts on strong launch thread."
+  }
+]

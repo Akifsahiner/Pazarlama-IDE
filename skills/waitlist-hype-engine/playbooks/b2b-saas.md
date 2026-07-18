@@ -15,3 +15,45 @@ B2B waitlists convert on *credibility* and *access*, not FOMO alone. Design the 
 - **Days +1 to +7: Activation sprint.** Track waitlist-to-activation daily. Re-email non-activators with a 2-minute setup guide. Founding cohort who activate get featured on the "Built with [Product]" page.
 
 Realistic outcome: 800–2,500 waitlist signups, 30–45% referral rate, K-factor 0.35–0.6, 45–55% activation within 7 days, 15–40 paying customers from founding cohort in 30 days.
+
+## Preconditions
+- [ ] Marketing profile complete for waitlist-hype-engine
+- [ ] Primary metric named before execution
+- [ ] Honest aggression dial matches real assets (list, proof, team hours)
+
+## Aggression dial
+
+| Level | When | Focus |
+|-------|------|-------|
+| conservative | Thin assets / solo | One channel, learning metrics |
+| standard | Warm channel or list | Best-practice cadence from narrative above |
+| aggressive | Strong proof + distribution | Execute full tactic stack with kill rules |
+
+## Timeline
+- **T-14**: Instrument leading metric; lock ICP + offer
+- **T-7**: Ship assets referenced in narrative
+- **T-1**: Final checklist + supporter warm-up
+- **H0**: Primary launch motion
+- **D+1…D+7**: Measure, teardown, kill or scale
+
+## Tactic stack
+1. Name bottleneck with 3 profile citations
+2. Ship one measurable experiment this week
+3. Tie Plan Studio tasks to registry tactic ids
+4. Cap parallel channels at 2
+5. Predefine kill/pivot rule before spend or blast
+
+## Orchestration
+- One primary channel from narrative; ≤2 support channels
+- Repo/browser/asset tasks split by execution_mode
+
+## Realistic outcomes
+- State honest bands — do not promise #1 PH or viral without assets
+- Leading metric moves in 7–14d when playbook matches profile
+
+## Kill / pivot rules
+- Leading metric misses after agreed sample → stop and rewrite hypothesis
+- Never add channels when primary motion underperforms
+
+## Ethics line
+- No fake metrics, fake social proof, undisclosed ads, or ToS-breaking growth hacks

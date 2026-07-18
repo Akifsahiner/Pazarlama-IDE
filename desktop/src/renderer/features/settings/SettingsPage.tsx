@@ -17,6 +17,10 @@ import {
   Wifi,
 } from "lucide-react";
 import { useApp } from "@renderer/state/store";
+import { TraceViewerPanel } from "./TraceViewerPanel";
+import { SkillQualityPanel } from "./SkillQualityPanel";
+import { LaunchReadinessSection } from "./LaunchReadinessSection";
+import { ExecutionDebugSection } from "./ExecutionDebugSection";
 import { isSelfHostServerUrl } from "@shared/defaults";
 import { readDemoConnectorsEnabled, setDemoConnectorsEnabled } from "@shared/demoConnectors";
 import type { LLMProviderId, Persona, Settings } from "@shared/types";
@@ -138,6 +142,8 @@ export function SettingsSections({
   const auth = useApp((s) => s.auth);
   const tierLabel = useApp((s) => s.tierLabel);
   const signOut = useApp((s) => s.signOut);
+  const startCheckout = useApp((s) => s.startCheckout);
+  const openBillingPortal = useApp((s) => s.openBillingPortal);
   const connection = useApp((s) => s.connection);
   const [advancedOpen, setAdvancedOpen] = useState(isSelfHostServerUrl(settings.serverUrl));
   const [bundledAvailable, setBundledAvailable] = useState(false);
@@ -176,32 +182,64 @@ export function SettingsSections({
             <UserRound size={15} className="text-text-3" /> Local dev mode — sign-in is disabled on this backend.
           </Card>
         ) : (
-          <Card className="flex items-center justify-between">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-accent">
-                <UserRound size={16} />
-              </span>
-              <div className="min-w-0">
-                <div className="text-caption text-text-3">Signed in as</div>
-                <div className="truncate text-body text-text">{auth.user?.email ?? auth.email ?? "—"}</div>
-                {auth.user?.tier && (
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <Badge tone={auth.user.tier === "free" ? "warn" : "ok"}>
-                      {tierLabel ?? auth.user.tier}
-                    </Badge>
-                    {auth.user.tier === "free" && (
-                      <span className="text-micro text-text-3">
-                        Scan + preview only · upgrade to {tierUpgradeLabel(normalizeTier(auth.user.tier))} for AI
-                      </span>
-                    )}
-                  </div>
-                )}
+          <div className="space-y-3">
+            <Card className="flex items-center justify-between">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-accent">
+                  <UserRound size={16} />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-caption text-text-3">Signed in as</div>
+                  <div className="truncate text-body text-text">{auth.user?.email ?? auth.email ?? "—"}</div>
+                  {auth.user?.tier && (
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <Badge tone={auth.user.tier === "free" ? "warn" : "ok"}>
+                        {tierLabel ?? auth.user.tier}
+                      </Badge>
+                      {auth.user.tier === "free" && (
+                        <span className="text-micro text-text-3">
+                          Scan + preview only · upgrade to {tierUpgradeLabel(normalizeTier(auth.user.tier))} for AI
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-            <Button variant="ghost" size="sm" iconLeft={<LogOut size={13} />} onClick={() => void signOut()}>
-              Sign out
-            </Button>
-          </Card>
+              <Button variant="ghost" size="sm" iconLeft={<LogOut size={13} />} onClick={() => void signOut()}>
+                Sign out
+              </Button>
+            </Card>
+            <Card className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-body-sm font-medium text-text">Billing</div>
+                <p className="text-caption text-text-3">
+                  {auth.billingConfigured
+                    ? "Manage your plan with Stripe Checkout / Customer Portal."
+                    : "Stripe is not configured on this server — ask your admin to add billing keys."}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                {(auth.user?.tier === "free" || !auth.user?.tier) && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={!auth.billingConfigured || auth.state !== "signed-in"}
+                    onClick={() => void startCheckout("pro")}
+                  >
+                    Upgrade to Pro
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!auth.billingConfigured || auth.state !== "signed-in"}
+                  onClick={() => void openBillingPortal()}
+                >
+                  Manage billing
+                </Button>
+              </div>
+            </Card>
+          </div>
         )}
       </Section>
       )}
@@ -346,6 +384,10 @@ export function SettingsSections({
                 Show demo connector feed (QA only — never in production)
               </label>
             )}
+            <LaunchReadinessSection />
+            <ExecutionDebugSection />
+            <TraceViewerPanel />
+            <SkillQualityPanel />
           </>
         )}
       </Section>
@@ -548,7 +590,15 @@ export function SettingsPage() {
 export function SettingsDialog() {
   const open = useApp((s) => s.settingsOpen);
   const toggleSettings = useApp((s) => s.toggleSettings);
+  const pendingSection = useApp((s) => s.settingsSection);
   const [active, setActive] = useState<SettingsSectionId>(SECTIONS[0].id);
+
+  useEffect(() => {
+    if (pendingSection && SECTIONS.some((s) => s.id === pendingSection)) {
+      setActive(pendingSection as SettingsSectionId);
+      useApp.setState({ settingsSection: undefined });
+    }
+  }, [pendingSection]);
 
   return (
     <Dialog open={open} onClose={() => toggleSettings(false)} title="Settings" width="max-w-2xl">

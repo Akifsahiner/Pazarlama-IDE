@@ -28,6 +28,12 @@ jobs:
       - run: npm run build
       - name: Skill pack coverage
         run: node evals/skill-coverage.mjs
+      - name: Skill excellence structural gates
+        run: |
+          npm run skill:audit
+          npm run eval:skill-quality
+          npm run eval:p0-plan-smoke
+          npm run eval:devflow-plan-smoke
       - name: Plan suite smoke
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

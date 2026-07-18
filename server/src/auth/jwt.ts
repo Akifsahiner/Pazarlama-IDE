@@ -118,6 +118,7 @@ export function requireUser(): onRequestHookHandler {
     if (req.url.startsWith("/browser")) return;
     if (req.url.startsWith("/connectors/") && req.url.includes("/callback")) return;
     if (req.url.startsWith("/reports/shared/")) return;
+    if (req.url.startsWith("/billing/webhook")) return;
     // The Anthropic proxy authenticates in-route via x-api-key (the SDK forwards
     // ANTHROPIC_API_KEY there), so it is not gated by the Authorization header.
     if (req.url.startsWith("/anthropic")) return;

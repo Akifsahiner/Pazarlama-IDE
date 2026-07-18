@@ -1,0 +1,35 @@
+{
+  "root": "has_landing_utm",
+  "nodes": {
+    "has_landing_utm": {
+      "q": "Does the product have a live landing page with UTM analytics (signup or trial tracked)?",
+      "yes": "icp_reads_dev_newsletters",
+      "no": "OUTPUT:ship-lp-and-utm-before-newsletter-sponsorship"
+    },
+    "icp_reads_dev_newsletters": {
+      "q": "Is your ICP developers, eng managers, or technical founders who subscribe to niche dev newsletters (React, JS, DevOps, etc.)?",
+      "yes": "budget_check",
+      "no": "OUTPUT:pick-other-channel-not-newsletter-sponsorship"
+    },
+    "budget_check": {
+      "q": "Is monthly sponsorship budget ≥$1,500 for at least 3 test slots?",
+      "yes": "prior_sponsor_data",
+      "no": "OUTPUT:no-audience-with-single-slot-test"
+    },
+    "prior_sponsor_data": {
+      "q": "Do you have media kits or overlap scores for ≥5 niche newsletters?",
+      "yes": "aggressive_window",
+      "no": "have_email_list"
+    },
+    "aggressive_window": {
+      "q": "Is first sponsor send ≥14 days out with creative brief + UTM scheme locked?",
+      "yes": "OUTPUT:aggressive-sponsor-sprint",
+      "no": "OUTPUT:b2b-saas"
+    },
+    "have_email_list": {
+      "q": "Do you have ≥500 own subscribers to seed social proof or founder story for sponsor copy?",
+      "yes": "OUTPUT:with-email-list",
+      "no": "OUTPUT:no-audience"
+    }
+  }
+}

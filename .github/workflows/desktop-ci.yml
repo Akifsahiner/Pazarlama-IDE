@@ -6,6 +6,7 @@ on:
     paths:
       - "desktop/**"
       - "server/**"
+      - "skills/**"
       - "README.md"
       - "AGENTS.md"
       - ".github/workflows/desktop-ci.yml"
@@ -13,9 +14,12 @@ on:
     paths:
       - "desktop/**"
       - "server/**"
+      - "skills/**"
       - "README.md"
       - "AGENTS.md"
       - ".github/workflows/desktop-ci.yml"
+  schedule:
+    - cron: "0 3 * * *"
 
 jobs:
   desktop:
@@ -36,6 +40,7 @@ jobs:
       - run: npm run test:shared
       - run: node scripts/trust-copy-regression.mjs
       - run: node scripts/golden-path-smoke.mjs
+      - run: node scripts/verify-fixture-smoke.mjs
 
   server:
     runs-on: ubuntu-latest
@@ -54,6 +59,10 @@ jobs:
       - run: npm run test
       - run: npm run build
       - run: node evals/skill-coverage.mjs
+      - run: npm run skill:audit
+      - run: npm run eval:skill-quality
+      - run: npm run eval:p0-plan-smoke
+      - run: npm run eval:devflow-plan-smoke
 
   gtm-eval:
     runs-on: ubuntu-latest
@@ -102,3 +111,31 @@ jobs:
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
           MARKETING_IDE_E2E_FIXTURE: e2e/fixtures/sample-app
+      - run: npm run test:e2e:cmo-multi
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+          MARKETING_IDE_E2E_FIXTURE: e2e/fixtures/sample-app
+
+  desktop-cmo-prod-nightly:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Week 1 prod agent E2E (@cmo-prod)
+        run: npm run test:e2e:cmo-prod
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+          MARKETING_IDE_E2E_FIXTURE: e2e/fixtures/sample-app
+          MARKETING_IDE_AGENT_SMOKE: "1"
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        timeout-minutes: 45

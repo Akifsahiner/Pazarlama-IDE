@@ -23,8 +23,27 @@ import {
 } from "./prompts.js";
 import { generateDecision } from "./generate.js";
 import { generateAnswer, generateDraft, generateResearchBrief } from "./generateVariants.js";
-import { critique, critiqueDraft, shouldReviseDraft, shouldWarnDraftQuality, type Critique, type DraftCritique } from "./critic.js";
+import {
+  critique,
+  critiqueDraft,
+  shouldReviseDraft,
+  shouldWarnDraftQuality,
+  type Critique,
+  type DraftCritique,
+} from "./critic.js";
+import {
+  chunkTextForStream,
+  critiqueAnswer,
+  shouldReviseAnswer,
+  shouldWarnAnswerQuality,
+  structuralAnswerLint,
+  type AnswerCritique,
+} from "./answerCritic.js";
+import { PH_MANIPULATION_RE } from "./gtmCatalog.js";
 import { buildProactiveSuggestion } from "./proactiveSuggestion.js";
+import { buildAnswerCta } from "./marketingStrategyRoute.js";
+import { buildAnswerExecutableActions } from "./answerActions.js";
+import { bundleToSseEvent } from "./executionClassifier.js";
 import type { TokenUsageSink } from "./tokenUsage.js";
 import { isPlanRevisionMessage } from "./planRevision.js";
 import { revisePlanSuite } from "./planSuite.js";
@@ -38,6 +57,12 @@ const CRITIC_DISCIPLINES = new Set<Discipline>([
   "launch_plan",
   "ph_launch",
   "landing",
+  "ads",
+  "growth",
+  "outreach",
+  "content",
+  "cro",
+  "social",
 ]);
 
 export interface TurnOpts {
@@ -91,6 +116,7 @@ async function runPlanRevisionPath(opts: TurnOpts): Promise<TurnResult> {
       }
     },
     signal: opts.signal,
+    usageSink: opts.usageSink,
   });
   opts.emit({
     type: "plan_revision",
@@ -121,6 +147,150 @@ async function runPlanRevisionPath(opts: TurnOpts): Promise<TurnResult> {
     revisedPlan: plan,
     persist: { kind: "answer", text: detail, summary: diff.summary },
   };
+}
+
+function decisionFailsEthics(decision: MarketingDecision): boolean {
+  const blob = JSON.stringify(decision);
+  return PH_MANIPULATION_RE.test(blob);
+}
+
+async function generateAnswerWithQualityGate(opts: {
+  turn: TurnOpts;
+  intent: RoutedIntent;
+  profile: MarketingProfile;
+  skillContext: string;
+  skillLabels: string[];
+  collectedAssets: MarketingAsset[];
+}): Promise<{
+  text: string;
+  answerCritique?: AnswerCritique;
+  qualityWarn?: boolean;
+  proposedActions: import("./executionClassifier.js").ExecutableAction[];
+}> {
+  const product = opts.profile.product_name || "this product";
+  const gateAnswer = opts.intent.discipline !== "meta_question";
+  let revisionNotes: string[] = [];
+  let answerCritique: AnswerCritique | undefined;
+  let qualityWarn: boolean | undefined;
+  let text = "";
+  let proposedActions: import("./executionClassifier.js").ExecutableAction[] = [];
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    text = "";
+    const revisionBlock = revisionNotes.length
+      ? `\n\nREVISION REQUIRED (address every point):\n${revisionNotes.map((r) => `- ${r}`).join("\n")}`
+      : "";
+
+    await generateAnswer(
+      {
+        system:
+          answerSystemPrompt({
+            profile: opts.profile,
+            skillContext: opts.skillContext,
+            userGoalSummary: opts.intent.user_goal_summary,
+            persona: opts.turn.persona,
+            planProgressSummary: opts.turn.planProgressSummary,
+            activeSurface: opts.turn.activeSurface,
+            agentContext: opts.turn.context,
+          }) + revisionBlock,
+        userMessage: opts.turn.message,
+        history: opts.turn.history,
+        signal: opts.turn.signal,
+        usageSink: opts.turn.usageSink,
+        provider: resolveBrainProvider(opts.turn.provider),
+      },
+      {
+        onToken: (delta) => {
+          text += delta;
+        },
+        onAsset: (asset) => {
+          opts.collectedAssets.push(asset);
+          opts.turn.emit({ type: "asset", asset });
+        },
+        onExecutableActions: (actions) => {
+          proposedActions = actions;
+        },
+        onTool: (name, status, detail) => {
+          opts.turn.emit({ type: "tool", name, status, detail });
+        },
+      },
+      opts.turn.projectId
+        ? { userId: opts.turn.userId, projectId: opts.turn.projectId, profile: opts.profile }
+        : undefined,
+    );
+
+    if (!gateAnswer) break;
+
+    const structural = structuralAnswerLint(text, product, {
+      hasLocalContext: Boolean(opts.turn.context?.local_context_pack?.trim()),
+      localContextPack: opts.turn.context?.local_context_pack,
+      hasAsset: opts.collectedAssets.length > 0,
+      hasExecutableActions: proposedActions.length > 0,
+      copyRequested: /\b(copy|landing|hero|cta|headline|email|tweet|ad)\b/i.test(opts.turn.message),
+      editClassified:
+        /\b(edit|fix|change|update|rewrite|hero|cta|landing|page|implement|düzelt|sayfa)\b/i.test(
+          opts.turn.message,
+        ) && Boolean(opts.turn.context?.local_context_pack?.trim()),
+    });
+    if (structural.hardFail.length > 0 && attempt === 0) {
+      opts.turn.emit({
+        type: "brain.status",
+        phase: "revising",
+        text: "Tightening answer — honest ceiling + one executable next step…",
+        skills: opts.skillLabels,
+      });
+      revisionNotes = [...structural.hardFail, ...structural.softWarn];
+      continue;
+    }
+
+    answerCritique = (await critiqueAnswer(
+      compactProfile(opts.profile),
+      text,
+      opts.turn.signal,
+      opts.turn.usageSink,
+    )) ?? undefined;
+
+    if (shouldReviseAnswer(answerCritique ?? null, structural) && attempt === 0) {
+      opts.turn.emit({
+        type: "brain.status",
+        phase: "revising",
+        text: "Removing generic advice — grounding in your profile…",
+        skills: opts.skillLabels,
+      });
+      revisionNotes = [
+        ...structural.softWarn,
+        ...(answerCritique?.revisions ?? []),
+        ...(answerCritique && answerCritique.generality_penalty >= 7
+          ? ["Collapse to ONE next action — no multi-channel strategy essay."]
+          : []),
+      ];
+      continue;
+    }
+
+    if (answerCritique) {
+      qualityWarn = shouldWarnAnswerQuality(answerCritique);
+    }
+    break;
+  }
+
+  for (const chunk of chunkTextForStream(text)) {
+    opts.turn.emit({ type: "token", text: chunk });
+  }
+
+  if (answerCritique) {
+    opts.turn.emit({
+      type: "brain.answer_critique",
+      critique: answerCritique,
+      quality_warn: qualityWarn,
+    });
+  }
+
+  return { text, answerCritique, qualityWarn, proposedActions };
+}
+
+function needsPhListSizeGate(message: string, profile: MarketingProfile): boolean {
+  if (profile.email_list_size != null && profile.email_list_size > 0) return false;
+  return /#1|number one|product hunt|ph launch|top 1|birinci/i.test(message);
 }
 
 async function runDecisionPath(
@@ -167,6 +337,31 @@ async function runDecisionPath(
 
   let decision = await generateDecision(baseDecisionOpts());
 
+  if (needsPhListSizeGate(opts.message, profile) && !decision.missing_info.some((q) => /email|list/i.test(q))) {
+    decision = {
+      ...decision,
+      missing_info: [
+        ...decision.missing_info,
+        "How many engaged email subscribers do you have? (needed for honest PH aggression dial)",
+      ].slice(0, 3),
+    };
+  }
+
+  if (decisionFailsEthics(decision)) {
+    opts.emit({
+      type: "brain.status",
+      phase: "revising",
+      text: "Removing unethical PH language…",
+      skills: skillLabels,
+    });
+    decision = await generateDecision(
+      baseDecisionOpts([
+        "Remove all upvote farm, vote ring, buy upvotes, or manipulation language.",
+        "PH ethics: honest comments only — never beg for votes.",
+      ]),
+    );
+  }
+
   if (decision.missing_info.length > 0) {
     opts.emit({ type: "missing_info", questions: decision.missing_info });
     return {
@@ -193,14 +388,25 @@ async function runDecisionPath(
     if (firstCritique) {
       critiqueResult = firstCritique;
       opts.emit({ type: "brain.critique", critique: firstCritique });
-      if (!firstCritique.approve && firstCritique.revisions.length > 0) {
+      if (
+        (!firstCritique.approve && firstCritique.revisions.length > 0) ||
+        firstCritique.generality_penalty > 6
+      ) {
         opts.emit({
           type: "brain.status",
           phase: "revising",
           text: "Strengthening recommendation…",
           skills: skillLabels,
         });
-        decision = await generateDecision(baseDecisionOpts(firstCritique.revisions));
+        const antiNotes =
+          firstCritique.generality_penalty > 6
+            ? [
+                "Reduce generic advice. Quote and obey skill anti-patterns from context.",
+                "Include ≥5 measurable tactic_stack steps with registry-style ids.",
+                ...firstCritique.revisions,
+              ]
+            : firstCritique.revisions;
+        decision = await generateDecision(baseDecisionOpts(antiNotes));
         if (decision.missing_info.length > 0) {
           opts.emit({ type: "missing_info", questions: decision.missing_info });
           return {
@@ -319,7 +525,23 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
 
   const skills = await retrieveSkills(intent.discipline, profile);
   const skillLabels = skills.map((p) => p.manifest.name);
-  opts.emit({ type: "brain.retrieved", skills: skillLabels });
+  const primaryPlaybook = skills[0]?.playbook?.id;
+  const aggressionLevel = primaryPlaybook?.includes("aggressive")
+    ? "aggressive"
+    : primaryPlaybook?.includes("no-audience")
+      ? "conservative"
+      : "standard";
+  const tacticCount = skills[0]?.playbook?.body
+    ? (skills[0].playbook.body.match(/^\d+\.\s+\*\*`/gm)?.length ??
+      skills[0].playbook.body.match(/^\d+\.\s+/gm)?.length)
+    : undefined;
+  opts.emit({
+    type: "brain.retrieved",
+    skills: skillLabels,
+    playbookId: primaryPlaybook,
+    tacticCount: typeof tacticCount === "number" ? tacticCount : undefined,
+    aggressionLevel,
+  });
 
   const skillContext = renderSkillContext(skills);
   const collectedAssets: MarketingAsset[] = [];
@@ -408,6 +630,19 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
         reason: draft.suggested_mode === "edit" ? "This may need file edits." : undefined,
       });
     }
+    if (draft.suggested_mode === "edit") {
+      opts.emit(
+        bundleToSseEvent({
+          actions: [
+            {
+              kind: "edit_run",
+              goal: `Apply the drafted marketing copy in the repo: ${draft.summary.slice(0, 240)}`,
+              label: "Run in project",
+            },
+          ],
+        }),
+      );
+    }
     return {
       intent,
       collectedAssets,
@@ -467,51 +702,75 @@ export async function runTurn(opts: TurnOpts): Promise<TurnResult> {
     };
   }
 
-  // Streaming answer (meta + quick Q&A)
+  // Streaming answer (meta + quick Q&A) — buffered + quality gate before tokens reach UI
   opts.emit({
     type: "brain.status",
     phase: "answering",
     text: "Thinking…",
     skills: skillLabels,
   });
-  let text = "";
-  await generateAnswer(
-    {
-      system: answerSystemPrompt({
-        profile,
-        skillContext,
-        persona: opts.persona,
-        planProgressSummary: opts.planProgressSummary,
-        activeSurface: opts.activeSurface,
-        agentContext: opts.context,
-      }),
-      userMessage: opts.message,
-      history: opts.history,
-      signal: opts.signal,
-      usageSink: opts.usageSink,
-      provider: resolveBrainProvider(opts.provider),
-    },
-    {
-      onToken: (delta) => {
-        text += delta;
-        opts.emit({ type: "token", text: delta });
-      },
-      onAsset: (asset) => {
-        collectedAssets.push(asset);
-        opts.emit({ type: "asset", asset });
-      },
-      onTool: (name, status, detail) => {
-        opts.emit({ type: "tool", name, status, detail });
-      },
-    },
-    opts.projectId
-      ? { userId: opts.userId, projectId: opts.projectId, profile }
-      : undefined,
-  );
+
+  const { text, answerCritique, proposedActions } = await generateAnswerWithQualityGate({
+    turn: opts,
+    intent,
+    profile,
+    skillContext,
+    skillLabels,
+    collectedAssets,
+  });
+
+  const localPack = opts.context?.local_context_pack;
+  const executableActions = buildAnswerExecutableActions({
+    message: opts.message,
+    answerText: text,
+    intent,
+    localContextPack: localPack,
+    planProgress: opts.planProgressSummary,
+    proposedActions,
+  });
+  if (executableActions.length) {
+    opts.emit(bundleToSseEvent({ actions: executableActions }));
+    if (executableActions[0]?.kind === "edit_run") {
+      opts.emit({
+        type: "suggested_mode",
+        mode: "edit",
+        reason: "This answer needs file changes in your repo.",
+      });
+    }
+  }
+
+  const answerCta = buildAnswerCta({
+    intent,
+    profile,
+    planProgress: opts.planProgressSummary,
+  });
+  if (answerCta) {
+    opts.emit({
+      type: "proactive_suggestion",
+      title: answerCta.title,
+      body: answerCta.body,
+      action: answerCta.action,
+      buttonLabel: answerCta.buttonLabel,
+      source: "brain",
+    });
+  }
 
   return {
     intent,
     collectedAssets,
-    persist: { kind: "answer", text, assets: collectedAssets },
+    persist: {
+      kind: "answer",
+      text,
+      assets: collectedAssets,
+      answer_critique: answerCritique,
+      proactive: answerCta
+        ? {
+            title: answerCta.title,
+            body: answerCta.body,
+            action: answerCta.action,
+            source: "brain",
+          }
+        : undefined,
+    },
   };
 }

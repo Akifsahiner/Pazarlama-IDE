@@ -60,14 +60,32 @@ const EXPECTATIONS = {
     "Run browser research in the operator sandbox",
     "Log KPIs manually or sync read-only GA4 when OAuth is configured",
     "Export outreach CSV — you send from your email tool",
+    "Skill-backed decisions include ≥5 registry tactics with phase timing (T-/H+/D+)",
+    "State honest aggression ceiling when assets are thin — no fake #1 PH promises",
+    "Plan Studio tasks reference tactic ids and measurable acceptance criteria",
   ],
   shouldNot: [
     "Bulk email or ad publish without your approval",
     "Treat offline outline preview as a personalized AI plan",
     "Fabricate analytics when GA4 is not connected",
     "Upload your full codebase to the cloud for editing",
+    "Recommend upvote farms, vote rings, or generic “post on social” advice",
   ],
 } as const;
+
+const SKILL_PACK_VERSIONS: { id: string; version: string }[] = [
+  { id: "ph_launch", version: "1.1.0" },
+  { id: "waitlist-hype-engine", version: "1.1.0" },
+  { id: "launch-planning", version: "1.1.0" },
+  { id: "landing-page-conversion", version: "1.1.0" },
+  { id: "community-launch", version: "1.0.0" },
+  { id: "seo-content-engine", version: "1.0.0" },
+  { id: "email-nurture-sequence", version: "1.0.0" },
+  { id: "twitter-x-founder-gtm", version: "1.0.0" },
+  { id: "newsletter-sponsorship", version: "1.0.0" },
+  { id: "press-pr-launch", version: "1.0.0" },
+  { id: "devrel-open-source-launch", version: "1.0.0" },
+];
 
 const CONSUMER_TROUBLESHOOTING: { title: string; body: string }[] = [
   {
@@ -167,6 +185,19 @@ export function HelpPage() {
               ))}
             </ul>
           </div>
+        </div>
+        <div className="mt-4 rounded-[var(--radius-md)] border border-line bg-surface-2 p-3">
+          <div className="text-mini font-semibold uppercase tracking-wider text-text-3">Skill packs (exemplar)</div>
+          <ul className="mt-2 flex flex-wrap gap-2 text-micro text-text-2">
+            {SKILL_PACK_VERSIONS.map((s) => (
+              <li key={s.id} className="rounded-full bg-surface px-2 py-0.5">
+                {s.id} v{s.version}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-caption text-text-3">
+            See SKILL_EXCELLENCE.md — no generic advice contract enforced in CI.
+          </p>
         </div>
       </Card>
 

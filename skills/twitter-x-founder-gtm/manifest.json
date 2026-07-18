@@ -1,0 +1,32 @@
+{
+  "id": "twitter-x-founder-gtm",
+  "name": "X (Twitter) Founder GTM",
+  "category": "organic",
+  "version": "1.0.0",
+  "changelog": "Thread format, build-in-public cadence, launch quote-tweet ethics, 2h reply SLA — distinct from LinkedIn",
+  "aggression_playbooks": ["aggressive-x-launch-30d"],
+  "applies_when": {
+    "company_stage": ["prelaunch", "pre-launch", "early", "growth", "relaunch"],
+    "channels_includes": ["twitter", "x"],
+    "business_model": ["saas", "tool", "open_source", "freemium", "developer_tool"]
+  },
+  "do_not_use_when": {
+    "constraints_includes": ["founder_wont_post_publicly", "regulated_no_social_presence", "stealth_mode"],
+    "company_stage": ["enterprise_field_sales_only"]
+  },
+  "required_inputs": [
+    "product_name",
+    "main_value_proposition",
+    "target_audience",
+    "founder_background",
+    "available_assets"
+  ],
+  "output_schema": "marketing_decision",
+  "primary_metric": "x_icp_engagement_rate",
+  "playbook_selector": [
+    { "if": { "days_until_launch_gte": 7 }, "pick": "aggressive-x-launch-30d" },
+    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
+    { "if": { "email_list_size_gte": 1000 }, "pick": "with-email-list" },
+    { "if": { "business_model": ["saas", "tool"] }, "pick": "b2b-saas" }
+  ]
+}

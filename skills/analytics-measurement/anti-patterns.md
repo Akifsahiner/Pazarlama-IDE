@@ -10,3 +10,7 @@
 - **Don't:** Weekly reviews without decisions. **Why:** Review template must end with "stop / start / continue" actions.
 - **Don't:** Compare weeks without noting external factors (PH launch, press). **Why:** False conclusions from launch spikes misallocate effort.
 - **Don't:** Claim statistical significance below 100 conversions per variant. **Why:** Noise masquerading as insight leads to wrong copy bets.
+
+- **Don't:** Ship generic advice untied to this product profile. **Why:** Founders already have ChatGPT. **Cost:** Trust and retention.
+
+- **Don't:** Recommend five channels at once. **Why:** Dilutes learning. **Cost:** No clear kill signal.

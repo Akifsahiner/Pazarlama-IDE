@@ -1,0 +1,30 @@
+{
+  "root": "has_indexable_routes",
+  "nodes": {
+    "has_indexable_routes": {
+      "q": "Does the site have ≥2 indexable routes (blog, docs, or marketing pages beyond a single LP)?",
+      "yes": "gsc_access",
+      "no": "OUTPUT:ship-blog-or-docs-first"
+    },
+    "gsc_access": {
+      "q": "Is Google Search Console connected or verifiable (sitemap submitted)?",
+      "yes": "competitor_clarity",
+      "no": "OUTPUT:no-audience-with-gsc-setup"
+    },
+    "competitor_clarity": {
+      "q": "Can you name 3 real competitors with verifiable positioning differences?",
+      "yes": "content_capacity",
+      "no": "OUTPUT:product-intelligence-first"
+    },
+    "content_capacity": {
+      "q": "Can you ship 3–5 quality pages in 14 days (founder + 1 writer or heavy AI-assist with review)?",
+      "yes": "cluster_ready",
+      "no": "OUTPUT:no-audience"
+    },
+    "cluster_ready": {
+      "q": "Is one commercial-intent cluster chosen (alternatives / vs / how-to for ICP job)?",
+      "yes": "OUTPUT:aggressive-programmatic-cluster",
+      "no": "OUTPUT:b2b-saas"
+    }
+  }
+}

@@ -6,6 +6,9 @@ import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
 import { CampaignTimeline } from "./CampaignTimeline";
 import { useStageContext } from "@renderer/features/workspace/stage/useStageContext";
+import { ShipRecoveryCard } from "./ShipRecoveryCard";
+import { ShipWinCard } from "@renderer/features/workspace/ShipWinCard";
+import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
 
 function conversationSubtitle(
   surface: ReturnType<typeof normalizeToWorkSurface>,
@@ -23,6 +26,11 @@ export function AgentThread() {
   const historyOpen = useApp((s) => s.historyOpen);
   const canvas = useApp((s) => s.canvas);
   const surface = normalizeToWorkSurface(canvas.mode);
+  const shipRecovery = useApp((s) => s.shipRecovery);
+  const firstShipLedger = useApp((s) => s.firstShipLedger);
+  const openStrategicIntake = useApp((s) => s.openStrategicIntake);
+  const channelThesis = useApp((s) => s.channelThesis);
+  const marketingProfile = useApp((s) => s.marketingProfile);
 
   const { stageLabel } = useStageContext();
 
@@ -62,6 +70,24 @@ export function AgentThread() {
         )}
       </div>
       <CampaignTimeline />
+      {shipRecovery && (
+        <div className="border-b border-line px-3 py-2">
+          <ShipRecoveryCard recovery={shipRecovery} />
+        </div>
+      )}
+      {firstShipLedger && (
+        <div className="border-b border-line px-3 py-2">
+          <ShipWinCard
+            ledger={firstShipLedger}
+            compact
+            onContinueCmo={
+              channelThesis && !isStrategicDecisionSealed(marketingProfile)
+                ? openStrategicIntake
+                : undefined
+            }
+          />
+        </div>
+      )}
       <MessageList />
       <Composer />
     </aside>

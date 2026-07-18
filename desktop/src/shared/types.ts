@@ -19,6 +19,10 @@ export interface ProjectProfile {
   name: string;
   productType?: string;
   framework?: string;
+  /** Monorepo workspace root when detected (e.g. apps/console). */
+  monorepoRoot?: string;
+  /** Detected app package paths inside a monorepo. */
+  appPackages?: string[];
   readmeSummary?: string;
   routes: string[];
   hasAnalytics: boolean;
@@ -89,6 +93,32 @@ export interface SessionOutcome {
   /** Dedupe key (e.g. finding id). */
   ref?: string;
   detail?: string;
+  turnId?: string;
+  commitSha?: string;
+  filesApplied?: number;
+  linesDelta?: string;
+  costCents?: number;
+}
+
+/** Quick Start wedge — persisted first-ship proof (Faz 1). */
+export interface FirstShipLedger {
+  at: number;
+  commitSha?: string;
+  summary: string;
+  files: string[];
+  linesDelta?: { add: number; del: number };
+  previewUrl?: string;
+  before?: {
+    metaTitle?: string;
+    metaDesc?: string;
+    heroHeadline?: string;
+    heroPath?: string;
+  };
+  after?: {
+    metaTitle?: string;
+    metaDesc?: string;
+    heroHeadline?: string;
+  };
 }
 
 export interface MarketingPlan {
@@ -230,6 +260,68 @@ export type BusinessModel =
   | "tool"
   | "consumer";
 
+export interface FounderFitProfile {
+  brand_face_readiness: "never" | "sometimes" | "primary_channel";
+  controversy_tolerance: "avoid" | "selective" | "lean_in";
+  monthly_budget_band: "0" | "under_500" | "500_2000" | "over_2000";
+  scale_readiness: "not_yet" | "probably" | "yes";
+  magic_moment: string;
+  weekly_marketing_hours: "under_3" | "3_7" | "7_15" | "15_plus";
+  thirty_day_win:
+    | "qualified_signups"
+    | "paying_customers"
+    | "waitlist"
+    | "pipeline_meetings"
+    | "brand_awareness";
+  completed_at: string;
+}
+
+export interface GrowthNarrative {
+  cultural_tension: string;
+  one_liner: string;
+  enemy_frame?: string;
+  proof_angle: string;
+  signals: Record<string, string>;
+}
+
+export type StrategicOptionId = "A" | "B" | "C";
+
+export interface StrategicOption {
+  id: StrategicOptionId;
+  posture: "safe" | "balanced" | "category_attack";
+  title: string;
+  summary: string;
+  thesis_id: import("./cmoIntake").ChannelThesisId;
+  tradeoffs: Array<{ pro: string; con: string }>;
+  thirty_day_target: {
+    metric_label: string;
+    target?: number;
+    unit?: string;
+    confidence: "measured" | "assumption" | "stretch";
+    calibration_note: string;
+  };
+  cmo_commits: string[];
+  founder_commits: string[];
+  eligible: boolean;
+  ineligible_reason?: string;
+  /** P17 — growth mechanism driving this option. */
+  primary_mechanism_id?: import("./cmoGrowthMechanismKnowledge").GrowthMechanismId;
+  mechanism_label?: string;
+  mechanism_summary?: string;
+  mechanism_rationale?: string[];
+  mechanism_anti_pattern?: string;
+}
+
+export interface StrategicDecision {
+  options: [StrategicOption, StrategicOption, StrategicOption];
+  recommended_id: StrategicOptionId;
+  recommendation_rationale: string[];
+  decision_question: string;
+  selected_id?: StrategicOptionId;
+  sealed_at?: string;
+  generated_at: string;
+}
+
 export interface MarketingProfile {
   product_name: string;
   product_description: string;
@@ -243,6 +335,12 @@ export interface MarketingProfile {
   competitors: Array<{ name: string; url?: string; note?: string }>;
   company_stage: CompanyStage;
   current_users?: number;
+  /** Engaged email list — drives PH / waitlist playbook aggression. */
+  email_list_size?: number;
+  /** Days until planned public launch (PH, etc.). */
+  days_until_launch?: number;
+  /** Sales persona: empty pipeline → outbound playbooks. */
+  sales_pipeline_empty?: boolean;
   main_markets: string[];
   available_channels: string[];
   marketing_goals: string[];
@@ -254,6 +352,8 @@ export interface MarketingProfile {
   successful_experiments: string[];
   failed_experiments: string[];
   manual_kpis?: ManualKpi[];
+  /** Faz 5 — user acknowledged manual KPI logging before GA4 is connected. */
+  measurement_ack?: { acknowledged_at: string; note?: string };
   connector_snapshots?: { ga4?: Ga4ConnectorSnapshot; meta?: Ga4ConnectorSnapshot };
   ga4_oauth?: { refresh_token: string; property_id?: string; connected_at: string };
   meta_oauth?: { access_token: string; ad_account_id?: string; connected_at: string };
@@ -262,6 +362,61 @@ export interface MarketingProfile {
   outreach_integrations?: OutreachIntegrations;
   /** Active marketing campaign thread (Faz 6). */
   campaign_session?: CampaignSession;
+  /** P0 CMO intake — channel thesis (see cmoIntake.ts). */
+  channel_thesis?: import("./cmoIntake").ChannelThesis;
+  /** P1 CMO operating cadence — daily ops table + user accountability. */
+  ops_cadence?: import("./cmoOpsCadence").CmoOpsCadence;
+  /** P3 Lane B workspace — posting calendar / outreach / runbook. */
+  lane_b_workspace?: import("./cmoLaneB").LaneBWorkspace;
+  /** P6 Lane A workspace — IDE ships (repo / browser / drafts). */
+  lane_a_workspace?: import("./cmoLaneA").LaneAWorkspace;
+  /** P7 Growth control plane — equation, binding, red list, today move. */
+  growth_control_plane?: import("./cmoGrowthPlane").GrowthControlPlane;
+  /** P8 Distribution operator — hook grid, volume targets, retention proof. */
+  distribution_operator?: import("./cmoDistributionOperator").DistributionOperatorWorkspace;
+  /** P9 Influencer operator — creator pipeline, pitch DMs, deal/UTM tracking. */
+  influencer_operator?: import("./cmoInfluencerOperator").InfluencerOperatorWorkspace;
+  /** P4 Continuous CMO — cycle history + measuring → intake delta. */
+  cmo_continuous?: import("./cmoContinuous").CmoContinuousState;
+  /** P5 Lane C workspace — delegate briefs (SDR / VA / writer). */
+  lane_c_workspace?: import("./cmoLaneC").CmoDelegateWorkspace;
+  /** P10 — Delegation operator (hire + rubrics + lane sync). */
+  delegate_operator?: import("./cmoDelegateOperator").DelegateOperatorWorkspace;
+  /** P11 — Experiment ledger, message winners/losers, and pending replan. */
+  growth_memory?: import("./cmoGrowthMemory").GrowthMemoryState;
+  /** P13 — seven-question founder operating fit. */
+  founder_fit?: FounderFitProfile;
+  /** P13 — cultural tension and the story inherited by every execution lane. */
+  growth_narrative?: GrowthNarrative;
+  /** P13 — A/B/C strategic options and the sealed human decision. */
+  strategic_decision?: StrategicDecision;
+  /** P14 — deterministic monthly allocation, action estimates, and spend closeout. */
+  budget_plan?: import("./cmoBudgetPlane").BudgetPlan;
+  /** P15 — activation/TTFV evidence used for deterministic product binding. */
+  product_activation?: import("./cmoLaneD").ProductActivationProfile;
+  /** P15 — Lane D P0 product requests and explicit marketing pause. */
+  lane_d_workspace?: import("./cmoLaneD").LaneDWorkspace;
+  /** P16 — pricing thesis, payment funnel, and revenue targets. */
+  revenue_profile?: import("./cmoRevenuePlane").RevenueProfile;
+  /** P16 — monetization P0 tasks when revenue binding is active. */
+  monetization_workspace?: import("./cmoRevenuePlane").MonetizationWorkspace;
+  /** P17 — growth mechanism assessment and primary mechanism selection. */
+  growth_mechanism_profile?: import("./cmoGrowthEngine").GrowthMechanismProfile;
+  /** P17 — who may represent the brand publicly. */
+  public_presence_policy?: import("./cmoGrowthEngine").PublicPresencePolicy;
+  /** Profile v2 — local scan-derived site map (optional). */
+  site_structure?: {
+    routes: string[];
+    framework?: string;
+    scanned_files?: number;
+    monorepo_root?: string;
+    app_packages?: string[];
+  };
+  /** Profile v2 — tracking detection from scan. */
+  tracking_flags?: {
+    analytics_detected: boolean;
+    ga4?: "detected" | "missing" | "unknown";
+  };
   last_updated: string;
   confidence_score: number;
   gaps: string[];
@@ -298,6 +453,15 @@ export interface MarketingDecision {
   channel_priority?: string[];
   next_playbook?: string;
   tactic_you_may_not_know?: string;
+  recommended_aggression?: "conservative" | "standard" | "aggressive";
+  honest_ceiling?: string;
+  tactic_stack?: Array<{
+    id: string;
+    phase?: string;
+    action: string;
+    metric?: string;
+  }>;
+  profile_citations?: string[];
   options_compared: MarketingDecisionOption[];
   decision: string;
   rationale: string;
@@ -315,6 +479,9 @@ export interface MarketingCritique {
   realism: number;
   brand_voice_match: number;
   generality_penalty: number;
+  tactic_density?: number;
+  ethics_compliance?: number;
+  aggression_honesty?: number;
   total: number;
   revisions: string[];
   approve: boolean;
@@ -331,6 +498,17 @@ export interface MarketingDraftCritique {
   approve: boolean;
 }
 
+/** P1 answer path generality gate — max 40 points. */
+export interface MarketingAnswerCritique {
+  specificity: number;
+  actionability: number;
+  realism: number;
+  generality_penalty: number;
+  total: number;
+  revisions: string[];
+  approve: boolean;
+}
+
 export interface AgentTurnContext {
   last_run_summary?: string;
   pending_files?: string[];
@@ -340,7 +518,7 @@ export interface AgentTurnContext {
 }
 
 export interface ProactiveSuggestionAction {
-  kind: "continue_plan" | "log_kpi" | "focus_run" | "open_plan";
+  kind: "continue_plan" | "log_kpi" | "focus_run" | "open_plan" | "generate_plan";
   taskId?: string;
   playbookId?: string;
   presetId?: string;
@@ -431,6 +609,12 @@ export type PlanStreamEvent =
     }
   | { type: "plan"; plan: MarketingPlan }
   | { type: "error"; message: string; code?: StreamErrorCode }
+  | {
+      type: "usage";
+      tokens_in: number;
+      tokens_out: number;
+      cost_cents: number;
+    }
   | { type: "done" };
 
 export type AgentStreamEvent =
@@ -442,9 +626,10 @@ export type AgentStreamEvent =
       urgency: "fast" | "deep";
     }
   | { type: "brain.status"; phase: string; text: string; skills?: string[] }
-  | { type: "brain.retrieved"; skills: string[] }
+  | { type: "brain.retrieved"; skills: string[]; playbookId?: string; tacticCount?: number; aggressionLevel?: string }
   | { type: "brain.profile"; gaps: string[] }
   | { type: "brain.critique"; critique: MarketingCritique }
+  | { type: "brain.answer_critique"; critique: MarketingAnswerCritique; quality_warn?: boolean }
   | {
       type: "decision";
       decision: MarketingDecision;
@@ -464,10 +649,17 @@ export type AgentStreamEvent =
       title: string;
       body: string;
       action?: ProactiveSuggestionAction;
+      buttonLabel?: string;
       source: "apply_complete" | "plan_task_done" | "measuring_phase" | "brain";
     }
   | { type: "missing_info"; questions: string[] }
   | { type: "suggested_mode"; mode: ComposerSuggestedMode; reason?: string }
+  | {
+      type: "executable_action";
+      primary?: import("./executableAction").ExecutableAction;
+      secondary?: import("./executableAction").ExecutableAction[];
+      actions?: import("./executableAction").ExecutableAction[];
+    }
   | { type: "tool"; name: string; status: "start" | "done"; detail?: string }
   | { type: "asset"; asset: MarketingAsset }
   | {
@@ -478,6 +670,12 @@ export type AgentStreamEvent =
       sourcePlanId: string;
     }
   | { type: "error"; message: string; code?: StreamErrorCode }
+  | {
+      type: "usage";
+      tokens_in: number;
+      tokens_out: number;
+      cost_cents: number;
+    }
   | { type: "done" };
 
 /* ------------------------------------------------------------------ */
@@ -493,6 +691,7 @@ export type RunEventType =
   | "run.failed"
   | "agent.status"
   | "agent.message"
+  | "agent.executable_action"
   | "tool.requested"
   | "tool.started"
   | "tool.completed"
@@ -727,6 +926,9 @@ export interface UsageInfo {
   plan: number;
   agent: number;
   browser_min: number;
+  tokens_in: number;
+  tokens_out: number;
+  cost_cents: number;
 }
 
 export interface QuotaInfo {
@@ -735,10 +937,21 @@ export interface QuotaInfo {
   browser_min_limit: number;
 }
 
+export interface UsageHistoryItem {
+  id: number;
+  kind: string | null;
+  tokens_in: number;
+  tokens_out: number;
+  browser_ms: number;
+  cost_cents: number;
+  created_at: string;
+}
+
 export interface MeResponse {
   user: UserInfo;
   features?: string[];
   tierLabel?: string;
+  billingConfigured?: boolean;
   usage: UsageInfo;
   quota: QuotaInfo;
 }
@@ -883,6 +1096,12 @@ export interface DesktopApi {
     interrupt: (runId: string) => Promise<void>;
     approve: (approvalId: string, approved: boolean) => Promise<void>;
     apply: (runId: string, files: string[]) => Promise<RunApplyResult>;
+    applyHunks: (
+      runId: string,
+      file: string,
+      patch: string,
+      hunkIds: string[],
+    ) => Promise<{ ok: boolean; reason?: string; applied: string[] }>;
     discard: (runId: string) => Promise<void>;
     discardFiles: (
       runId: string,
@@ -940,6 +1159,56 @@ export interface DesktopApi {
       defaultFilename: string;
     }) => Promise<{ ok: boolean; path?: string; cancelled?: boolean; error?: string }>;
   };
+  evidence: {
+    saveScreenshot: (input: {
+      projectId: string;
+      runId: string;
+      base64: string;
+    }) => Promise<{ ok: boolean; path?: string; error?: string }>;
+  };
+  runs: {
+    start: (
+      req: import("./orchestration").StartOrchestratedRun,
+    ) => Promise<{ runId: string; delegated?: "ask" | "plan" }>;
+    interrupt: (runId: string) => Promise<void>;
+    browserControl: (input: {
+      runId: string;
+      action: "pause" | "resume" | "steer" | "approve" | "reject" | "stop";
+      text?: string;
+      approvalId?: string;
+    }) => Promise<{ ok: boolean }>;
+  };
+  context: {
+    search: (input: {
+      projectId: string;
+      cwd: string;
+      query: string;
+      limit?: number;
+    }) => Promise<
+      Array<{ path: string; start: number; end: number; text: string; score: number }>
+    >;
+    suggest: (input: {
+      projectId: string;
+      cwd: string;
+      prefix: string;
+    }) => Promise<Array<{ type: "file"; path: string }>>;
+  };
+  notifications: {
+    list: () => Promise<import("./orchestration").IdeNotification[]>;
+    dismiss: (id: string) => Promise<void>;
+    onUpdated: (cb: (items: import("./orchestration").IdeNotification[]) => void) => () => void;
+  };
+  index: {
+    enqueue: (job: {
+      type: "index.full" | "index.incremental" | "facts.refresh" | "health.probe";
+      projectId?: string;
+      cwd?: string;
+    }) => Promise<void>;
+  };
+  traces: {
+    list: () => Promise<Array<{ runId: string; bytes: number; mtime: number }>>;
+    read: (runId: string) => Promise<RunEvent[]>;
+  };
 }
 
 export interface RunApplyResult {
@@ -961,6 +1230,8 @@ export interface StartRunRequest {
   sessionId?: string;
   planTaskId?: string;
   kind?: "edit" | "browse" | "ask";
+  /** Quick Start wedge — fail run when agent produces zero patches. */
+  guaranteedShip?: boolean;
 }
 
 export interface RunRegisteredPayload {

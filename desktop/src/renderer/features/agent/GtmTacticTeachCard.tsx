@@ -37,7 +37,12 @@ export function GtmTacticTeachCard({ tacticLabel, playbookId, teaching }: GtmTac
       >
         <BookOpen size={14} className="shrink-0 text-warn" />
         <span className="min-w-0 flex-1 text-body-sm font-medium text-text">
-          Tactic to learn: {lesson.headline}
+          {lesson.phaseLabel ? (
+            <span className="mr-1.5 rounded bg-accent-soft/40 px-1.5 py-0.5 font-mono text-[10px] text-accent">
+              {lesson.phaseLabel}
+            </span>
+          ) : null}
+          Tactic: {lesson.headline}
         </span>
         {open ? <ChevronDown size={14} className="text-text-3" /> : <ChevronRight size={14} className="text-text-3" />}
       </button>

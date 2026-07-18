@@ -3,13 +3,37 @@
   "name": "Influencer & Creator Partnerships",
   "category": "partnerships",
   "applies_when": {
-    "company_stage": ["early", "growth", "relaunch"],
-    "channels_includes": ["youtube", "twitter", "linkedin", "instagram", "tiktok", "podcast"],
-    "business_model": ["saas", "info_product", "mobile_app", "ecommerce", "marketplace"]
+    "company_stage": [
+      "early",
+      "growth",
+      "relaunch"
+    ],
+    "channels_includes": [
+      "youtube",
+      "twitter",
+      "linkedin",
+      "instagram",
+      "tiktok",
+      "podcast"
+    ],
+    "business_model": [
+      "saas",
+      "info_product",
+      "mobile_app",
+      "ecommerce",
+      "marketplace"
+    ]
   },
   "do_not_use_when": {
-    "company_stage": ["pre-launch", "enterprise_field_sales_only"],
-    "constraints_includes": ["no_budget_for_partnerships", "product_not_demo_ready", "regulated_no_third_party_endorsement"]
+    "company_stage": [
+      "pre-launch",
+      "enterprise_field_sales_only"
+    ],
+    "constraints_includes": [
+      "no_budget_for_partnerships",
+      "product_not_demo_ready",
+      "regulated_no_third_party_endorsement"
+    ]
   },
   "required_inputs": [
     "product_name",
@@ -22,7 +46,24 @@
   "output_schema": "marketing_decision",
   "primary_metric": "influencer_cpa_qualified_signup",
   "playbook_selector": [
-    { "if": { "current_users_lt": 100 }, "pick": "no-audience" },
-    { "if": { "business_model": ["saas"] }, "pick": "b2b-saas" }
+    {
+      "if": {
+        "current_users_lt": 100
+      },
+      "pick": "no-audience"
+    },
+    {
+      "if": {
+        "business_model": [
+          "saas"
+        ]
+      },
+      "pick": "b2b-saas"
+    }
+  ],
+  "version": "1.1.0",
+  "changelog": "Manifest v2 fields for Skill Excellence",
+  "aggression_playbooks": [
+    "aggressive-micro-roi"
   ]
 }

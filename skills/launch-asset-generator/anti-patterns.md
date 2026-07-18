@@ -10,3 +10,7 @@
 - **Don't:** Email the full feature list. **Why:** Launch emails should be <150 words with one proof and one CTA.
 - **Don't:** Ignore sales vs marketing persona. **Why:** Sales launch emphasizes pipeline/revenue; marketing emphasizes awareness — same assets feel off if misaligned.
 - **Don't:** Skip launch-day checklist. **Why:** Founders miss supporter pings and reply windows without an ops list.
+
+- **Don't:** Ship generic advice untied to this product profile. **Why:** Founders already have ChatGPT. **Cost:** Trust and retention.
+
+- **Don't:** Recommend five channels at once. **Why:** Dilutes learning. **Cost:** No clear kill signal.

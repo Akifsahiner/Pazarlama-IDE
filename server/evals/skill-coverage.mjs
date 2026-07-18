@@ -75,6 +75,7 @@ const smokeProfile = marketingProfileSchema.parse({
   company_stage: "prelaunch",
   business_model: "saas",
   current_users: 12,
+  email_list_size: 2500,
   available_channels: ["email", "linkedin", "product_hunt", "twitter"],
   competitors: [{ name: "Cursor", note: "Dev IDE with AI" }],
 });
@@ -99,6 +100,11 @@ const retrievalCases = [
   { label: "lead_research → lead-research", discipline: "lead_research", expectId: "lead-research" },
   { label: "analytics → analytics-measurement", discipline: "analytics", expectId: "analytics-measurement" },
   { label: "positioning → product-intelligence", discipline: "positioning", expectId: "product-intelligence" },
+  { label: "seo → seo-content-engine", discipline: "seo", expectId: "seo-content-engine" },
+  { label: "email → email-nurture-sequence", discipline: "email", expectId: "email-nurture-sequence" },
+  { label: "social → twitter-x-founder-gtm", discipline: "social", expectId: "twitter-x-founder-gtm" },
+  { label: "growth → launch-planning", discipline: "growth", expectId: "launch-planning" },
+  { label: "ads → newsletter-sponsorship", discipline: "ads", expectId: "newsletter-sponsorship" },
 ];
 
 for (const c of retrievalCases) {
@@ -123,6 +129,12 @@ const playbookCases = [
   { stub: "sales-outbound", expectId: "outreach-drafting" },
   { stub: "analytics-measurement", expectId: "analytics-measurement" },
   { stub: "content-engine", expectId: "launch-asset-generator" },
+  { stub: "seo-foundation", expectId: "seo-content-engine" },
+  { stub: "email-nurture", expectId: "email-nurture-sequence" },
+  { stub: "twitter-x-gtm", expectId: "twitter-x-founder-gtm" },
+  { stub: "newsletter-sponsorship", expectId: "newsletter-sponsorship" },
+  { stub: "press-pr-launch", expectId: "press-pr-launch" },
+  { stub: "devrel-open-source-launch", expectId: "devrel-open-source-launch" },
 ];
 
 for (const c of playbookCases) {

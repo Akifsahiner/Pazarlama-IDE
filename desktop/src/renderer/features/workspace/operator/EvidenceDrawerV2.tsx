@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronRight, Lightbulb } from "lucide-react";
 import type { Finding, FindingSeverity } from "@shared/types";
 
@@ -15,11 +15,15 @@ interface EvidenceDrawerV2Props {
 }
 
 /**
- * Structured findings drawer: severity, evidence, suggestion. Starts collapsed
- * (a count pill) so it never covers the live stage uninvited.
+ * Structured findings drawer: severity, evidence, suggestion.
+ * Auto-opens on the first finding so discoveries are visible during live CU.
  */
 export function EvidenceDrawerV2({ findings }: EvidenceDrawerV2Props) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (findings.length > 0) setOpen(true);
+  }, [findings.length]);
 
   if (findings.length === 0) {
     return (

@@ -16,3 +16,11 @@ export function draftQualityTone(total: number, approve?: boolean): DecisionQual
   if (total > 0) return "warn";
   return "neutral";
 }
+
+/** Answer Q&A quality — max score 40 (P1 generality gate). */
+export function answerQualityTone(total: number, approve?: boolean): DecisionQualityTone {
+  if (approve || total >= 28) return "ok";
+  if (total >= 24) return "accent";
+  if (total > 0) return "warn";
+  return "neutral";
+}

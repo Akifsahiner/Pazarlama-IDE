@@ -1,0 +1,32 @@
+[
+  {
+    "name": "organic_sessions_mom",
+    "definition": "Month-over-month change in sessions from google / organic referrer (or GSC clicks if analytics absent).",
+    "target_hint": "Early dev tool: +15–30% MoM after first cluster indexed. New domain: flat months 1–2 is normal."
+  },
+  {
+    "name": "indexed_pages_count",
+    "definition": "URLs in GSC 'Indexed' status for target cluster.",
+    "target_hint": "100% of shipped cluster pages indexed within 21 days; if not, fix internal links + sitemap."
+  },
+  {
+    "name": "commercial_page_impressions",
+    "definition": "GSC impressions on comparison / alternatives / vs URLs.",
+    "target_hint": "500+ impressions/page by D+60 on niche terms; <100 at D+90 → merge or rewrite."
+  },
+  {
+    "name": "organic_signup_rate",
+    "definition": "Signups or trial starts from organic sessions / organic sessions.",
+    "target_hint": "2–8% for tight ICP match on commercial pages; <1% → LP or message mismatch."
+  },
+  {
+    "name": "cluster_avg_ctr",
+    "definition": "Average CTR across cluster pages in GSC (28-day window).",
+    "target_hint": "≥2.5% on branded+commercial; <1.5% with >1k impressions → title/meta refresh."
+  },
+  {
+    "name": "internal_link_coverage",
+    "definition": "% of cluster pages with ≥2 internal links from hub (docs/blog home) and ≥1 link to signup/docs depth.",
+    "target_hint": "100% before requesting index; orphan rate 0."
+  }
+]

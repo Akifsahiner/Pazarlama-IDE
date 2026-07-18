@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "fixtures": [
+    {
+      "id": "landing-cta-ok",
+      "checklist": ["Hero CTA visible", "Page title updated"],
+      "mockValidations": [
+        { "label": "Hero CTA visible", "passed": true },
+        { "label": "Page title updated", "passed": true }
+      ],
+      "expectedPassRate": 1
+    },
+    {
+      "id": "landing-cta-missing",
+      "checklist": ["Hero CTA visible"],
+      "mockValidations": [
+        { "label": "Hero CTA visible", "passed": false, "detail": "No primary button in hero" }
+      ],
+      "expectedPassRate": 0
+    },
+    {
+      "id": "landing-title-stale",
+      "checklist": ["Page title updated"],
+      "mockValidations": [
+        { "label": "Page title updated", "passed": false, "detail": "Title still generic" }
+      ],
+      "expectedPassRate": 0
+    },
+    {
+      "id": "tracking-snippet-ok",
+      "checklist": ["Tracking snippet present"],
+      "mockValidations": [
+        { "label": "Tracking snippet present", "passed": true, "detail": "gtag present" }
+      ],
+      "expectedPassRate": 1
+    },
+    {
+      "id": "tracking-snippet-missing",
+      "checklist": ["Tracking snippet present"],
+      "mockValidations": [
+        { "label": "Tracking snippet present", "passed": false, "detail": "No gtag/dataLayer" }
+      ],
+      "expectedPassRate": 0
+    }
+  ]
+}

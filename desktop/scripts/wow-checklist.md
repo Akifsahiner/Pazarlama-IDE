@@ -1,6 +1,220 @@
 # WOW + GTM Senior+ Manual Checklist (v2 — Design Overhaul)
 
+**Canonical strategy:** [`PRODUCT_NORTH_STAR.md`](../../PRODUCT_NORTH_STAR.md) — Software CMO; specs include P0 [`CMO_INTAKE_SPEC.md`](../../CMO_INTAKE_SPEC.md), P14 [`CMO_BUDGET_PLANE_SPEC.md`](../../CMO_BUDGET_PLANE_SPEC.md), P15 [`CMO_PRODUCT_LOOP_SPEC.md`](../../CMO_PRODUCT_LOOP_SPEC.md), and P16 [`CMO_REVENUE_PLANE_SPEC.md`](../../CMO_REVENUE_PLANE_SPEC.md).
+
 Run after Plan Studio / GTM brain / design-system changes.
+
+## First 60 Minutes Wedge (Faz 1)
+- [ ] **Reveal primary CTA** `reveal-ship-first-win` before `firstShipAt`
+- [ ] **QuickStartForkCard** — quick_start vs full_cmo (`quick-start-choose`)
+- [ ] **ThesisChip** one-liner (draft intake only — no Week 1 table pre-ship)
+- [ ] **beginQuickStartShip** → direct edit, max 2 skills (`FIRST_SHIP_SKILLS`)
+- [ ] **ShipPipelineBar** visible during wedge run (`ship-pipeline-bar`)
+- [ ] **Apply prominence** — `ship-apply-primary` on Run/Preview canvas
+- [ ] **Auto preview** after apply when quick ship path
+- [ ] **ShipWinCard** before/after + `home-today-shipped`
+- [ ] **NO_PATCHES** recovery card when agent returns zero diffs
+- [ ] **Command surface** pre-ship override `command-surface-ship-first-win`
+- [ ] **Execution debug** (dev Settings) shows FST / apply rate rollup
+
+## CMO Intake (P0)
+- [ ] **openProject** runs `buildCmoIntake` — `channel_thesis` on profile
+- [ ] **Reveal** shows CMO beat + thesis card before moves
+- [ ] **Primary CTA** "Start Week 1" → `beginCmoWeek1` (campaign + first system run)
+- [ ] **Cluely-like readme** → `viral_short_form` thesis (unit test)
+- [ ] **B2B prelaunch** → `founder_social`; **sales** → `outbound_sales`
+- [ ] **Home** shows CmoIntakeCard when thesis exists and no plan yet
+- [ ] **week1_priorities** have stable ids (`{thesis}.w1.{n}`)
+
+## CMO Ops Cadence (P1)
+- [ ] **Start Week 1** creates `ops_cadence` on profile + localStorage
+- [ ] **Workspace** shows `CmoOpsBoard` war-room table (owner / done gate / status)
+- [ ] **System task** auto-completes on apply (`tryAutoCompleteSystemTask`)
+- [ ] **User task** cannot close without URL/metric/note (`OpsTaskProofModal`)
+- [ ] **NextActionBar** shows "Your move" for unlocked user task
+- [ ] **Handoff banner** surfaces user task after system task ships
+- [ ] **Week review** due after 7 days with summary capture
+
+## CMO Proof Loop (P2)
+- [ ] **User task** cannot close without numeric `kpi_value` in proof modal
+- [ ] **KPI upsert** on confirm → `manual_kpis` on profile
+- [ ] **Pull GA4** in proof modal when gate supports it
+- [ ] **Week review** blocked until all done user tasks have KPI proof
+- [ ] **Flat metrics** → `pivot_suggestion` on `ops_cadence` + `CmoPivotCard`
+- [ ] **Campaign** advances to `measuring` on week review / all ops done
+
+## CMO Lane B (P3)
+- [ ] **Start Week 1** creates `lane_b_workspace` from thesis `lane_b`
+- [ ] **Mode** matches thesis: posting / outreach / runbook / distribution
+- [ ] **LaneBPanel** below ops board in Workspace + Home
+- [ ] **Outreach tracker** — editable target name/handle per touch
+- [ ] **Launch runbook** — T-offset steps (T-7, T-0, H+2)
+- [ ] **Mark done** requires URL or note (Lane B proof modal)
+- [ ] **Ops KPI** button on measure rows links to P2 proof modal
+- [ ] **NextActionBar** surfaces next Lane B item when ops queue clear
+
+## CMO Continuous (P4)
+- [ ] **Week review** archives cycle → `cmo_continuous.cycles[]` + phase `measuring` / `pivot_ready`
+- [ ] **CmoCyclePanel** shows cycle history + intake delta on Home / Workspace
+- [ ] **CmoPivotCard** — "Start Week N" pivot + "Double down" (not generic re-intake only)
+- [ ] **startNextCmoCycle** spawns Week N+1 ops + Lane B with `prior_ops_cadence_id`
+- [ ] **buildCmoIntake** respects `force_thesis_id` + `cycle_index` for delta context
+- [ ] **Campaign** `cmo_cycle_restart` → back to `executing` with Week N milestone
+- [ ] **NextActionBar** `start_next_cmo_cycle` when measuring + week review complete
+- [ ] **Active campaign** measuring CTA starts next week when replan ready
+
+## CMO Lane C + hooks (P5)
+- [ ] **Start Week 1 / Week N** creates `lane_c_workspace` for delegate theses (outbound, influencer, etc.)
+- [ ] **DelegatePanel** below Lane B — hand off + mark delivered
+- [ ] **DelegateBriefModal** — assignee required, markdown copied on handoff
+- [ ] **Lane B outreach** — Export CSV button (`outreach-export-csv`) with touch rows
+- [ ] **GA4 auto-sync** on `beginCmoWeek1` / `startNextCmoCycle` when OAuth connected
+- [ ] **NextActionBar** surfaces Lane C brief when ops queue clear
+- [ ] **Honest skip** — GA4 not connected → manual KPI message, no fake metrics
+
+## Browser Verify (Faz 4)
+- [ ] **Universal apply → verify** — `scheduleVerifyAfterApply` after full apply
+- [ ] **browser_evidence** on system ops proof with validation chips
+- [ ] **Ship pipeline** — `verify.completed` / `verify.failed` stages
+- [ ] **Fix handoff** — failed verify → enriched edit goal
+
+## Measurement Compulsion (Faz 5)
+- [ ] **MeasurementBaselineCard** — GA4 / manual / ack paths
+- [ ] **Week review KPI panel** — GA4 sync-on-open + source transparency
+- [ ] **Pivot gate** — no thesis pivot without logged numeric KPI
+- [ ] **MEASUREMENT_GATE_HARD** — optional hard Week 1 block
+
+## CMO Delegation Operator (P10)
+- [ ] **buildDelegateOperator** — hire blocks + lane links per thesis brief
+- [ ] **DelegateOperatorPanel** — rubric day grid + lane link status
+- [ ] **Daily rubric** — checklist + proof note/URL; partial vs done thresholds
+- [ ] **evaluateDelegatePerformance** — promote / extend / release rules
+- [ ] **GrowthCommandSurface** — rubric summary chip + Start move opens rubric proof
+- [ ] **importDelegateDelivery** — outbound / influencer / distribution import paths
+- [ ] **No auto-delegate** — human contractor executes; IDE tracks accountability
+
+## CMO Growth Memory (P11)
+- [ ] **harvestMemoryFromCycle** — ops/Lane B/P8/P9/delegate proof enters an idempotent ledger
+- [ ] **Message verdicts** — hooks and pitches show winner / loser / neutral from measured evidence
+- [ ] **GrowthMemoryPanel** — current-cycle winners, losers, and experiment history
+- [ ] **ReplanPreviewCard** — exact Week N+1 priorities shown before the user starts
+- [ ] **buildReplanPreview** — winner + KPI doubles down; repeated loser / flat KPI pivots
+- [ ] **Memory apply** — ops, Lane B, and P8/P9 operator hints carry into Week N+1
+- [ ] **Honest memory** — missing proof stays unscored; no silent auto-start
+
+## CMO Command Surface (P12)
+- [ ] **Four fields visible** — Darboğaz / Bugün / Neden / Done when without opening a panel
+- [ ] **One daily CTA** — dispatches the active ops, P8, P9, or P10 proof flow
+- [ ] **Backstage collapsed** — Ops + Lane A/B/C + Memory + Cycle hidden until "Open backstage"
+- [ ] **Governance banner** — at most one review / measuring / pivot / replan state
+- [ ] **NextActionBar de-dupe** — CMO-owned actions hidden; apply and approval blockers remain visible
+- [ ] **Home / Workspace parity** — same model, operator gates, and backstage order
+- [ ] **Honest why** — linked task or operator rationale; deterministic fallback, no LLM invention
+
+## CMO Founder-Fit + Strategic Options (P13)
+- [ ] **Exactly 7 questions** — one FounderFitWizard question per step, no long-form intake
+- [ ] **Founder-fit eligibility** — camera, risk, time, budget, and scale constraints change recommendation
+- [ ] **Narrative layer** — cultural tension → one-liner → proof angle
+- [ ] **A/B/C options** — safe / balanced / category attack with explicit tradeoffs
+- [ ] **Honest 30-day target** — measured / assumption / stretch; missing baseline has no invented number
+- [ ] **From me / from you contract** — selected option makes both sides' commitments explicit
+- [ ] **Single seal gate** — beginCmoWeek1 blocked before Yes; advice disappears after seal
+- [ ] **Narrative inheritance** — Lane A/B, distribution hooks, influencer pitches, and command why share the story
+
+## CMO Budget Plane (P14)
+- [ ] **Monthly boundary** — numeric USD input or visibly labeled band assumption
+- [ ] **Deterministic allocation** — thesis buckets sum to 100%; rounding remainder goes to reserve
+- [ ] **Estimate ≠ actual** — Lane B/C/operator UI never reports estimates as spend
+- [ ] **Honest CPA** — CPA appears only with logged spend and attributed outcomes
+- [ ] **Week-close truth** — allocated / spent / outcomes / CPA table archives on the cycle
+- [ ] **Money memory isolation** — budget experiments never enter hook/pitch winner classification
+- [ ] **Human reallocation gate** — budget mutations are previewed and apply only on next-cycle start
+
+## CMO Product Loop / Lane D (P15)
+- [ ] **Activation gate** — event, activation rate, and TTFV inputs retain measured / assumption / missing confidence
+- [ ] **Product binding** — scale-not-ready, activation evidence, or onboarding gaps create Lane D instead of marketing tactics
+- [ ] **P0 contract** — every PRODUCT REQUEST has acceptance criteria, growth impact, scope, pause state, and proof
+- [ ] **Site/core split** — site fixes run through Lane A; core changes export issue markdown and require issue/PR URL
+- [ ] **Explicit pause** — command surface says marketing paused; Lane B and distribution/influencer/delegate operators stay hidden
+- [ ] **Week-close gate** — all P0s shipped or explicitly skipped; activation KPI is optional when not yet measurable
+- [ ] **Memory isolation** — `product_fix` experiments have no message IDs and cannot produce hook/pitch winners
+- [ ] **Human resume** — marketing resumes only after terminal P0s and an explicit founder action
+
+## CMO Revenue Plane (P16)
+- [ ] **Revenue intake** — `RevenueSetupCard` after product activation; `beginCmoWeek1` blocked without `revenue_profile`
+- [ ] **Pricing thesis** — deterministic model + confidence; scan gaps for pricing/checkout/billing/events
+- [ ] **Focus not pause** — revenue binding creates monetization P0s; marketing is **not** blanket-paused (unlike P15)
+- [ ] **Honest funnel** — conversion rates only when both stage counts are measured
+- [ ] **Honest CAC/LTV** — CAC and LTV:CAC only with logged spend + measured outcomes
+- [ ] **Week-close truth** — `revenue_snapshot` archives on cycle; paying-customer nudge in week review
+- [ ] **Revenue memory isolation** — `revenue_signal` experiments have no message IDs
+- [ ] **Paid-scale guard** — red list blocks paid ads when checkout missing and spend is active
+
+## CMO Growth Mechanism Intelligence (P17)
+- [ ] **Public presence card** — after founder fit, before A/B/C; toggles who can represent the product
+- [ ] **Mechanism-driven A/B/C** — Safe/Balanced/Attack map to different mechanisms, not thesis alone
+- [ ] **Mechanism week1 diversity** — `applyMechanismToChannelThesis` replaces generic priorities with corpus templates
+- [ ] **Anti-pattern red list** — growth plane rejects superficial copies (mascot dances, empty Discord, etc.)
+- [ ] **Command surface chip** — mechanism label + honest why-string on daily surface
+- [ ] **Operator flags** — distribution/influencer/delegate/character_mode from sealed mechanism
+- [ ] **Engine memory** — `engine_signal` experiments harvested on week close; `engine_hints` on replan preview
+- [ ] **No case-study browser** — company names stay in corpus calibration metadata only
+
+## CMO Lane A (P6)
+- [ ] **Start Week 1 / Week N** creates `lane_a_workspace` from thesis `lane_a[]`
+- [ ] **bindExecutionPlansForCadence** — 100% system tasks get frozen `execution_plan` at cadence create
+- [ ] **executeOpsSystemTask** — no raw `startRun(task.what)` bypass for ops system tasks
+- [ ] **Week 1 cap** — max 5 tasks (3 system + 2 user) via `capWeek1Priorities`
+- [ ] **resolveCommandSurfaceAction** — primary CTA is Start in IDE / Submit proof / export (never dead)
+- [ ] **User proof chip** — `ops-proof-asset-link` on ops board after live URL proof
+- [ ] **week1FocusMode** — command surface + canvas default; backstage collapsed until opened
+- [ ] **@cmo-prod E2E** — nightly agent smoke with `e2eDryRunExecution: false`
+- [ ] **resolveLaneARunPlan** — thesis skills + hero mentions + execution mode
+- [ ] **startLaneARun** — scout→edit, browser research, or edit with skills
+- [ ] **LaneAPanel** above Lane B — Start in IDE + ship proof (commit)
+- [ ] **Apply** auto-completes linked system ops task + Lane A item
+- [ ] **beginCmoWeek1** first system task uses scout when hero exists
+
+## CMO Growth Control Plane (P7)
+- [ ] **buildGrowthControlPlane** — equation, binding, red list, thesis alignment (deterministic)
+- [ ] **GrowthCommandSurface** — P12 renders Darboğaz / Bugün / Neden / Done when
+- [ ] **Backstage collapsed** — Ops + Lane A/B/C hidden until explicitly opened
+- [ ] **Cycle governance** — compact banner on surface; full panel in backstage
+- [ ] **NextActionBar** hides command-surface-owned CMO CTAs
+- [ ] **Recompute** on intake, week start, KPI/GA4 updates, ops complete
+- [ ] **Missing metrics** show confidence `missing` — no fake GA4 rows
+
+## CMO Distribution Operator (P8)
+- [ ] **buildDistributionOperator** — viral → 7-day hook grid + daily volume; founder → 14-day grid
+- [ ] **DistributionOperatorPanel** — hook × day grid, volume counter, script scaffolds
+- [ ] **Retention proof** — post URL + 3s retention % + 24h views on measure (no vibes)
+- [ ] **evaluateHookPerformance** — scale / kill / double_down rules from hook matrix
+- [ ] **GrowthCommandSurface** — volume chip in command footer; Start move opens proof modal
+- [ ] **Lane B synced** — operator is source of truth; legacy Lane B hidden when operator active
+- [ ] **No auto-post** — human posts only; retention-first proof
+
+## CMO Influencer Operator (P9)
+- [ ] **buildInfluencerOperator** — influencer thesis → 15 touches, 3 pitches A/B/C, weekly DM targets
+- [ ] **InfluencerOperatorPanel** — pipeline board, volume counter, pitch scaffolds, CSV export
+- [ ] **Reply proof** — handle + thread URL + warm/hot interest on reply (no vibes)
+- [ ] **Deal proof** — UTM + promo code + disclosure ack on brief_sent
+- [ ] **evaluatePitchPerformance** — scale / kill / double_down rules from pitch matrix
+- [ ] **GrowthCommandSurface** — outreach chip in command footer; Start move opens proof/deal modal
+- [ ] **Lane B synced** — operator is source of truth; legacy Lane B hidden when operator active
+- [ ] **No auto-DM** — human sends only; reply-first proof
+
+## First hour (minutes 0–60)
+- [ ] **Ghost monorepo reveal**: Stack shows `apps/console ✓`, hero route chip highlighted, landing file path visible
+- [ ] **Primary CTA**: "Review hero & ship change" → scout ask with `@heroPath` mention (connected) or direct edit (offline)
+- [ ] **Scout answer**: Agent cites `path:line` (e.g. `apps/console/app/page.tsx:12`) + TurnReceipt; edit auto-starts (~450ms) without "Run in project" click
+- [ ] **First edit**: No confirm modal during first hour (`firstHourActive`) — diff → apply → Shipped receipt with commit SHA
+- [ ] **Success metric**: ≥1 applied change in first session (`firstShipAt` persisted)
+- [ ] Reveal secondary CTA: Launch plan / preview outline (plan is not primary when hero route exists)
+- [ ] Connect from reveal opens Settings → Connection dialog (scan progress preserved)
+- [ ] Offline scan does not silently auto-preview plan — user chooses when to start
+- [ ] Plan preview initializes progress → NextActionBar shows "Day 1" immediately
+- [ ] Home dashboard shows First hour card (not duplicate Suggested moves) when plan exists
+- [ ] First hour card shows "Ship one patch from reveal" until first apply
 
 ## First five minutes (cinematic onboarding)
 - [ ] Splash shows phased progress bar; startup error shows Retry / Continue offline (reachable)
@@ -24,7 +238,7 @@ Run after Plan Studio / GTM brain / design-system changes.
 - [ ] Blocked task names its blocker: "Blocked by: X (Day N)"
 - [ ] Task buttons differ by mode: Browser / Draft / Repo; failed task shows inline **Retry**
 - [ ] Playbook complete → green "Completed" card state; all done → plan-complete banner
-- [ ] Command center: "Now: {bottleneck} → Day N" (English), no fake Spend/CPA columns
+- [ ] Command center: "Now: {bottleneck} → Day N" (English); Spend/CPA only from logged P14 evidence
 - [ ] Session report: designed card + Next up CTA (no raw `<pre>` dump)
 
 ## Conversation (tier-1 chat)
@@ -63,6 +277,13 @@ Run after Plan Studio / GTM brain / design-system changes.
 - [ ] **Export CSV**: Sales persona → Export leads CSV after research
 - [ ] **Outreach pack**: Copy pack + mailto opens mail client
 - [ ] **Webhook**: Settings URL → Send to webhook with confirmation
+
+## Advice → Ship (ROI contract)
+- [ ] **Ask "rewrite hero"** → TurnReceipt + "Run in project" visible in thread
+- [ ] **Edit complete** → receipt shows proposed files + line stats
+- [ ] **Apply** → commit SHA visible in-thread TurnReceipt (Shipped)
+- [ ] **Home** → Recent activity shows last ship summary
+- [ ] **Reveal** → "Review hero & ship change" scouts `@heroPath` or starts edit; `inferIntegrateRoute` picks `apps/console/app/page.tsx`
 
 ## Developer parity (Cursor-grade ergonomics)
 - [ ] **Ctrl+K file search** — type a path fragment → open file preview

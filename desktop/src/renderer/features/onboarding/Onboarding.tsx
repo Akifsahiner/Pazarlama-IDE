@@ -158,6 +158,8 @@ export function Onboarding() {
 
   const runtime = useApp((s) => s.runtime);
 
+  const localOnlyMode = useApp((s) => s.localOnlyMode);
+
   const settings = useApp((s) => s.settings);
 
   const hasProject = useApp((s) => s.project !== null);
@@ -224,7 +226,7 @@ export function Onboarding() {
 
         ? "signin"
 
-        : runtime !== "connected" && started && !hasProject
+        : runtime !== "connected" && !localOnlyMode && started && !hasProject
 
           ? "connect"
 
@@ -244,7 +246,7 @@ export function Onboarding() {
 
       if (auth.authEnabled || resolving) steps.push("signin");
 
-      if (runtime !== "connected") steps.push("connect");
+      if (runtime !== "connected" && !localOnlyMode) steps.push("connect");
 
     }
 
@@ -254,7 +256,7 @@ export function Onboarding() {
 
     return steps;
 
-  }, [auth.authEnabled, resolving, settings.personaChosen, started, runtime]);
+  }, [auth.authEnabled, resolving, settings.personaChosen, started, runtime, localOnlyMode]);
 
 
 

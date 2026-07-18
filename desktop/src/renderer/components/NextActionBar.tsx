@@ -6,6 +6,8 @@ import {
   type NextActionDispatch,
   type NextActionScope,
 } from "@shared/nextAction";
+import { runChangedFiles } from "@shared/runs";
+import { executableActionToIntent } from "@shared/executableAction";
 import { normalizeCanvasMode, normalizeToWorkSurface } from "@shared/workSurfaces";
 import { useApp } from "@renderer/state/store";
 import { Button } from "@renderer/components/ui/Button";
@@ -118,6 +120,68 @@ function dispatchAction(dispatch: NextActionDispatch) {
       s.setWorkSurface("campaign-plan");
       s.setActiveCanvas("campaign-plan");
       break;
+    case "start_edit_from_receipt": {
+      const action = s.lastTurnReceipt?.primaryAction;
+      if (action?.kind === "edit_run") {
+        const intent = executableActionToIntent(action);
+        if (intent) void s.executeIntent(intent);
+      }
+      break;
+    }
+    case "apply_from_receipt":
+      s.navigate("workspace");
+      s.setActiveCanvas("preview");
+      if (s.run?.runId) s.setActiveCanvas("preview");
+      else s.setActiveCanvas("run");
+      break;
+    case "open_ops_proof":
+      s.openOpsProofModal(dispatch.taskId);
+      s.navigate("workspace");
+      break;
+    case "run_ops_system_task":
+      s.navigate("workspace");
+      s.startOpsSystemTask(dispatch.taskId);
+      break;
+    case "focus_ops_board":
+      s.navigate("workspace");
+      s.focusBackstageAnchor("cmo-ops-board");
+      break;
+    case "open_week_review":
+      s.openWeekReviewModal();
+      s.navigate("workspace");
+      break;
+    case "start_next_cmo_cycle": {
+      const err = s.startNextCmoCycle({
+        thesisId: dispatch.thesisId as import("@shared/cmoIntake").ChannelThesisId | undefined,
+        mode: dispatch.mode,
+      });
+      s.navigate("workspace");
+      if (err) {
+        s.appendEvent({ role: "system", kind: "error", text: err });
+        if (/review|close|archive/i.test(err)) s.openWeekReviewModal();
+      }
+      break;
+    }
+    case "complete_lane_b_item":
+      s.openLaneBProofModal(dispatch.itemId);
+      s.navigate("workspace");
+      break;
+    case "focus_lane_b_panel":
+      s.navigate("workspace");
+      s.focusBackstageAnchor("lane-b-panel");
+      break;
+    case "open_delegate_brief":
+      s.openDelegateBriefModal(dispatch.briefId);
+      s.navigate("workspace");
+      break;
+    case "open_delegate_rubric":
+      s.openDelegateRubricModal(dispatch.rubricId);
+      s.navigate("workspace");
+      break;
+    case "focus_delegate_panel":
+      s.navigate("workspace");
+      s.focusBackstageAnchor("delegate-panel");
+      break;
     default:
       break;
   }
@@ -147,6 +211,14 @@ export function NextActionBar({ scope }: { scope: NextActionScope }) {
         planPreviewMode: s.planPreviewMode,
         planProgress: s.planProgress,
         campaignSession: s.marketingProfile?.campaign_session ?? null,
+        opsCadence: s.opsCadence ?? s.marketingProfile?.ops_cadence ?? null,
+        laneBWorkspace: s.laneBWorkspace ?? s.marketingProfile?.lane_b_workspace ?? null,
+        channelThesis: s.channelThesis ?? s.marketingProfile?.channel_thesis ?? null,
+        cmoContinuous: s.cmoContinuous ?? s.marketingProfile?.cmo_continuous ?? null,
+        growthMemory: s.growthMemory ?? s.marketingProfile?.growth_memory ?? null,
+        delegateWorkspace: s.delegateWorkspace ?? s.marketingProfile?.lane_c_workspace ?? null,
+        growthControlPlane:
+          s.growthControlPlane ?? s.marketingProfile?.growth_control_plane ?? null,
         runActive,
         runNeedsApproval: !!run?.pendingApproval,
         browserActive: s.browser.running,
@@ -154,6 +226,11 @@ export function NextActionBar({ scope }: { scope: NextActionScope }) {
         feedItems: s.feedItems,
         runsCount: s.runsArchive.length,
         assetsCount: s.serverAssets.length,
+        lastTurnReceipt: s.lastTurnReceipt,
+        pendingRunApply:
+          run && runChangedFiles(run.events).length
+            ? { runId: run.runId, files: runChangedFiles(run.events) }
+            : null,
       };
     }),
   );

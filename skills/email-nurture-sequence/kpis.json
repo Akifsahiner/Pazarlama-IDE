@@ -1,0 +1,32 @@
+[
+  {
+    "name": "launch_week_activation_rate",
+    "definition": "% of engaged segment who clicked launch email CTA and completed signup or core activation within 7 days.",
+    "target_hint": "8–20% for warm dev-tool list; <5% → offer or LP mismatch."
+  },
+  {
+    "name": "engaged_segment_open_rate",
+    "definition": "Unique opens / delivered on engaged segment for launch wave 1.",
+    "target_hint": "35–55% healthy; <25% → subject/from-name fix before wave 2."
+  },
+  {
+    "name": "launch_wave_click_rate",
+    "definition": "Unique clicks / delivered per wave.",
+    "target_hint": "Wave 1: 8–15%; Wave 2: 5–10%; Wave 3: 3–8% (smaller by design)."
+  },
+  {
+    "name": "unsubscribe_spike_launch_week",
+    "definition": "Unsubs / delivered across all launch emails in launch week.",
+    "target_hint": "<0.5% total; >1% → pause wave 3, audit copy/frequency."
+  },
+  {
+    "name": "onboarding_d7_activation",
+    "definition": "% of launch signups completing onboarding email #1 action by D+7.",
+    "target_hint": "40–70% for PLG; <30% → simplify activation step."
+  },
+  {
+    "name": "drip_to_launch_attribution",
+    "definition": "Launch-week signups with UTM utm_medium=email and utm_campaign=prelaunch_drip or launch_wave_N.",
+    "target_hint": "Track per wave; no aggregate 'email drove X' without UTM."
+  }
+]

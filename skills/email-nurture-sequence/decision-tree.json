@@ -1,0 +1,30 @@
+{
+  "root": "has_opt_in_list",
+  "nodes": {
+    "has_opt_in_list": {
+      "q": "Do you have email_list_size > 0 or an active double-opt-in waitlist?",
+      "yes": "list_size_check",
+      "no": "OUTPUT:waitlist-hype-engine-first"
+    },
+    "list_size_check": {
+      "q": "Is list size ≥200 identifiable subscribers (not purchased)?",
+      "yes": "launch_date_known",
+      "no": "OUTPUT:no-audience"
+    },
+    "launch_date_known": {
+      "q": "Is launch date (or PH/community spike) within 30 days?",
+      "yes": "engaged_segment",
+      "no": "OUTPUT:with-email-list-drip-only"
+    },
+    "engaged_segment": {
+      "q": "Can ESP segment 'engaged' (opened 2 of last 5)?",
+      "yes": "aggressive_ready",
+      "no": "OUTPUT:b2b-saas-manual-segment"
+    },
+    "aggressive_ready": {
+      "q": "Is list ≥5k engaged OR ≥1k with documented launch coordination (PH/community)?",
+      "yes": "OUTPUT:aggressive-launch-nurture",
+      "no": "OUTPUT:with-email-list"
+    }
+  }
+}

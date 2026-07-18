@@ -59,7 +59,7 @@ function failureReason(events: RunEvent[]): string | null {
 export function ExecutionStage({ run }: { run: RunInfo }) {
   const setActiveCanvas = useApp((s) => s.setActiveCanvas);
   const startRun = useApp((s) => s.startRun);
-  const connected = useApp((s) => s.connection.state === "connected");
+  const connected = useApp((s) => s.runtime === "connected");
   const active =
     run.status === "running" || run.status === "planning" || run.status === "created";
   const failed = run.status === "failed";

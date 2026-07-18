@@ -8,40 +8,45 @@ description: >-
 
 # Launch Planning
 
-You convert product understanding into an actionable, sequenced launch plan.
+You convert product understanding into an actionable, sequenced launch plan where **every task is executable** — not a generic backlog.
 
 ## Input
-- The product profile (`product-intelligence`).
-- Optional: a landing audit (`landing-page-conversion`) and a target launch date.
+- Marketing profile (`product_name`, ICP, channels, `email_list_size`, `days_until_launch`).
+- Optional: landing audit, target launch date, active playbook stub id.
 
 ## Process
-1. Set positioning (one sentence) and the ICP for this launch.
-2. Score launch readiness across: product clarity, landing page, proof,
-   channels, assets (0–100 each) with a one-line rationale.
-3. Build a task graph: ordered tasks with `dependsOn`, a `metric`, and a `day`.
-4. Draft a content calendar (channel, day, title, type) for the window.
-5. Keep it realistic for a small team — prioritize the few high-leverage moves.
+1. Diagnose **one** bottleneck (`launch_bottleneck_diagnose`) — cite 3 profile fields.
+2. Score readiness (0–100) across landing, proof, channels, assets — one-line rationale each.
+3. Build a **task graph** where every task has:
+   - `tactic` — registry snake_case id (e.g. `ph_submit_1201_pt`, `referral_waitlist_loop`)
+   - `execution_mode` — `repo` | `browser` | `asset` | `run` | `connector_read`
+   - `phaseLabel` — `T-14`, `H0`, `H+6`, `D+1` for launch playbooks
+   - `acceptance_criteria` — measurable done-when
+   - `instructions_md` — first line **must** be `Tactic: {tactic_id}` then 5–10 steps
+4. Cap parallel channels at 2 (`channel_parallel_cap_2`).
+5. Reject generic titles (`post on social`, `improve SEO`, `engage audience`).
+
+## Task title rules
+- Channel-specific verb + object: "Submit PH listing 12:01am PT Tue" not "Do marketing"
+- Must pass `GENERIC_TASK_TITLE_RE` negative check
+- PH playbooks: 100% tasks need `tactic` + `phaseLabel`
 
 ## Output
-- `positioning`, `icp`
-- `readiness`: list of `{ label, score }`
-- `taskGraph`: list of `{ id, title, dependsOn[], metric?, day }`
-- `contentCalendar`: list of `{ day, channel, title, type }`
-- `strategyNote`: the single most important focus for this launch
+- `positioning`, `icp`, `readiness[]`, `taskGraph[]`, `contentCalendar[]`, `strategyNote`
+- Plan Studio export: 8–15 tasks per playbook, ≥80% with deliverable + acceptance_criteria
 
 ## Checklist
-- [ ] Tasks are specific and sequenced (dependencies make sense)
-- [ ] Every task has a measurable success signal where possible
-- [ ] Plan fits the stated window (14/30 days) and a small team
-- [ ] Grounded in the product profile, not generic growth advice
+- [ ] First 3 tasks executable today without guessing
+- [ ] Every task ties to a tactic id when playbook is launch/PH/waitlist
+- [ ] Kill/pivot rule stated before any paid or blast motion
+- [ ] Honest aggression — state ceiling when assets missing
 
 ## Acceptance criteria
-- A founder could start executing the first 3 tasks today.
-- The readiness scores point to the gaps the plan then addresses.
+- Founder can run Day 1 task from Plan Studio without rewriting title
+- Lint passes: no generic titles, registered tactics, PH phase labels
 
 ## Tools
-- Read, Grep, Glob to ground the plan. No file mutations required.
+- Read, Grep, Glob to ground the plan. Planning is non-mutating (`read_inspect`).
 
 ## Approval points
-- None — planning is non-mutating (`read_inspect`). Producing launch assets is
-  handled by `launch-asset-generator`.
+- None for planning. Asset production → `launch-asset-generator`.

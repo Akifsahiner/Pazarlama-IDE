@@ -19,7 +19,9 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { resolveIntent } from "@shared/conversationIntent";
 import { normalizePlan } from "@shared/planPlaybooks";
+import { formatCostCents, formatTokenCount } from "@shared/contextBudget";
 import { useApp } from "@renderer/state/store";
+import { buildAgentHistory } from "@renderer/state/agentHistory";
 import { Segmented } from "@renderer/components/ui/Segmented";
 import { Menu } from "@renderer/components/ui/Menu";
 import {
@@ -34,6 +36,8 @@ import {
 } from "@shared/quickActions";
 import { ConnectGate } from "./ConnectGate";
 import { IntentPreviewChip } from "./IntentPreviewChip";
+import { SuggestedModeChip } from "./SuggestedModeChip";
+import { ContextBudgetBar, useComposerContextBudget } from "./ContextBudgetBar";
 
 const MODE_OPTIONS: { value: ComposerMode; label: string }[] = [
   { value: "auto", label: "Auto" },
@@ -81,8 +85,10 @@ export function Composer() {
   const activePlanTaskId = useApp((s) => s.activePlanTaskId);
   const project = useApp((s) => s.project);
   const runtime = useApp((s) => s.runtime);
+  const capabilityMatrix = useApp((s) => s.capabilityMatrix);
   const openConnectFlow = useApp((s) => s.openConnectFlow);
   const connected = runtime === "connected";
+  const canBrowse = capabilityMatrix.canBrowse;
   const composerMode = useApp((s) => s.composerMode);
   const composerDraft = useApp((s) => s.composerDraft);
   const composerFocusTick = useApp((s) => s.composerFocusTick);
@@ -93,8 +99,12 @@ export function Composer() {
   const runQuickAction = useApp((s) => s.runQuickAction);
   const editUserMessage = useApp((s) => s.editUserMessage);
   const cancelEditMessage = useApp((s) => s.cancelEditMessage);
+  const auth = useApp((s) => s.auth);
+  const thread = useApp((s) => s.thread);
+  const navigate = useApp((s) => s.navigate);
 
   const [text, setText] = useState("");
+  const [mentionHints, setMentionHints] = useState<Array<{ path: string }>>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const hasFolder = project?.source.kind === "folder";
@@ -115,9 +125,26 @@ export function Composer() {
     });
   }, [composerMode, text, plan, planProgress, run?.runId, activePlanTaskId]);
 
+  const historyForBudget = useMemo(() => buildAgentHistory(thread), [thread]);
+  const marketingProfile = useApp((s) => s.marketingProfile);
+  const contextBudget = useComposerContextBudget({
+    message: text,
+    history: historyForBudget,
+    profileJson: marketingProfile ?? project ?? undefined,
+    planSnapshotJson: plan ? normalizePlan(plan) ?? plan : undefined,
+  });
+
+  const agentRemaining =
+    auth.usage && auth.quota
+      ? Math.max(0, auth.quota.agent_limit - auth.usage.agent)
+      : null;
+  const monthCost = auth.usage?.cost_cents ?? 0;
+  const monthTokens =
+    (auth.usage?.tokens_in ?? 0) + (auth.usage?.tokens_out ?? 0);
+
   const quickDisabled = (id: QuickActionId | "plan_pill") => {
     if (id === "plan_pill") {
-      if (!connected) return "Connect a backend to generate a plan.";
+      if (!connected) return "Enable AI to generate a plan.";
       if (!project) return "Open a project first.";
       if (planLoading) return "Plan generation in progress.";
       return null;
@@ -145,6 +172,35 @@ export function Composer() {
       textareaRef.current?.focus();
     }
   }, [composerFocusTick]);
+
+  useEffect(() => {
+    const m = text.match(/@([\w./\\-]*)$/);
+    if (!m || !project) {
+      setMentionHints([]);
+      return;
+    }
+    const cwd =
+      project.source.kind === "folder" ? project.source.path : project.localPath;
+    if (!cwd) {
+      setMentionHints([]);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      void window.api.context
+        .suggest({ projectId: project.id, cwd, prefix: m[1] || "page" })
+        .then((rows) => {
+          if (!cancelled) setMentionHints(rows.slice(0, 6).map((r) => ({ path: r.path })));
+        })
+        .catch(() => {
+          if (!cancelled) setMentionHints([]);
+        });
+    }, 120);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [text, project]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -254,17 +310,37 @@ export function Composer() {
             <ConnectGate
               feature={connectFeature}
               capability={runtime}
+              matrix={capabilityMatrix}
               onConnect={openConnectFlow}
               compact
             />
           </div>
         )}
+        <SuggestedModeChip />
         <Segmented
           options={MODE_OPTIONS}
           value={composerMode}
           onChange={setComposerMode}
-          className="mb-2 w-full justify-stretch [&>button]:flex-1 [&>button]:text-micro"
+          className={`mb-2 w-full justify-stretch [&>button]:flex-1 [&>button]:text-micro ${
+            composerMode === "browse" ? "ring-1 ring-accent/40" : ""
+          }`}
         />
+        {composerMode === "browse" && canBrowse && (
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-[var(--radius-md)] border border-accent/30 bg-accent-soft/30 px-3 py-2">
+            <p className="text-mini text-text-2">
+              Computer Use opens a live sandbox in the center — watch the agent browse.
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                runQuickAction("competitors")
+              }
+              className="btn-accent shrink-0 rounded-[var(--radius-sm)] px-2.5 py-1 text-micro"
+            >
+              Start live research
+            </button>
+          </div>
+        )}
         <p id="composer-mode-hint" className="mb-1 text-mini leading-snug text-text-2">
           {hint}
         </p>
@@ -346,6 +422,28 @@ export function Composer() {
           <IntentPreviewChip resolved={autoResolved} message={text.trim()} />
         )}
 
+        {mentionHints.length > 0 && (
+          <div className="mb-1 rounded-[var(--radius-md)] border border-line bg-surface-2 px-2 py-1">
+            <div className="text-micro text-text-3">@ mentions</div>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {mentionHints.map((h) => (
+                <button
+                  key={h.path}
+                  type="button"
+                  className="rounded border border-line px-1.5 py-0.5 text-micro text-text-2 hover:border-accent/40 hover:text-text"
+                  onClick={() => {
+                    setText((prev) => prev.replace(/@[\w./\\-]*$/, `@${h.path} `));
+                    setMentionHints([]);
+                    textareaRef.current?.focus();
+                  }}
+                >
+                  {h.path}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex items-end gap-2 rounded-[var(--radius-md)] border border-line bg-surface-2 px-3 py-2 focus-within:border-accent/50">
           <span className="pb-1 text-text-3" aria-hidden>
             <ModeIcon size={14} />
@@ -367,7 +465,7 @@ export function Composer() {
             aria-label="Send"
             title={
               !connected
-                ? "Connect a backend to send messages"
+                ? "Enable AI to send messages"
                 : editingMessageId
                   ? "Send edited message"
                   : composerMode === "auto"
@@ -379,6 +477,38 @@ export function Composer() {
             {busy ? <Loader2 size={14} className="animate-spin" /> : <ArrowUp size={15} />}
           </button>
         </div>
+
+        {(auth.usage && auth.quota) || text.trim() ? (
+          <div className="mt-1.5 space-y-1.5 px-0.5">
+            {text.trim().length > 0 && <ContextBudgetBar budget={contextBudget} />}
+            {(streaming || planLoading) &&
+              /ph|launch|strategy|position|gtm|product hunt|waitlist/i.test(text) &&
+              text.trim().length > 40 && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent-soft/20 px-2 py-0.5 text-[10px] font-medium text-accent">
+                  <Sparkles size={10} /> Senior review
+                </span>
+              )}
+            {auth.usage && auth.quota && (
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-text-3">
+                <span className="tabular-nums">
+                  {agentRemaining != null && auth.quota.agent_limit < 9999
+                    ? `${agentRemaining} agent turns left`
+                    : "Agent quota"}
+                  {monthTokens > 0 || monthCost > 0
+                    ? ` · ${formatTokenCount(monthTokens)} · ${formatCostCents(monthCost)} this month`
+                    : null}
+                </span>
+                <button
+                  type="button"
+                  className="underline underline-offset-2 hover:text-text-2"
+                  onClick={() => navigate("settings", "usage")}
+                >
+                  Usage
+                </button>
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   );

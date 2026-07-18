@@ -10,3 +10,7 @@
 - **Don't:** Duplicate the same domain under different brand names without noting parent org. **Why:** Double outreach to one company burns the account.
 - **Don't:** Cite competitor customers as your leads without fit rationale. **Why:** "They use X" ≠ "they need you".
 - **Don't:** Proceed without product profile grounding. **Why:** Fit evidence must reference real product value, not assumptions.
+
+- **Don't:** Ship generic advice untied to this product profile. **Why:** Founders already have ChatGPT. **Cost:** Trust and retention.
+
+- **Don't:** Recommend five channels at once. **Why:** Dilutes learning. **Cost:** No clear kill signal.

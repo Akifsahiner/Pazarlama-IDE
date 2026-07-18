@@ -1,0 +1,946 @@
+{
+  "generatedAt": "2026-07-12T13:06:33.420Z",
+  "standard": "SKILL_EXCELLENCE.md",
+  "skills": [
+    {
+      "id": "analytics-measurement",
+      "principles": 10,
+      "anti": 12,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-ship-signal.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-ship-signal.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "community-launch",
+      "principles": 12,
+      "anti": 15,
+      "playbooks": 6,
+      "aggressivePlaybooks": [
+        "aggressive-community-blitz.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-community-blitz.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-devtool.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-warm-community.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "devrel-open-source-launch",
+      "principles": 12,
+      "anti": 15,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-oss-launch.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-oss-launch.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "email-nurture-sequence",
+      "principles": 12,
+      "anti": 15,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-launch-nurture.md"
+      ],
+      "templates": 4,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-launch-nurture.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "influencer-partnerships",
+      "principles": 10,
+      "anti": 12,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-micro-roi.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-micro-roi.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "landing-page-conversion",
+      "principles": 10,
+      "anti": 15,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-cro-sprint.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-cro-sprint.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "launch-asset-generator",
+      "principles": 10,
+      "anti": 12,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-platform-native.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-platform-native.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "launch-planning",
+      "principles": 10,
+      "anti": 15,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-14d-sprint.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-14d-sprint.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "lead-research",
+      "principles": 10,
+      "anti": 12,
+      "playbooks": 5,
+      "aggressivePlaybooks": [
+        "aggressive-icp-precision.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-icp-precision.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "sales-pipeline-empty.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "linkedin-founder-gtm",
+      "principles": 10,
+      "anti": 12,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-pipeline-30d.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-pipeline-30d.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "newsletter-sponsorship",
+      "principles": 12,
+      "anti": 15,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-sponsor-sprint.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-sponsor-sprint.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "outreach-drafting",
+      "principles": 10,
+      "anti": 12,
+      "playbooks": 5,
+      "aggressivePlaybooks": [
+        "aggressive-personalization-tiers.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-personalization-tiers.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "sales-pipeline-empty.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "paid-ads-optimization",
+      "principles": 10,
+      "anti": 12,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-hypothesis-sprint.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-hypothesis-sprint.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "ph_launch",
+      "principles": 10,
+      "anti": 15,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-top-1.md"
+      ],
+      "templates": 5,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-top-1.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "press-pr-launch",
+      "principles": 12,
+      "anti": 15,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-press-war-room.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-press-war-room.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "product-intelligence",
+      "principles": 10,
+      "anti": 12,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-positioning-wedge.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-positioning-wedge.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "seo-content-engine",
+      "principles": 12,
+      "anti": 15,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-programmatic-cluster.md"
+      ],
+      "templates": 4,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-programmatic-cluster.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "short-form-video",
+      "principles": 10,
+      "anti": 12,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-hook-lab.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-hook-lab.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "twitter-x-founder-gtm",
+      "principles": 12,
+      "anti": 15,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-x-launch-30d.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-x-launch-30d.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    },
+    {
+      "id": "waitlist-hype-engine",
+      "principles": 10,
+      "anti": 12,
+      "playbooks": 4,
+      "aggressivePlaybooks": [
+        "aggressive-viral-loop.md"
+      ],
+      "templates": 3,
+      "caseStudies": 2,
+      "layers": {
+        "A_principles": true,
+        "B_anti": true,
+        "C_decision_tree": true,
+        "D_playbooks": true,
+        "E_templates_kpis": true,
+        "F_case_studies": true,
+        "manifest_v2": true
+      },
+      "layerPass": 7,
+      "layerTotal": 7,
+      "playbookDetails": [
+        {
+          "file": "aggressive-viral-loop.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "b2b-saas.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "no-audience.md",
+          "sectionsComplete": true,
+          "missing": []
+        },
+        {
+          "file": "with-email-list.md",
+          "sectionsComplete": true,
+          "missing": []
+        }
+      ],
+      "gaps": [],
+      "excellenceReady": true
+    }
+  ]
+}

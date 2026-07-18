@@ -1,0 +1,30 @@
+{
+  "root": "has_live_demo",
+  "nodes": {
+    "has_live_demo": {
+      "q": "Does the product have a live demo URL that works end-to-end (signup or core flow)?",
+      "yes": "icp_on_hn",
+      "no": "OUTPUT:ship-demo-before-community-launch"
+    },
+    "icp_on_hn": {
+      "q": "Is your ICP developers, indie founders, or early-stage SaaS buyers active on HN/IH?",
+      "yes": "warm_community_check",
+      "no": "OUTPUT:pick-vertical-subreddit-only"
+    },
+    "warm_community_check": {
+      "q": "Do you have ≥50 karma-equivalent presence (HN comments, IH posts, or subreddit history)?",
+      "yes": "aggressive_window",
+      "no": "have_build_log"
+    },
+    "aggressive_window": {
+      "q": "Is launch ≥7 days out and Show HN title + first comment drafted?",
+      "yes": "OUTPUT:aggressive-community-blitz",
+      "no": "OUTPUT:with-warm-community"
+    },
+    "have_build_log": {
+      "q": "Can you publish a 2-week build log on IH before Show HN?",
+      "yes": "OUTPUT:no-audience",
+      "no": "OUTPUT:no-audience-with-extended-runway"
+    }
+  }
+}

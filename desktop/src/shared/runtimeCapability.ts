@@ -91,3 +91,7 @@ export function buildSetupChecklist(input: {
 export function canRunAgent(capability: RuntimeCapability): boolean {
   return capability === "connected";
 }
+
+/** Re-export matrix helpers for callers that import from this module. */
+export { deriveMatrix, assertCan, fixLabel } from "./capability";
+export type { CapabilityMatrix, CapId, Capability } from "./capability";
