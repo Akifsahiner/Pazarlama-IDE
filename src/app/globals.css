@@ -7,20 +7,20 @@
    ========================================================================= */
 
 :root {
-  /* Surfaces */
-  --bg: #ffffff;
+  /* Surfaces — warm canvas handoff from hero */
+  --bg: #fffdfb;
   --surface: #ffffff;
-  --surface-2: #f6f8fa;
+  --surface-2: #faf6f0;
 
-  /* Ink */
-  --ink: #0b1117;
-  --ink-soft: #37383c;
-  --ink-2: #586273;
-  --ink-3: #98a1b0;
+  /* Ink — slightly warm for cohesion with landscape */
+  --ink: #1a1410;
+  --ink-soft: #3d3228;
+  --ink-2: #5c4a38;
+  --ink-3: #8a735c;
 
-  /* Hairlines */
-  --line: #e7eaee;
-  --line-2: #dbe0e6;
+  /* Hairlines — warm cream dividers */
+  --line: #ebe4d8;
+  --line-2: #ddd2c4;
 
   /* Canvas hero — golden-hour landscape palette */
   --canvas-gold: #e8a04a;
@@ -33,6 +33,10 @@
   --canvas-glass: rgba(255, 252, 245, 0.14);
   --canvas-glass-border: rgba(255, 255, 255, 0.38);
   --canvas-shadow: rgba(36, 22, 10, 0.42);
+  --canvas-sky-soft: #e8f0f8;
+  --canvas-gold-soft: #fdf0dc;
+  --canvas-forest-soft: #e8f0eb;
+  --canvas-warm-line: rgba(200, 160, 110, 0.22);
 
   /* Sky Prism palette — vivid sky for white hero type */
   --sky-0: #5eb8f0;
@@ -111,7 +115,12 @@
   --color-green: var(--green);
   --color-green-soft: var(--green-soft);
   --color-green-ink: var(--green-ink);
-  --color-accent: var(--blue);
+  --color-accent: var(--canvas-amber);
+  --color-canvas-gold: var(--canvas-gold);
+  --color-canvas-amber: var(--canvas-amber);
+  --color-canvas-sky: var(--canvas-sky);
+  --color-canvas-forest: var(--canvas-forest);
+  --color-canvas-cream: var(--canvas-cream);
   --color-clue-blue: var(--clue-blue);
   --color-sky-0: var(--sky-0);
 
@@ -140,8 +149,8 @@ body {
 }
 
 ::selection {
-  background: var(--blue-soft);
-  color: var(--blue-ink);
+  background: var(--canvas-gold-soft);
+  color: var(--accent-ink);
 }
 
 /* ---- Typography helpers ---- */
@@ -156,7 +165,7 @@ body {
   letter-spacing: -0.025em;
 }
 
-/* ---- Eyebrow / tonal badge — real role-based triad, neutral by default ---- */
+/* ---- Eyebrow / tonal badge — warm glass pills ---- */
 .tonal-badge {
   display: inline-flex;
   align-items: center;
@@ -166,87 +175,102 @@ body {
   font-size: 0.8125rem;
   font-weight: 500;
   line-height: 1.2;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: rgba(255, 252, 245, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.82);
   color: var(--ink-2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow:
+    0 2px 12px rgba(36, 22, 10, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-/* Blue = primary / action */
+/* Sky = mountain distance / clarity */
 .tonal-badge-blue,
 .tonal-badge-ember {
-  background: var(--blue-soft);
-  border: 1px solid transparent;
-  color: var(--blue-ink);
+  background: rgba(220, 235, 248, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  color: #3a6288;
+  box-shadow:
+    0 2px 14px rgba(90, 142, 184, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
 }
 
-/* Orange = highlight / energy */
+/* Gold = energy / primary spark */
 .tonal-badge-orange {
-  background: var(--orange-soft);
-  border: 1px solid transparent;
-  color: var(--orange-ink);
+  background: rgba(253, 240, 220, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  color: var(--accent-ink);
+  box-shadow:
+    0 2px 14px rgba(232, 160, 74, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-/* Green = success / results */
+/* Forest = results / growth */
 .tonal-badge-green {
-  background: var(--green-soft);
-  border: 1px solid transparent;
-  color: var(--green-ink);
+  background: rgba(232, 240, 235, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  color: #2a5a40;
+  box-shadow:
+    0 2px 14px rgba(42, 74, 56, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
 }
 
-/* ---- Cards — hairline, no decorative shadow ---- */
-.surface-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-}
-
-.elevated-panel {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-}
-
-.product-panel-dark {
-  background: #0c1018;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-}
-
-/* ---- Vibrant, lively cards — soft gradients + colored depth ----
-   Use with purpose: blue primary, green = results, orange = rare spark.
-   Alternate vibrant cards with clean white .card-elevated for rhythm. */
+/* ---- Canvas glass cards — warm impasto palette over cream base ---- */
 .card-elevated {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  box-shadow: 0 16px 40px -24px rgba(11, 17, 23, 0.18);
+  background: rgba(255, 252, 245, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 20px;
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow:
+    0 20px 48px -20px rgba(36, 22, 10, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 .card-blue {
   position: relative;
-  background: linear-gradient(160deg, #eef4ff 0%, #dbe8ff 100%);
-  border: 1px solid rgba(45, 111, 240, 0.16);
-  border-radius: 16px;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 252, 245, 0.88) 0%,
+    rgba(220, 235, 248, 0.62) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 20px;
+  backdrop-filter: blur(20px) saturate(1.25);
+  -webkit-backdrop-filter: blur(20px) saturate(1.25);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 20px 40px -24px rgba(45, 111, 240, 0.35);
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 20px 44px -22px rgba(90, 142, 184, 0.22);
 }
 .card-green {
   position: relative;
-  background: linear-gradient(160deg, #effaf3 0%, #d6f1e0 100%);
-  border: 1px solid rgba(31, 157, 87, 0.16);
-  border-radius: 16px;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 252, 245, 0.88) 0%,
+    rgba(220, 240, 228, 0.62) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 20px;
+  backdrop-filter: blur(20px) saturate(1.25);
+  -webkit-backdrop-filter: blur(20px) saturate(1.25);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 20px 40px -24px rgba(31, 157, 87, 0.32);
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 20px 44px -22px rgba(42, 74, 56, 0.18);
 }
 .card-orange {
   position: relative;
-  background: linear-gradient(160deg, #fff4ec 0%, #ffe3cf 100%);
-  border: 1px solid rgba(232, 132, 58, 0.16);
-  border-radius: 16px;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 252, 245, 0.9) 0%,
+    rgba(253, 230, 195, 0.68) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  backdrop-filter: blur(20px) saturate(1.25);
+  -webkit-backdrop-filter: blur(20px) saturate(1.25);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 20px 40px -24px rgba(232, 132, 58, 0.32);
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 20px 44px -22px rgba(232, 160, 74, 0.24);
 }
 
 /* Subtle hover lift for interactive cards */
@@ -259,22 +283,49 @@ body {
   transform: translateY(-2px);
 }
 .card-elevated.card-hover:hover {
-  box-shadow: 0 22px 50px -22px rgba(11, 17, 23, 0.24);
+  box-shadow:
+    0 24px 56px -20px rgba(36, 22, 10, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 .card-blue.card-hover:hover {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 26px 52px -22px rgba(45, 111, 240, 0.42);
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 26px 52px -20px rgba(90, 142, 184, 0.28);
 }
 .card-green.card-hover:hover {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 26px 52px -22px rgba(31, 157, 87, 0.4);
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 26px 52px -20px rgba(42, 74, 56, 0.24);
 }
 .card-orange.card-hover:hover {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 26px 52px -22px rgba(232, 132, 58, 0.4);
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 26px 52px -20px rgba(232, 160, 74, 0.3);
+}
+
+.surface-card {
+  background: rgba(255, 252, 245, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.elevated-panel {
+  background: rgba(255, 252, 245, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 20px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.product-panel-dark {
+  background: #141008;
+  border: 1px solid rgba(255, 240, 210, 0.1);
+  border-radius: 20px;
+  box-shadow:
+    0 24px 64px rgba(36, 22, 10, 0.32),
+    inset 0 1px 0 rgba(255, 240, 210, 0.06);
 }
 
 .editorial-rule {
@@ -544,44 +595,103 @@ body {
   border-radius: inherit;
   background: linear-gradient(
     135deg,
-    rgba(45, 111, 240, 0.12) 0%,
-    rgba(255, 255, 255, 0.4) 32%,
-    rgba(232, 132, 58, 0.14) 58%,
-    rgba(31, 157, 87, 0.1) 82%,
-    rgba(45, 111, 240, 0.08) 100%
+    rgba(232, 160, 74, 0.18) 0%,
+    rgba(255, 255, 255, 0.55) 28%,
+    rgba(90, 142, 184, 0.12) 52%,
+    rgba(42, 74, 56, 0.1) 78%,
+    rgba(255, 210, 140, 0.16) 100%
   );
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
-/* ---- Tri-accent section washes + step cards ---- */
+/* ---- Canvas main — warm cream continuity from hero ---- */
+.canvas-main {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    var(--canvas-cream) 0%,
+    #fffbf7 6%,
+    #fffdfb 18%,
+    var(--bg) 100%
+  );
+}
+
+/* ---- Section atmosphere — subtle glass orbs echo hero ---- */
 .section-tint {
   position: relative;
+  overflow: hidden;
+}
+
+.section-tint::before,
+.section-tint::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: rgba(255, 252, 245, 0.08);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    0 8px 32px rgba(36, 22, 10, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.section-tint::before {
+  width: min(22vw, 180px);
+  height: min(22vw, 180px);
+  top: 8%;
+  right: 4%;
+  opacity: 0.45;
+}
+
+.section-tint::after {
+  width: min(14vw, 110px);
+  height: min(14vw, 110px);
+  bottom: 12%;
+  left: 6%;
+  opacity: 0.32;
+}
+
+.section-tint > * {
+  position: relative;
+  z-index: 1;
+}
+
+.section-tint--dual {
+  background:
+    radial-gradient(ellipse 70% 55% at 0% 20%, rgba(255, 220, 160, 0.22) 0%, transparent 58%),
+    radial-gradient(ellipse 65% 50% at 100% 30%, rgba(220, 235, 248, 0.28) 0%, transparent 55%),
+    linear-gradient(180deg, var(--canvas-cream) 0%, #fffdfb 100%);
 }
 
 .section-tint--tri {
   background:
-    radial-gradient(ellipse 62% 55% at 0% 12%, rgba(255, 235, 210, 0.88) 0%, transparent 58%),
-    radial-gradient(ellipse 58% 50% at 100% 18%, rgba(253, 238, 226, 0.92) 0%, transparent 55%),
-    radial-gradient(ellipse 55% 48% at 50% 100%, rgba(231, 246, 238, 0.85) 0%, transparent 52%),
-    #ffffff;
+    radial-gradient(ellipse 62% 55% at 0% 12%, rgba(255, 225, 180, 0.32) 0%, transparent 58%),
+    radial-gradient(ellipse 58% 50% at 100% 18%, rgba(253, 230, 195, 0.38) 0%, transparent 55%),
+    radial-gradient(ellipse 55% 48% at 50% 100%, rgba(220, 240, 228, 0.28) 0%, transparent 52%),
+    #fffdfb;
 }
 
 .section-tint--blue {
   background:
-    radial-gradient(ellipse 70% 60% at 0% 0%, rgba(234, 241, 254, 0.9) 0%, transparent 55%),
-    #ffffff;
+    radial-gradient(ellipse 70% 60% at 0% 0%, rgba(220, 235, 248, 0.45) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 90% 80%, rgba(255, 220, 160, 0.12) 0%, transparent 55%),
+    #fffdfb;
 }
 
 .section-tint--orange {
   background:
-    radial-gradient(ellipse 70% 60% at 100% 0%, rgba(253, 238, 226, 0.88) 0%, transparent 55%),
-    #ffffff;
+    radial-gradient(ellipse 70% 60% at 100% 0%, rgba(253, 230, 195, 0.48) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 8% 85%, rgba(220, 235, 248, 0.1) 0%, transparent 55%),
+    #fffdfb;
 }
 
 .section-tint--green {
   background:
-    radial-gradient(ellipse 70% 60% at 50% 100%, rgba(231, 246, 238, 0.9) 0%, transparent 55%),
-    #ffffff;
+    radial-gradient(ellipse 70% 60% at 50% 100%, rgba(220, 240, 228, 0.42) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 92% 10%, rgba(255, 220, 160, 0.14) 0%, transparent 55%),
+    #fffdfb;
 }
 
 .step-icon {
@@ -595,21 +705,30 @@ body {
 }
 
 .step-icon--blue {
-  background: var(--blue-soft);
-  color: var(--blue-ink);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  background: rgba(220, 235, 248, 0.72);
+  color: #3a6288;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 4px 14px rgba(90, 142, 184, 0.12);
 }
 
 .step-icon--orange {
-  background: var(--orange-soft);
-  color: var(--orange-ink);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  background: rgba(253, 240, 220, 0.78);
+  color: var(--accent-ink);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 4px 14px rgba(232, 160, 74, 0.14);
 }
 
 .step-icon--green {
-  background: var(--green-soft);
-  color: var(--green-ink);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  background: rgba(232, 240, 235, 0.78);
+  color: #2a5a40;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 4px 14px rgba(42, 74, 56, 0.1);
 }
 
 .hero-headline {
@@ -859,28 +978,129 @@ body {
   font-size: 0.8125rem;
 }
 
-/* ---- Glass cards ---- */
+/* ---- Glass cards — warm canvas modernity ---- */
 .glass-card {
   border-radius: 28px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.52));
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 252, 245, 0.82) 0%,
+    rgba(255, 255, 255, 0.62) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.78);
   box-shadow:
-    0 24px 70px rgba(54, 99, 150, 0.13),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(24px);
+    0 24px 70px rgba(36, 22, 10, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
 }
 
 .feature-card {
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid rgba(210, 225, 245, 0.72);
-  box-shadow: 0 18px 48px rgba(40, 90, 150, 0.08);
+  background: rgba(255, 252, 245, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow:
+    0 18px 48px rgba(36, 22, 10, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .feature-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 22px 52px rgba(40, 90, 150, 0.12);
+  box-shadow:
+    0 22px 52px rgba(36, 22, 10, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+/* Canvas glass panel — quote / highlight blocks */
+.canvas-glass-panel {
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  background: linear-gradient(
+    165deg,
+    rgba(255, 252, 245, 0.88) 0%,
+    rgba(255, 255, 255, 0.68) 100%
+  );
+  backdrop-filter: blur(28px) saturate(1.3);
+  -webkit-backdrop-filter: blur(28px) saturate(1.3);
+  box-shadow:
+    0 28px 90px rgba(36, 22, 10, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+}
+
+/* FAQ glass accordion rows */
+.faq-item {
+  border-color: var(--canvas-warm-line) !important;
+}
+
+.faq-trigger[data-state="open"] .faq-chevron {
+  color: var(--canvas-amber);
+}
+
+/* Warm footer CTA band */
+.canvas-footer-cta {
+  border-top-color: var(--canvas-warm-line);
+  background:
+    radial-gradient(60% 90% at 50% -10%, rgba(232, 160, 74, 0.2) 0%, transparent 60%),
+    radial-gradient(40% 80% at 12% 110%, rgba(232, 132, 58, 0.14) 0%, transparent 60%),
+    radial-gradient(40% 80% at 90% 110%, rgba(42, 74, 56, 0.12) 0%, transparent 60%),
+    linear-gradient(180deg, #faf6f0 0%, #f5ede2 100%);
+}
+
+.canvas-footer-cta::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  width: min(18vw, 140px);
+  height: min(18vw, 140px);
+  top: 12%;
+  right: 8%;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: rgba(255, 252, 245, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  opacity: 0.5;
+}
+
+/* Warm footer */
+.canvas-footer {
+  border-top: 1px solid var(--canvas-warm-line);
+  background: linear-gradient(180deg, #f5ede2 0%, #f0e8da 100%);
+}
+
+/* Scrolled header — warm glass */
+.header-scrolled {
+  border-bottom-color: var(--canvas-warm-line) !important;
+  background: rgba(255, 251, 247, 0.88) !important;
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: 0 4px 24px rgba(36, 22, 10, 0.06);
+}
+
+/* Canvas accent CTA pill (in-section) */
+.canvas-cta-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 10px;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #ffffff;
+  background: linear-gradient(180deg, #f5b85a 0%, #d4822a 46%, #a86218 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.32) inset,
+    0 8px 24px rgba(200, 120, 40, 0.32);
+}
+
+/* Analytics / progress bars — warm canvas */
+.canvas-bar {
+  background: linear-gradient(90deg, var(--canvas-amber) 0%, var(--canvas-gold) 100%);
+}
+
+.canvas-stat-value {
+  color: var(--canvas-amber);
 }
 
 /* ---- Primary CTA — blue, restrained ---- */

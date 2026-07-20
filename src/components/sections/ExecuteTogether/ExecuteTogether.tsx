@@ -25,7 +25,7 @@ export function ExecuteTogether() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
         <ScrollReveal delay={0.05}>
-          <div className="product-panel-dark flex h-full flex-col p-6 lg:p-8">
+          <div className="product-panel-dark flex h-full flex-col rounded-[20px] p-6 lg:p-8">
             <DiffViewer />
           </div>
         </ScrollReveal>

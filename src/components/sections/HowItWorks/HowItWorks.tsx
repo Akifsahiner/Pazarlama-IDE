@@ -38,9 +38,9 @@ const iconByAccent = {
 } as const;
 
 const stepLabelByAccent = {
-  blue: "text-blue-ink",
-  orange: "text-orange-ink",
-  green: "text-green-ink",
+  blue: "text-[#3a6288]",
+  orange: "text-[#7a4518]",
+  green: "text-[#2a5a40]",
 } as const;
 
 export function HowItWorks() {

@@ -26,14 +26,14 @@ export function FAQ() {
               <Accordion.Item
                 key={item.question}
                 value={`item-${index}`}
-                className="border-t border-line last:border-b"
+                className="faq-item border-t last:border-b"
               >
                 <Accordion.Header>
-                  <Accordion.Trigger className="group flex w-full items-center justify-between gap-4 py-5 text-left">
+                  <Accordion.Trigger className="faq-trigger group flex w-full items-center justify-between gap-4 py-5 text-left">
                     <span className="text-base font-medium tracking-tight text-ink">
                       {item.question}
                     </span>
-                    <ChevronDown className="size-5 shrink-0 text-ink-3 transition-transform duration-200 group-data-[state=open]:rotate-180 group-data-[state=open]:text-blue" />
+                    <ChevronDown className="faq-chevron size-5 shrink-0 text-ink-3 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                   </Accordion.Trigger>
                 </Accordion.Header>
                 <Accordion.Content className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">

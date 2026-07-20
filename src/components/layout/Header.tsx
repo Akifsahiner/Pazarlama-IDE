@@ -64,7 +64,7 @@ export function Header() {
     <motion.header
       className={`z-50 flex w-full transition-all duration-300 ${
         scrolled
-          ? "fixed top-0 border-b border-line bg-surface/95 py-3 backdrop-blur-md"
+          ? "header-scrolled fixed top-0 border-b py-3"
           : "absolute bg-transparent pt-4"
       }`}
       variants={headerFade}

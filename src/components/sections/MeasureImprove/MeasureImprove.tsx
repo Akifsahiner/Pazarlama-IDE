@@ -32,7 +32,7 @@ export function MeasureImprove() {
                   <div className="flex items-baseline gap-3">
                     <NumberCounter
                       value={stat.value}
-                      className="font-serif text-5xl font-medium tracking-tight text-green lg:text-6xl"
+                      className="canvas-stat-value font-serif text-5xl font-medium tracking-tight lg:text-6xl"
                     />
                     <span className="text-lg font-normal text-ink-3 lg:text-xl">
                       {stat.label}

@@ -9,14 +9,7 @@ export function FooterCTA() {
 
   return (
     <div
-      className="relative overflow-hidden border-t border-line bg-surface-2"
-      style={{
-        backgroundImage: [
-          "radial-gradient(60% 90% at 50% -10%, rgba(232,160,74,0.18) 0%, transparent 60%)",
-          "radial-gradient(40% 80% at 12% 110%, rgba(232,132,58,0.12) 0%, transparent 60%)",
-          "radial-gradient(40% 80% at 90% 110%, rgba(42,74,56,0.10) 0%, transparent 60%)",
-        ].join(", "),
-      }}
+      className="canvas-footer-cta relative overflow-hidden border-t"
     >
       <SectionContainer>
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-7 text-center">

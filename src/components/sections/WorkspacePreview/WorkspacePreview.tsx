@@ -31,8 +31,8 @@ function SnapshotCard() {
 }
 
 function readinessColor(score: number) {
-  if (score >= 70) return "var(--green)";
-  if (score >= 45) return "var(--orange)";
+  if (score >= 70) return "var(--canvas-forest)";
+  if (score >= 45) return "var(--canvas-amber)";
   return "var(--ink-3)";
 }
 
@@ -49,7 +49,7 @@ function ReadinessCard() {
               <span className="text-xs text-ink-2">{item.label}</span>
               <span className="font-mono text-[10px] text-ink-3">{item.score}</span>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/60">
+            <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(255,252,245,0.65)]">
               <div
                 className="h-full rounded-full"
                 style={{
@@ -82,7 +82,11 @@ export function WorkspacePreview() {
       </ScrollReveal>
 
       <ScrollReveal delay={0.1}>
-        <IDEWindow showThemePicker={false} />
+        <div className="product-frame">
+          <div className="product-frame__inner">
+            <IDEWindow showThemePicker={false} />
+          </div>
+        </div>
       </ScrollReveal>
 
       <ScrollReveal delay={0.15} className="mt-8">
