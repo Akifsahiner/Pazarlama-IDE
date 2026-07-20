@@ -60,39 +60,46 @@ export function HowItWorks() {
         />
       </ScrollReveal>
 
-      <motion.ol
-        className="mx-auto flex max-w-3xl flex-col gap-4"
-        variants={staggerContainer}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-80px" }}
-      >
-        {steps.map((step, index) => {
-          const Icon = iconMap[step.icon];
-          return (
-            <motion.li
-              key={step.title}
-              variants={reducedMotion ? undefined : cardReveal}
-              className={`${cardByAccent[step.accent]} card-hover flex items-start gap-4 p-5 md:p-6`}
-            >
-              <span className={iconByAccent[step.accent]}>
-                {Icon ? <Icon className="size-5" aria-hidden="true" /> : null}
-              </span>
-              <div>
-                <p
-                  className={`text-[13px] font-semibold tracking-[0.08em] uppercase ${stepLabelByAccent[step.accent]}`}
-                >
-                  Step {index + 1}
-                </p>
-                <h3 className="mt-1 text-[17px] font-semibold tracking-[-0.02em] text-ink md:text-[18px]">
-                  {step.title}
-                </h3>
-                <p className="mt-1.5 text-[15px] leading-relaxed text-ink-2">{step.description}</p>
-              </div>
-            </motion.li>
-          );
-        })}
-      </motion.ol>
+      <div className="relative mx-auto max-w-3xl pl-8">
+        <div className="canvas-path-line" aria-hidden="true" />
+
+        <motion.ol
+          className="flex flex-col gap-4"
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-80px" }}
+        >
+          {steps.map((step, index) => {
+            const Icon = iconMap[step.icon];
+            return (
+              <motion.li
+                key={step.title}
+                variants={reducedMotion ? undefined : cardReveal}
+                className="relative"
+              >
+                <span className="canvas-path-marker" aria-hidden="true" />
+                <div className={`${cardByAccent[step.accent]} card-hover flex items-start gap-4 p-5 md:p-6`}>
+                  <span className={iconByAccent[step.accent]}>
+                    {Icon ? <Icon className="size-5" aria-hidden="true" /> : null}
+                  </span>
+                  <div>
+                    <p
+                      className={`text-[13px] font-semibold tracking-[0.08em] uppercase ${stepLabelByAccent[step.accent]}`}
+                    >
+                      Step {index + 1}
+                    </p>
+                    <h3 className="mt-1 text-[17px] font-semibold tracking-[-0.02em] text-ink md:text-[18px]">
+                      {step.title}
+                    </h3>
+                    <p className="mt-1.5 text-[15px] leading-relaxed text-ink-2">{step.description}</p>
+                  </div>
+                </div>
+              </motion.li>
+            );
+          })}
+        </motion.ol>
+      </div>
     </SectionContainer>
   );
 }

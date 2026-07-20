@@ -21,23 +21,23 @@ export function FAQ() {
       </ScrollReveal>
       <ScrollReveal>
         <div className="mx-auto max-w-3xl">
-          <Accordion.Root type="single" collapsible className="flex flex-col">
+          <Accordion.Root type="single" collapsible className="flex flex-col gap-2">
             {sections.faq.items.map((item, index) => (
               <Accordion.Item
                 key={item.question}
                 value={`item-${index}`}
-                className="border-t border-line last:border-b"
+                className="faq-glass-item"
               >
                 <Accordion.Header>
-                  <Accordion.Trigger className="group flex w-full items-center justify-between gap-4 py-5 text-left">
+                  <Accordion.Trigger className="group flex w-full items-center justify-between gap-4 px-5 py-4 text-left">
                     <span className="text-base font-medium tracking-tight text-ink">
                       {item.question}
                     </span>
-                    <ChevronDown className="size-5 shrink-0 text-ink-3 transition-transform duration-200 group-data-[state=open]:rotate-180 group-data-[state=open]:text-blue" />
+                    <ChevronDown className="faq-chevron-open size-5 shrink-0 text-ink-3 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                   </Accordion.Trigger>
                 </Accordion.Header>
                 <Accordion.Content className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                  <p className="max-w-[616px] pb-5 text-sm leading-relaxed text-ink-2">
+                  <p className="max-w-[616px] px-5 pb-4 text-sm leading-relaxed text-ink-2">
                     {item.answer}
                   </p>
                 </Accordion.Content>

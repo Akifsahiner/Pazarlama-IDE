@@ -47,15 +47,14 @@ function ReadinessCard() {
           <div key={item.label} className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <span className="text-xs text-ink-2">{item.label}</span>
-              <span className="font-mono text-[10px] text-ink-3">{item.score}</span>
+              <span className="font-mono text-[10px]" style={{ color: readinessColor(item.score) }}>
+                {item.score}
+              </span>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/60">
+            <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(255,252,245,0.65)]">
               <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${item.score}%`,
-                  backgroundColor: readinessColor(item.score),
-                }}
+                className="canvas-brush-bar h-full rounded-full"
+                style={{ width: `${item.score}%` }}
               />
             </div>
           </div>
@@ -82,7 +81,12 @@ export function WorkspacePreview() {
       </ScrollReveal>
 
       <ScrollReveal delay={0.1}>
-        <IDEWindow showThemePicker={false} />
+        <div className="product-frame">
+          <div className="product-frame__glow" aria-hidden="true" />
+          <div className="product-frame__inner">
+            <IDEWindow showThemePicker={false} />
+          </div>
+        </div>
       </ScrollReveal>
 
       <ScrollReveal delay={0.15} className="mt-8">

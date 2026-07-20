@@ -15,7 +15,7 @@ export default function Home() {
     <>
       <Header />
       <Hero />
-      <main className="bg-bg">
+      <main className="canvas-main">
         <PostHeroBridge />
         <FirstRunFunnel />
         <HowItWorks />

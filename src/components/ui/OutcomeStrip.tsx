@@ -9,7 +9,7 @@ export function OutcomeStrip() {
   return (
     <SectionContainer className="relative z-10 pt-14 pb-16 md:pt-16 md:pb-20 lg:pt-20 lg:pb-24">
       <ScrollReveal>
-        <div className="outcome-panel mx-auto max-w-4xl rounded-[28px] border border-white/80 bg-white/76 px-7 py-9 shadow-[0_28px_90px_rgba(54,99,150,0.1),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-xl md:px-11 md:py-11">
+        <div className="outcome-panel canvas-glass-panel mx-auto max-w-4xl px-7 py-9 md:px-11 md:py-11">
           <p className="mx-auto max-w-3xl text-center font-serif text-[26px] leading-[1.35] font-medium tracking-[-0.02em] text-ink md:text-[32px] lg:text-[34px]">
             {lead}
             {emphasis && (

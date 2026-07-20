@@ -25,14 +25,14 @@ export function MeasureImprove() {
 
       <div className="mx-auto flex max-w-6xl flex-col gap-10 lg:flex-row lg:gap-16">
         <div className="flex flex-1 flex-col justify-center">
-          <div className="flex flex-col divide-y divide-line">
+          <div className="flex flex-col divide-y divide-[var(--canvas-warm-line)]">
             {stats.map((stat) => (
               <ScrollReveal key={stat.label} delay={0.05}>
                 <div className="flex flex-col gap-1.5 py-6 first:pt-0 last:pb-0">
                   <div className="flex items-baseline gap-3">
                     <NumberCounter
                       value={stat.value}
-                      className="font-serif text-5xl font-medium tracking-tight text-green lg:text-6xl"
+                      className="canvas-stat-value font-serif text-5xl font-medium tracking-tight lg:text-6xl"
                     />
                     <span className="text-lg font-normal text-ink-3 lg:text-xl">
                       {stat.label}

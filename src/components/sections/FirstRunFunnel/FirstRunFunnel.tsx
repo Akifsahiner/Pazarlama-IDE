@@ -45,6 +45,8 @@ export function FirstRunFunnel() {
         />
       </ScrollReveal>
 
+      <div className="canvas-path-ribbon" aria-hidden="true" />
+
       <motion.ol
         className="mx-auto grid max-w-4xl gap-3 sm:grid-cols-2"
         variants={staggerContainer}
@@ -64,10 +66,10 @@ export function FirstRunFunnel() {
                 {Icon ? <Icon className="size-5" aria-hidden="true" /> : null}
               </span>
               <div>
-                <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-ink-3">
+                <span className="canvas-minute-pill">
                   Minute {index === 0 ? "1–5" : index === 1 ? "5–10" : index === 2 ? "10–20" : "20–60"}
-                </p>
-                <h3 className="mt-0.5 text-[16px] font-semibold tracking-[-0.02em] text-ink">
+                </span>
+                <h3 className="mt-2 text-[16px] font-semibold tracking-[-0.02em] text-ink">
                   {step.title}
                 </h3>
                 <p className="mt-1 text-[14px] leading-relaxed text-ink-2">{step.description}</p>
