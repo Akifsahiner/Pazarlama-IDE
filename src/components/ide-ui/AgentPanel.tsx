@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { heroAgentCopy } from "@/lib/tokens";
 import type { HeroIDEDemoState } from "@/components/ide-ui/useHeroIDEDemo";
 import type { TimelinePreset } from "@/lib/timeline-ide-presets";
@@ -11,11 +11,11 @@ type AgentPanelProps = {
   theme: IDETheme;
   demo?: HeroIDEDemoState | null;
   preset?: TimelinePreset | null;
+  onApprove?: () => void;
 };
 
-export function AgentPanel({ theme, demo, preset }: AgentPanelProps) {
+export function AgentPanel({ theme, demo, preset, onApprove }: AgentPanelProps) {
   const isGlass = theme.blur !== "0px";
-  const interactive = Boolean(demo) && !preset;
   const approved = demo?.phase === "approved";
   const approving = demo?.phase === "approving";
   const messages =
@@ -25,6 +25,14 @@ export function AgentPanel({ theme, demo, preset }: AgentPanelProps) {
       { id: "user-1", role: "user" as const, text: heroAgentCopy.command },
       { id: "agent-1", role: "agent" as const, text: heroAgentCopy.response },
     ] as const);
+
+  const handleApprove = () => {
+    if (onApprove) {
+      onApprove();
+      return;
+    }
+    demo?.approve();
+  };
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
@@ -52,7 +60,7 @@ export function AgentPanel({ theme, demo, preset }: AgentPanelProps) {
           ))}
         </AnimatePresence>
 
-        {interactive && demo?.isTyping && (
+        {demo?.isTyping && (
           <motion.div
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -68,13 +76,18 @@ export function AgentPanel({ theme, demo, preset }: AgentPanelProps) {
         )}
       </div>
 
-      {!preset && (
-        <div className="flex flex-col gap-1.5">
+      {!preset && (onApprove || demo) && (
+        <div className="relative z-[3] flex flex-col gap-1.5">
           <button
             type="button"
             disabled={approving}
-            onClick={() => demo?.approve()}
-            className={`w-full cursor-pointer rounded-lg py-1.5 text-[10px] font-semibold text-white shadow-md transition-transform ${
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleApprove();
+            }}
+            className={`relative z-[3] w-full cursor-pointer rounded-lg py-2 text-[10px] font-semibold text-white shadow-md transition-transform touch-manipulation ${
               approved
                 ? "bg-gradient-to-b from-[#1f9d57] to-[#157a41]"
                 : approving

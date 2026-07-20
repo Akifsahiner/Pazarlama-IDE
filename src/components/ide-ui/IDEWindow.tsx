@@ -13,13 +13,15 @@ import { CanvasPanel } from "./CanvasPanel";
 import { AgentPanel } from "./AgentPanel";
 import { ActivityBar } from "./ActivityBar";
 import { IDEThemePicker } from "./IDEThemePicker";
-import { useHeroIDEDemo } from "./useHeroIDEDemo";
+import { useHeroIDEDemo, type HeroIDEDemoState } from "./useHeroIDEDemo";
 import type { TimelinePreset } from "@/lib/timeline-ide-presets";
 
 type IDEWindowProps = {
   showThemePicker?: boolean;
   initialTheme?: IDEThemeId;
-  /** Hero landing demo — Approve plan triggers scripted UI sequence */
+  /** External demo state (hero mockup owns the hook) */
+  demo?: HeroIDEDemoState;
+  /** Legacy: spawn internal demo when true and demo prop omitted */
   interactive?: boolean;
   /** Preset-driven view for timeline/workbench sections */
   preset?: TimelinePreset | null;
@@ -28,18 +30,21 @@ type IDEWindowProps = {
 export function IDEWindow({
   showThemePicker = true,
   initialTheme = defaultIDETheme,
+  demo: demoProp,
   interactive = false,
   preset = null,
 }: IDEWindowProps) {
   const [themeId, setThemeId] = useState<IDEThemeId>(initialTheme);
   const theme: IDETheme = ideThemes[themeId];
-  const demo = useHeroIDEDemo(interactive && !preset);
+  const internalDemo = useHeroIDEDemo(interactive && !preset && demoProp === undefined);
+  const demo = demoProp ?? (interactive && !preset ? internalDemo : null);
+  const isHeroDemo = Boolean(demoProp ?? (interactive && !preset));
 
   return (
     <div className="ide-shell flex w-full flex-col">
       <div className={`ide-wallpaper ${theme.wallpaperClass}`} aria-hidden="true" />
 
-      <div className="relative flex min-h-[400px] flex-col">
+      <div className="ide-shell__content relative z-[2] flex min-h-[400px] flex-col">
         <IDETitleBar theme={theme} />
 
         {showThemePicker && (
@@ -69,14 +74,19 @@ export function IDEWindow({
 
           <div
             className={`ide-glass-panel hidden min-h-[280px] border-l border-white/6 ${
-              interactive && !preset ? "md:block" : "lg:block"
+              isHeroDemo ? "md:block" : "lg:block"
             }`}
             style={{
               background: theme.agentBg,
               backdropFilter: theme.blur !== "0px" ? `blur(${theme.blur})` : undefined,
             }}
           >
-            <AgentPanel theme={theme} demo={preset ? null : demo} preset={preset} />
+            <AgentPanel
+              theme={theme}
+              demo={preset ? null : demo}
+              preset={preset}
+              onApprove={isHeroDemo && demo ? demo.approve : undefined}
+            />
           </div>
         </div>
 

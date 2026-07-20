@@ -2,9 +2,11 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { IDEWindow } from "@/components/ide-ui/IDEWindow";
+import { useHeroIDEDemo } from "@/components/ide-ui/useHeroIDEDemo";
 
 export function HeroMockup() {
   const reducedMotion = useReducedMotion() ?? false;
+  const demo = useHeroIDEDemo(true);
 
   return (
     <div className="hero-mockup-zone w-full">
@@ -24,7 +26,7 @@ export function HeroMockup() {
               : { duration: 7, ease: "easeInOut", repeat: Infinity, delay: 1.1 }
           }
         >
-          <IDEWindow showThemePicker={false} interactive />
+          <IDEWindow showThemePicker={false} demo={demo} />
         </motion.div>
       </motion.div>
 

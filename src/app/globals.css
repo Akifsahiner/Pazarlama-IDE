@@ -614,7 +614,8 @@ body {
 
 .hero-mockup-zone {
   position: relative;
-  z-index: 45;
+  z-index: 50;
+  isolation: isolate;
   pointer-events: auto;
 }
 
@@ -647,6 +648,7 @@ body {
   z-index: 8;
   margin-top: -48px;
   padding-top: 160px;
+  pointer-events: none;
 }
 
 .hero-to-canvas__wash {
@@ -1036,6 +1038,7 @@ body {
   position: absolute;
   inset: -72px -80px -56px;
   z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(circle at 20% 72%, rgba(255, 200, 120, 0.32), transparent 44%),
     radial-gradient(circle at 80% 58%, rgba(255, 180, 90, 0.28), transparent 42%),
@@ -1307,6 +1310,8 @@ body {
 .ide-wallpaper {
   position: absolute;
   inset: 0;
+  z-index: 0;
+  pointer-events: none;
   background-size: cover;
   background-position: center;
 }
