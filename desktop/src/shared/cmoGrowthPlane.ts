@@ -30,6 +30,7 @@ import {
 import { resolveTodayWhy } from "./cmoCommandSurface";
 import { inferIntegrateRoute } from "./assetTarget";
 import { buildMechanismAntiPatternRedList } from "./cmoGrowthEngine";
+import { migrateEvidenceStringsToRefs } from "./migrateEvidenceStringsToRefs";
 import { getMechanismRecord, type GrowthMechanismId } from "./cmoGrowthMechanismKnowledge";
 import type { MarketingProfile, Persona, ProjectProfile } from "./types";
 
@@ -71,6 +72,8 @@ export interface BindingBottleneck {
   headline: string;
   rationale: string[];
   evidence: string[];
+  /** Part 6 — structured evidence refs (optional v2). */
+  evidence_refs?: import("./productUnderstandingInput").EvidenceRef[];
 }
 
 export interface RedListItem {
@@ -928,7 +931,11 @@ export function attachTodayMove(
 export function buildGrowthControlPlane(input: GrowthPlaneInput): GrowthControlPlane {
   const signals = detectPlaneSignals(input);
   const equation = buildGrowthEquation(input, signals);
-  const binding = resolveBindingBottleneck(equation, signals, input);
+  const bindingRaw = resolveBindingBottleneck(equation, signals, input);
+  const binding = {
+    ...bindingRaw,
+    evidence_refs: migrateEvidenceStringsToRefs(bindingRaw.evidence),
+  };
   const thesis = input.thesis;
   const thesis_id = thesis?.id ?? "landing_conversion";
   const alignment = checkThesisAlignment(thesis, binding);

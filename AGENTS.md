@@ -18,7 +18,8 @@ When the user asks about "the app", they mean **`desktop/`** unless they specify
 **Canonical strategy:** [`PRODUCT_NORTH_STAR.md`](PRODUCT_NORTH_STAR.md)  
 **P0 intake spec:** [`CMO_INTAKE_SPEC.md`](CMO_INTAKE_SPEC.md)  
 **P17 growth engine:** [`CMO_GROWTH_ENGINE_SPEC.md`](CMO_GROWTH_ENGINE_SPEC.md)  
-**Revenue plane (P16):** [`CMO_REVENUE_PLANE_SPEC.md`](CMO_REVENUE_PLANE_SPEC.md)
+**Revenue plane (P16):** [`CMO_REVENUE_PLANE_SPEC.md`](CMO_REVENUE_PLANE_SPEC.md)  
+**Product understanding (Part 6):** [`PRODUCT_UNDERSTANDING_SPEC.md`](PRODUCT_UNDERSTANDING_SPEC.md)
 
 Marketing IDE = **Software CMO** (not a checklist or SEO sidebar). Diagnose → channel thesis → daily/weekly ops with the user → ship in repo (Lane A) → prepare & direct human execution for social/ads/influencer (Lane B) → delegate briefs (Lane C) → pause marketing and resolve product bottlenecks (Lane D) → measure revenue and attribution (P16) → pivot forever. Do **not** shrink features to commodity meta-tag work; do **not** auto-post to social. Every feature must pass the CMO checklist in that doc.
 
@@ -27,6 +28,8 @@ Marketing IDE = **Software CMO** (not a checklist or SEO sidebar). Diagnose → 
 ```
 Open project → scan → reveal → plan (AI or preview outline) → run task → diff → apply → optional browser verify
 ```
+
+Part 6 adds **sourced product understanding** on the scan/intake path — see [`PRODUCT_UNDERSTANDING_SPEC.md`](PRODUCT_UNDERSTANDING_SPEC.md). Every thesis and critical decision should show evidence via Why panel.
 
 Do not break: local-first files, honest metrics (no fake GA4 rows), offline preview labeling (`planPreviewMode`).
 

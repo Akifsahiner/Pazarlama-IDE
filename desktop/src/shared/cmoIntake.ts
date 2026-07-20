@@ -11,6 +11,8 @@ import {
 import { applyMechanismToChannelThesis } from "./cmoGrowthEngine";
 import { capWeek1Priorities } from "./cmoExecutionBind";
 import type { GrowthMechanismId } from "./cmoGrowthMechanismKnowledge";
+import { buildProductUnderstanding } from "./productUnderstandingPolicy";
+import { attachIntakeUnderstanding } from "./productUnderstandingIntakeBind";
 import type {
   FounderFitProfile,
   GrowthNarrative,
@@ -65,6 +67,10 @@ export interface ChannelThesis {
   strategic_option_id?: StrategicOptionId;
   /** P13 — canonical story inherited by execution lanes. */
   narrative_one_liner?: string;
+  /** Part 6 — rationale bullets linked to claim ids. */
+  rationale_claim_ids?: string[];
+  /** Part 6 — deterministic thesis pick audit log. */
+  thesis_decision?: import("./productUnderstandingInput").ThesisDecisionLog;
 }
 
 /** P4 — prior-cycle context for continuous CMO replan. */
@@ -697,7 +703,7 @@ export function buildCmoIntake(input: CmoIntakeInput): ChannelThesis {
   const template = THESIS_TEMPLATES[id];
   const playbooks = BOTTLENECK_PLAYBOOKS[primary_bottleneck] ?? ["landing-conversion"];
 
-  return {
+  const thesis: ChannelThesis = {
     id,
     title: template.title,
     headline: template.headline,
@@ -719,6 +725,10 @@ export function buildCmoIntake(input: CmoIntakeInput): ChannelThesis {
     generated_at: new Date().toISOString(),
     draft: input.draft,
   };
+  const graph =
+    input.profile?.product_understanding ??
+    buildProductUnderstanding({ project: input.project, profile: input.profile });
+  return attachIntakeUnderstanding(thesis, input, graph);
 }
 
 export function buildFinalChannelThesis(

@@ -2,6 +2,11 @@
  * Patch MarketingProfile from a local project scan (profile v2 site facts).
  */
 import type { MarketingProfile, ProjectProfile } from "./types";
+import { extractScanGaps } from "./productUnderstandingFromScan";
+import { computeStrategicGaps } from "./productUnderstandingFromProfile";
+import { buildProductUnderstanding } from "./productUnderstandingPolicy";
+import { confirmationPromptFor } from "./productUnderstandingRegistry";
+import type { ConfirmationPrompt } from "./productUnderstandingInput";
 
 function blankProfile(): MarketingProfile {
   return {
@@ -77,18 +82,7 @@ export function profileFromProjectScan(
 ): MarketingProfile {
   const base = prev ?? blankProfile();
   const inferred = inferChannelsFromScan(project);
-  const gaps = (base.gaps ?? []).filter(
-    (gap) =>
-      gap !== "product.onboarding_missing" &&
-      gap !== "product.activation_event_missing" &&
-      !gap.startsWith("revenue."),
-  );
-  if (!project.hasAnalytics && !gaps.includes("tracking.ga4")) {
-    gaps.push("tracking.ga4");
-  }
-  if (!project.framework && !gaps.includes("stack.framework")) {
-    gaps.push("stack.framework");
-  }
+  const scanGaps = extractScanGaps(project);
   const hasSignupRoute = project.routes.some((route) =>
     /(login|signup|signin|register|activate)/i.test(route),
   );
@@ -96,22 +90,24 @@ export function profileFromProjectScan(
     /(onboard|welcome|setup|getting-started|first-run)/i.test(route),
   );
   if (hasSignupRoute && !hasOnboardingRoute) {
-    gaps.push("product.onboarding_missing", "product.activation_event_missing");
+    if (!scanGaps.includes("product.onboarding_missing")) {
+      scanGaps.push("product.onboarding_missing", "product.activation_event_missing");
+    }
   }
 
   const routeJoin = project.routes.join(" ").toLowerCase();
   const hasShareSurface = /invite|share|refer|collaborat|embed/.test(routeJoin);
   const hasTemplateSurface = project.routes.some((r) => /template|gallery|marketplace|community/.test(r));
   const hasApiSurface = project.routes.some((r) => /api|webhook|integration/.test(r));
-  if (hasSignupRoute && !hasShareSurface) gaps.push("growth.share_surface_missing");
+  if (hasSignupRoute && !hasShareSurface) scanGaps.push("growth.share_surface_missing");
   if (/saas|workspace|platform|horizontal/.test(`${base.business_model} ${base.category}`.toLowerCase()) && !hasTemplateSurface) {
-    gaps.push("growth.template_surface_missing");
+    scanGaps.push("growth.template_surface_missing");
   }
   if (/developer|api|sdk|devtool/.test(`${project.readmeSummary ?? ""} ${project.framework ?? ""}`.toLowerCase()) && !hasApiSurface) {
-    gaps.push("growth.integration_adjacency_unknown");
+    scanGaps.push("growth.integration_adjacency_unknown");
   }
   if (/design|figma|plugin|widget|remix|community file/.test(project.readmeSummary ?? "") && !hasTemplateSurface) {
-    gaps.push("growth.artifact_publish_missing");
+    scanGaps.push("growth.artifact_publish_missing");
   }
 
   const hasPricingRoute = project.routes.some((route) => /pricing/i.test(route));
@@ -127,11 +123,17 @@ export function profileFromProjectScan(
     .toLowerCase();
   const hasBillingDep = /stripe|paddle|lemon/.test(billingHint);
 
-  if (!hasPricingRoute) gaps.push("revenue.pricing_page_missing");
-  if (!hasCheckoutRoute && !hasBillingDep) gaps.push("revenue.checkout_missing");
-  if (!hasBillingDep && !hasCheckoutRoute) gaps.push("revenue.billing_integration_missing");
+  if (!hasPricingRoute && !scanGaps.includes("revenue.pricing_page_missing")) {
+    scanGaps.push("revenue.pricing_page_missing");
+  }
+  if (!hasCheckoutRoute && !hasBillingDep && !scanGaps.includes("revenue.checkout_missing")) {
+    scanGaps.push("revenue.checkout_missing");
+  }
+  if (!hasBillingDep && !hasCheckoutRoute && !scanGaps.includes("revenue.billing_integration_missing")) {
+    scanGaps.push("revenue.billing_integration_missing");
+  }
   if (!project.hasAnalytics && (hasPricingRoute || hasSignupRoute)) {
-    gaps.push("revenue.funnel_events_missing");
+    scanGaps.push("revenue.funnel_events_missing");
   }
 
   const channels = Array.from(
@@ -141,7 +143,7 @@ export function profileFromProjectScan(
     new Set([...(base.available_assets ?? []), ...inferred.assets]),
   );
 
-  return {
+  const mergedBase = {
     ...base,
     product_name: base.product_name || project.name,
     product_description:
@@ -158,9 +160,25 @@ export function profileFromProjectScan(
     },
     tracking_flags: {
       analytics_detected: project.hasAnalytics,
-      ga4: project.hasAnalytics ? "detected" : "missing",
+      ga4: project.hasAnalytics ? ("detected" as const) : ("missing" as const),
     },
-    gaps,
+  };
+  const strategicGaps = computeStrategicGaps({ ...mergedBase, gaps: [] });
+  const understanding = buildProductUnderstanding({ project, profile: mergedBase });
+  const confirmationQueue: ConfirmationPrompt[] = [];
+  for (const c of understanding?.claims ?? []) {
+    if (c.confidence === "needs_confirmation") {
+      confirmationQueue.push(confirmationPromptFor(c.dimension));
+    }
+  }
+
+  return {
+    ...mergedBase,
+    scan_gaps: Array.from(new Set(scanGaps)),
+    strategic_gaps: strategicGaps,
+    confirmation_queue: confirmationQueue,
+    product_understanding: understanding ?? undefined,
+    gaps: [...strategicGaps, ...scanGaps],
     last_updated: new Date().toISOString(),
     confidence_score: Math.min(
       1,

@@ -45,6 +45,10 @@ activation, founder scale readiness, or repo onboarding gaps make product the bi
 | `lane_a` / `lane_b` / `deprioritize` | Execution lanes |
 | `primary_playbook_ids` | Plan Studio alignment |
 | `signals` | Detected facts (audit trail) |
+| `rationale_claim_ids` | Part 6 — links rationale bullets to product claims |
+| `thesis_decision` | Part 6 — deterministic pick audit log |
+
+Part 6 binds intake to [`ProductUnderstandingGraph`](PRODUCT_UNDERSTANDING_SPEC.md): each `signals` key should resolve to a `ProductClaim` with `EvidenceRef[]`. Unknown fields remain `missing` / `needs_confirmation` — never silent facts.
 
 Stored on `MarketingProfile.channel_thesis`.
 

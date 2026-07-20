@@ -60,6 +60,24 @@ export const marketingDecisionSchema = z.object({
   success_metric: z.object({ name: z.string(), target: z.string() }),
   when_to_reconsider: z.string().default(""),
   missing_info: z.array(z.string()).max(3).default([]),
+  claim_citations: z
+    .array(
+      z.object({
+        dimension: z.string(),
+        field: z.string().optional(),
+        confidence: z.enum(["measured", "assumption", "missing", "needs_confirmation"]),
+        evidence_refs: z.array(
+          z.object({
+            id: z.string(),
+            kind: z.string(),
+            label: z.string(),
+            ref: z.string(),
+            excerpt: z.string().optional(),
+          }),
+        ),
+      }),
+    )
+    .optional(),
 });
 
 export type MarketingDecision = z.infer<typeof marketingDecisionSchema>;

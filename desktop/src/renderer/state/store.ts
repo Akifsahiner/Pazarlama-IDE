@@ -207,6 +207,12 @@ import {
   persistSessionOutcomesLocal,
 } from "@renderer/state/quickStartWedgeHelpers";
 import { buildCmoIntake, buildFinalChannelThesis } from "@shared/cmoIntake";
+import { buildProductUnderstanding } from "@shared/productUnderstandingPolicy";
+import {
+  auditClaimFabrication,
+  hasBlockingFabrication,
+  blockingDimensions,
+} from "@shared/productUnderstandingFabrication";
 import type { ChannelThesis } from "@shared/cmoIntake";
 import { validateFounderFit } from "@shared/cmoFounderFit";
 import { synthesizeGrowthNarrative } from "@shared/cmoGrowthNarrative";
@@ -5073,10 +5079,17 @@ export const useApp = create<AppState>((set, get) => {
         profile,
         draft: true,
       });
+      const understanding =
+        profile.product_understanding ??
+        buildProductUnderstanding({ project, profile });
       track("cmo_intake", { thesis_id: thesis.id, verdict: thesis.verdict });
       set({
         channelThesis: thesis,
-        marketingProfile: { ...profile, channel_thesis: thesis },
+        marketingProfile: {
+          ...profile,
+          channel_thesis: thesis,
+          product_understanding: understanding ?? profile.product_understanding,
+        },
       });
       if (!isStrategicDecisionSealed(profile) && !profile.ops_cadence) {
         void get().updateMarketingProfile({ channel_thesis: thesis });
@@ -5232,6 +5245,24 @@ export const useApp = create<AppState>((set, get) => {
       const founderFit = marketingProfile?.founder_fit;
       const narrative = marketingProfile?.growth_narrative;
       if (!project || !marketingProfile || !decision || !founderFit || !narrative) return false;
+
+      const graph =
+        marketingProfile.product_understanding ??
+        buildProductUnderstanding({ project, profile: marketingProfile });
+      const fabAudits = auditClaimFabrication(graph, {
+        action: "seal",
+        url_only: project.source.kind === "url",
+      });
+      if (hasBlockingFabrication(fabAudits)) {
+        const dims = blockingDimensions(fabAudits).join(", ");
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: `Seal blocked — confirm or fill: ${dims}. Open Why panel on intake card for evidence gaps.`,
+        });
+        return false;
+      }
+
       const id = selectedId ?? decision.selected_id ?? decision.recommended_id;
       const sealed = sealStrategicDecisionCore(decision, id);
       if (!sealed.sealed_at) return false;

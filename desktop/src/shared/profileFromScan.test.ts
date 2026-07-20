@@ -44,6 +44,13 @@ describe("profileFromProjectScan", () => {
     );
     assert.ok(p.gaps?.includes("growth.share_surface_missing"));
     assert.ok(p.gaps?.includes("growth.template_surface_missing"));
+    assert.ok(p.scan_gaps?.includes("growth.share_surface_missing"));
+  });
+
+  it("Part 6 — builds product_understanding graph", () => {
+    const p = profileFromProjectScan(sample);
+    assert.ok(p.product_understanding?.claims.length);
+    assert.ok((p.scan_gaps?.length ?? 0) >= 0);
   });
 });
 

@@ -7,6 +7,7 @@ import { BOTTLENECK_LABELS } from "@shared/bottleneck";
 import { Card } from "@renderer/components/ui/Card";
 import { Button } from "@renderer/components/ui/Button";
 import { Badge } from "@renderer/components/ui/Badge";
+import { WhyPanel } from "@renderer/components/WhyPanel";
 
 const VERDICT_TONE: Record<
   ChannelThesis["verdict"],
@@ -119,6 +120,11 @@ export function CmoIntakeCard({
               </li>
             ))}
           </ul>
+
+          <WhyPanel
+            dimensions={["product_category", "site_structure", "business_model", "activation_event"]}
+            title="Why this thesis"
+          />
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div className="rounded-[var(--radius-md)] border border-line px-3 py-2">

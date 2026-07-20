@@ -22,6 +22,7 @@ import { Button } from "@renderer/components/ui/Button";
 import { Badge } from "@renderer/components/ui/Badge";
 import { CommandSurfaceGovernanceBanner } from "./CommandSurfaceGovernanceBanner";
 import { ReplanPreviewStrip } from "./ReplanPreviewStrip";
+import { BindingWhyChip } from "@renderer/components/WhyPanel";
 import { rollupBudgetActuals } from "@shared/cmoBudgetPlane";
 
 export interface GrowthCommandSurfaceProps {
@@ -227,6 +228,10 @@ export function GrowthCommandSurface({
         <CommandField label="Bugün" value={model.today} labelId={`${id}-today`} emphasis />
         <CommandField label="Neden" value={model.why} labelId={`${id}-why`} />
         <CommandField label="Done when" value={model.doneWhen} labelId={`${id}-done`} />
+      </div>
+
+      <div className="mt-3">
+        <BindingWhyChip />
       </div>
 
       {!plane.thesis_aligned && plane.alignment_note && (
