@@ -82,11 +82,11 @@ export function Header() {
             <a
               key={link.label}
               href={link.href}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              className={
                 onHero
-                  ? "border border-white/32 bg-white/16 text-white shadow-[0_2px_16px_rgba(8,48,96,0.18)] backdrop-blur-xl hover:bg-white/24 hover:text-white"
-                  : "border border-line/80 bg-surface/70 text-ink-2 backdrop-blur-sm hover:bg-surface hover:text-ink"
-              }`}
+                  ? "hero-nav-pill rounded-full px-4 py-2 text-sm font-medium transition-colors"
+                  : "rounded-full border border-line/80 bg-surface/70 px-4 py-2 text-sm font-medium text-ink-2 backdrop-blur-sm transition-colors hover:bg-surface hover:text-ink"
+              }
             >
               {link.label}
             </a>

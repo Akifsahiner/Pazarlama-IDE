@@ -12,9 +12,9 @@ export function FooterCTA() {
       className="relative overflow-hidden border-t border-line bg-surface-2"
       style={{
         backgroundImage: [
-          "radial-gradient(60% 90% at 50% -10%, rgba(45,111,240,0.16) 0%, transparent 60%)",
-          "radial-gradient(40% 80% at 12% 110%, rgba(232,132,58,0.10) 0%, transparent 60%)",
-          "radial-gradient(40% 80% at 90% 110%, rgba(31,157,87,0.10) 0%, transparent 60%)",
+          "radial-gradient(60% 90% at 50% -10%, rgba(232,160,74,0.18) 0%, transparent 60%)",
+          "radial-gradient(40% 80% at 12% 110%, rgba(232,132,58,0.12) 0%, transparent 60%)",
+          "radial-gradient(40% 80% at 90% 110%, rgba(42,74,56,0.10) 0%, transparent 60%)",
         ].join(", "),
       }}
     >

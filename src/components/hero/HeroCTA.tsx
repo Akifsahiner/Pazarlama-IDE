@@ -20,7 +20,7 @@ export function HeroCTA() {
         <PlatformDownloadButton id="download-button" animated className="shimmer-button--hero" />
         <a
           href="#first-run"
-          className="hero-secondary-cta rounded-full border border-white/34 bg-white/16 px-5 py-2.5 text-[14px] font-medium shadow-[0_4px_24px_rgba(8,48,96,0.14)] backdrop-blur-xl transition-colors hover:bg-white/24"
+          className="hero-secondary-cta rounded-full px-5 py-2.5 text-[14px] font-medium backdrop-blur-xl transition-colors"
         >
           {heroCopy.secondaryCta}
         </a>

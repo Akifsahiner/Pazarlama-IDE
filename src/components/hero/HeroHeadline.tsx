@@ -16,7 +16,7 @@ export function HeroHeadline() {
         transition={{ duration: 0.5, ease }}
       >
         <span className="eyebrow-glow eyebrow-glow--hero" aria-hidden="true" />
-        <span className="hero-eyebrow relative inline-flex items-center gap-2 rounded-full border border-white/36 bg-white/16 px-3.5 py-1.5 text-[12px] tracking-[0.14em] uppercase shadow-[0_4px_24px_rgba(8,48,96,0.16)] backdrop-blur-xl">
+        <span className="hero-eyebrow relative inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] tracking-[0.14em] uppercase backdrop-blur-xl">
           <span className="size-1.5 shrink-0 rounded-full bg-white/90 shadow-[0_0_8px_rgba(255,255,255,0.6)]" aria-hidden="true" />
           {heroCopy.eyebrow}
         </span>
@@ -31,7 +31,7 @@ export function HeroHeadline() {
         {heroCopy.headlineLine1}
         <br />
         {heroCopy.headlineLine2Before}{" "}
-        <span className="font-medium text-white">{heroCopy.accentWord}</span>
+        <span className="hero-headline-accent font-medium">{heroCopy.accentWord}</span>
       </motion.h1>
 
       <motion.p
