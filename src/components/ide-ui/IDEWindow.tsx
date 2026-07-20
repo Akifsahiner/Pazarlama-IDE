@@ -68,7 +68,9 @@ export function IDEWindow({
           </div>
 
           <div
-            className="ide-glass-panel hidden min-h-[280px] border-l border-white/6 lg:block"
+            className={`ide-glass-panel hidden min-h-[280px] border-l border-white/6 ${
+              interactive && !preset ? "md:block" : "lg:block"
+            }`}
             style={{
               background: theme.agentBg,
               backdropFilter: theme.blur !== "0px" ? `blur(${theme.blur})` : undefined,

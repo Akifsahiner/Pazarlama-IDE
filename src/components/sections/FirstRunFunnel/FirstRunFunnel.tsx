@@ -3,7 +3,6 @@
 import { useReducedMotion } from "framer-motion";
 import { IDEWindow } from "@/components/ide-ui/IDEWindow";
 import { SectionContainer } from "@/components/layout/SectionContainer";
-import { SectionHeading } from "@/components/layout/SectionHeading";
 import { ScrollReveal } from "@/components/layout/ScrollReveal";
 import { launchTimeline } from "@/lib/tokens";
 import { useScrollSection } from "@/lib/useScrollSection";
@@ -32,7 +31,7 @@ export function FirstRunFunnel() {
       id="first-run"
       fullBleed
       className="atelier-section atelier-section--timeline section-tint section-tint--dual"
-      innerClassName="pb-16 pt-6 lg:pb-24 lg:pt-10"
+      innerClassName="relative z-[1] pb-16 pt-20 lg:pb-24 lg:pt-28"
     >
       <div className="atelier-grid-lines" aria-hidden="true" />
       <div className="atelier-light atelier-light--sky" aria-hidden="true" />
@@ -40,17 +39,18 @@ export function FirstRunFunnel() {
       <div className="atelier-light atelier-light--moss" aria-hidden="true" />
 
       <ScrollReveal>
-        <SectionHeading
-          eyebrow={eyebrow}
-          title={title}
-          subtitle={subtitle}
-          accent="blue"
-          align="left"
-          className="mb-12 max-w-2xl lg:mb-14"
-        />
+        <div className="relative z-[1] mb-12 max-w-2xl lg:mb-14">
+          <p className="atelier-section-eyebrow font-mono mb-4">{eyebrow}</p>
+          <h2 className="section-headline text-4xl leading-[1.12] font-medium text-ink lg:text-5xl">
+            {title}
+          </h2>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink-2 md:text-lg">
+            {subtitle}
+          </p>
+        </div>
       </ScrollReveal>
 
-      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-14">
+      <div className="relative z-[1] grid items-start gap-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-14">
         <ol className="atelier-timeline relative">
           <div className="atelier-timeline__spine" aria-hidden="true" />
           <div

@@ -152,6 +152,8 @@ body {
 
 /* ---- Canvas utilities ---- */
 .canvas-main {
+  position: relative;
+  z-index: 10;
   background: linear-gradient(180deg, #f5f0e7 0%, #faf6f0 6%, var(--canvas-paper) 100%);
 }
 
@@ -510,6 +512,8 @@ body {
 
 /* ---- Canvas hero: landscape painting + subtle glass ---- */
 .hero {
+  position: relative;
+  z-index: 40;
   isolation: isolate;
   background-color: #10141a;
 }
@@ -610,7 +614,13 @@ body {
 
 .hero-mockup-zone {
   position: relative;
-  z-index: 20;
+  z-index: 45;
+  pointer-events: auto;
+}
+
+.hero-mockup-zone .product-frame,
+.hero-mockup-zone .product-frame__inner,
+.hero-mockup-zone .ide-shell {
   pointer-events: auto;
 }
 
@@ -671,6 +681,7 @@ body {
 
 .post-hero-bridge {
   position: relative;
+  pointer-events: none;
   background: linear-gradient(
     180deg,
     rgba(245, 240, 231, 0.55) 0%,
@@ -679,6 +690,10 @@ body {
     var(--canvas-paper) 36%,
     var(--canvas-paper) 100%
   );
+}
+
+.post-hero-bridge__interactive {
+  pointer-events: auto;
 }
 
 /* ---- Section seams: soft blends between major blocks ---- */
@@ -712,10 +727,13 @@ body {
 
 .canvas-section-seam--bridge-timeline::before {
   top: 0;
+  height: 180px;
+  transform: none;
   background: linear-gradient(
     180deg,
     rgba(245, 240, 231, 0) 0%,
-    rgba(255, 251, 247, 0.65) 35%,
+    rgba(245, 240, 231, 0.35) 30%,
+    rgba(255, 251, 247, 0.72) 55%,
     rgba(245, 240, 231, 0.95) 100%
   );
 }
@@ -1374,6 +1392,33 @@ body {
     radial-gradient(ellipse 65% 50% at 100% 25%, rgba(229, 181, 102, 0.28) 0%, transparent 55%),
     radial-gradient(ellipse 55% 45% at 50% 100%, rgba(92, 99, 58, 0.18) 0%, transparent 52%),
     #f5f0e7;
+}
+
+.atelier-section--timeline::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: min(240px, 28vh);
+  background: linear-gradient(
+    180deg,
+    rgba(16, 20, 26, 0.42) 0%,
+    rgba(36, 28, 22, 0.18) 18%,
+    rgba(245, 240, 231, 0.62) 48%,
+    rgba(245, 240, 231, 0.92) 72%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.atelier-section-eyebrow {
+  position: relative;
+  z-index: 1;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #5c4a38;
 }
 
 .atelier-section--workbench {

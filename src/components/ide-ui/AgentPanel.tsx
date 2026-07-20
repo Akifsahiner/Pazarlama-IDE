@@ -73,8 +73,8 @@ export function AgentPanel({ theme, demo, preset }: AgentPanelProps) {
           <button
             type="button"
             disabled={approving}
-            onClick={interactive ? demo?.approve : undefined}
-            className={`w-full rounded-lg py-1.5 text-[10px] font-semibold text-white shadow-md transition-transform ${
+            onClick={() => demo?.approve()}
+            className={`w-full cursor-pointer rounded-lg py-1.5 text-[10px] font-semibold text-white shadow-md transition-transform ${
               approved
                 ? "bg-gradient-to-b from-[#1f9d57] to-[#157a41]"
                 : approving
