@@ -10,8 +10,8 @@ export const heroCopy = {
   headlineLine2Before: "We'll handle the",
   accentWord: "launch.",
   subheadline:
-    "Connect once (or preview offline), open your project folder, and get a 30-day launch plan you approve — agent tasks, diffs, and browser research you apply yourself.",
-  cta: "Download Marketing IDE",
+    "Open your project folder, get a 30-day launch plan you approve — agent tasks, diffs, and outreach you ship yourself.",
+  cta: "Get for Windows",
   secondaryCta: "See your first hour",
 } as const;
 
@@ -21,11 +21,69 @@ export const trustItems = [
   "Preview offline, connect for AI",
 ] as const;
 
-export const firstRunFunnel = {
+export const launchTimeline = {
   eyebrow: "First launch",
   title: "Your first hour in the app",
   subtitle:
     "Download is step zero — connect, scan, plan, and run your first task within sixty minutes.",
+  steps: [
+    {
+      time: "00:00",
+      title: "Connect",
+      description:
+        "Start the bundled local AI stack or sign in — or skip and preview a scan-based outline offline.",
+      accent: "sky" as const,
+      proof: ["Stack ready in 90s", "Preview offline"],
+    },
+    {
+      time: "00:05",
+      title: "Open project",
+      description: "Point at the same repo you built in Cursor. Secrets in .env are never read.",
+      accent: "sky" as const,
+      proof: ["847 files indexed", "Local-first"],
+    },
+    {
+      time: "00:12",
+      title: "Product understood",
+      description: "It doesn't start with a blank prompt. Marketing IDE reads what you already built.",
+      accent: "moss" as const,
+      proof: ["847 files scanned", "8 competitors compared", "4 positioning gaps"],
+    },
+    {
+      time: "00:20",
+      title: "Launch gaps revealed",
+      description: "Routes, stack, conversion blockers — then one click into Plan Studio.",
+      accent: "moss" as const,
+      proof: ["Readiness score", "Gap report"],
+    },
+    {
+      time: "00:34",
+      title: "Plan generated",
+      description: "A 30-day task graph with dependencies — not a PDF you forget.",
+      accent: "gold" as const,
+      proof: ["30-day graph", "Day 1 task ready"],
+    },
+    {
+      time: "00:47",
+      title: "First task approved",
+      description: "Every change arrives as a diff. Preview, approve, apply.",
+      accent: "action" as const,
+      proof: ["Diff preview", "Waiting for approval"],
+    },
+    {
+      time: "01:00",
+      title: "First change shipped",
+      description: "Landing patch applied on a separate branch you can roll back.",
+      accent: "copper" as const,
+      proof: ["Branch created", "Live preview verified"],
+    },
+  ],
+} as const;
+
+export const firstRunFunnel = {
+  eyebrow: launchTimeline.eyebrow,
+  title: launchTimeline.title,
+  subtitle: launchTimeline.subtitle,
   steps: [
     {
       title: "Connect",

@@ -1,6 +1,7 @@
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/hero/Hero";
+import { SectionSeam } from "@/components/layout/SectionSeam";
 import { PostHeroBridge } from "@/components/sections/PostHeroBridge/PostHeroBridge";
 import { FirstRunFunnel } from "@/components/sections/FirstRunFunnel/FirstRunFunnel";
 import { HowItWorks } from "@/components/sections/HowItWorks/HowItWorks";
@@ -15,11 +16,16 @@ export default function Home() {
     <>
       <Header />
       <Hero />
-      <main className="bg-bg">
+      <main className="canvas-main">
+        <SectionSeam variant="hero-bridge" />
         <PostHeroBridge />
+        <SectionSeam variant="bridge-timeline" />
         <FirstRunFunnel />
+        <SectionSeam variant="timeline-path" />
         <HowItWorks />
+        <SectionSeam variant="path-workbench" />
         <WorkspacePreview />
+        <SectionSeam variant="workbench-dark" />
         <ExecuteTogether />
         <MeasureImprove />
         <FAQ />

@@ -1,15 +1,41 @@
+"use client";
+
+import { useReducedMotion } from "framer-motion";
 import { SectionContainer } from "@/components/layout/SectionContainer";
 import { ScrollReveal } from "@/components/layout/ScrollReveal";
 import { TonalBadge } from "@/components/ui/TonalBadge";
 import { outcomeStrip } from "@/lib/tokens";
+import { useScrollSection } from "@/lib/useScrollSection";
+
+const pipeline = ["PROJECT", "PRODUCT MODEL", "LAUNCH SYSTEM", "APPROVED ACTIONS", "LIVE RESULTS"] as const;
 
 export function OutcomeStrip() {
   const [lead, emphasis] = outcomeStrip.line.split("\u2014");
+  const reducedMotion = useReducedMotion() ?? false;
+  const { activeIndex, setRef } = useScrollSection({
+    count: pipeline.length,
+    reducedMotion,
+  });
 
   return (
     <SectionContainer className="relative z-10 pt-14 pb-16 md:pt-16 md:pb-20 lg:pt-20 lg:pb-24">
       <ScrollReveal>
-        <div className="outcome-panel mx-auto max-w-4xl rounded-[28px] border border-white/80 bg-white/76 px-7 py-9 shadow-[0_28px_90px_rgba(54,99,150,0.1),inset_0_1px_0_rgba(255,255,255,0.92)] backdrop-blur-xl md:px-11 md:py-11">
+        <div className="atelier-pipeline mb-10" aria-label="Launch pipeline">
+          {pipeline.map((stage, index) => (
+            <span
+              key={stage}
+              ref={setRef(index)}
+              className={`atelier-pipeline__stage ${activeIndex === index ? "is-active" : ""}`}
+            >
+              <span className="atelier-pipeline__label font-mono">{stage}</span>
+              {index < pipeline.length - 1 && (
+                <span className="atelier-pipeline__connector" aria-hidden="true" />
+              )}
+            </span>
+          ))}
+        </div>
+
+        <div className="outcome-panel canvas-glass-panel mx-auto max-w-4xl px-7 py-9 md:px-11 md:py-11">
           <p className="mx-auto max-w-3xl text-center font-serif text-[26px] leading-[1.35] font-medium tracking-[-0.02em] text-ink md:text-[32px] lg:text-[34px]">
             {lead}
             {emphasis && (

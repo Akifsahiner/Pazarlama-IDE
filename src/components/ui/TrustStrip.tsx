@@ -17,7 +17,7 @@ export function TrustStrip({ tone = "default" }: TrustStripProps) {
       className={`flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[13px] ${
         onHero ? "hero-trust" : "text-ink-3"
       }`}
-      initial={reducedMotion ? false : { opacity: 0 }}
+      initial={false}
       animate={{ opacity: 1 }}
       transition={reducedMotion ? { duration: 0 } : { delay: 0.5, duration: 0.6 }}
     >

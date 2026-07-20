@@ -24,7 +24,10 @@ export type HeroIDEDemoState = {
 const INITIAL_WEEKS = [...HERO_DEMO_WEEKS_INITIAL];
 const APPROVED_WEEKS = [...HERO_DEMO_WEEKS_APPROVED];
 
-export function useHeroIDEDemo(enabled: boolean): HeroIDEDemoState | null {
+const noopApprove = () => {};
+
+/** Scripted hero demo — Approve plan drives messages, bars, and activity. */
+export function useHeroIDEDemo(enabled: boolean): HeroIDEDemoState {
   const [phase, setPhase] = useState<HeroDemoPhase>("idle");
   const [messages, setMessages] = useState<HeroDemoMessage[]>(buildInitialDemoMessages);
   const [weekProgress, setWeekProgress] = useState<number[]>(INITIAL_WEEKS);
@@ -32,7 +35,9 @@ export function useHeroIDEDemo(enabled: boolean): HeroIDEDemoState | null {
   const [isTyping, setIsTyping] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const phaseRef = useRef(phase);
+  const enabledRef = useRef(enabled);
   phaseRef.current = phase;
+  enabledRef.current = enabled;
 
   const clearTimers = useCallback(() => {
     timers.current.forEach(clearTimeout);
@@ -89,13 +94,12 @@ export function useHeroIDEDemo(enabled: boolean): HeroIDEDemoState | null {
   }, [clearTimers, schedule]);
 
   const approve = useCallback(() => {
-    if (!enabled || phaseRef.current === "approving") return;
+    if (!enabledRef.current) return;
+    if (phaseRef.current === "approving") return;
     startApproveSequence();
-  }, [enabled, startApproveSequence]);
+  }, [startApproveSequence]);
 
   useEffect(() => () => clearTimers(), [clearTimers]);
-
-  if (!enabled) return null;
 
   const statusText =
     phase === "idle"
@@ -103,6 +107,19 @@ export function useHeroIDEDemo(enabled: boolean): HeroIDEDemoState | null {
       : phase === "approving"
         ? "Reviewing plan…"
         : "Executing Week 1 · 3 tasks in progress";
+
+  if (!enabled) {
+    return {
+      phase: "idle",
+      messages: buildInitialDemoMessages(),
+      weekProgress: INITIAL_WEEKS,
+      activeTaskIndex: -1,
+      isTyping: false,
+      statusText: "Waiting for approval",
+      approve: noopApprove,
+      reset,
+    };
+  }
 
   return {
     phase,
@@ -114,4 +131,4 @@ export function useHeroIDEDemo(enabled: boolean): HeroIDEDemoState | null {
     approve,
     reset,
   };
-};
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -47,28 +48,34 @@ function Logo({ onHero }: { onHero: boolean }) {
 }
 
 export function Header() {
-  const [scrolled, setScrolled] = useState(false);
-  const onHero = !scrolled;
+  const pathname = usePathname();
+  const isLightSurface = pathname !== "/";
+  const [scrolled, setScrolled] = useState(isLightSurface);
+  const onHero = !scrolled && !isLightSurface;
 
   useEffect(() => {
     const handleScroll = () => {
+      if (isLightSurface) {
+        setScrolled(true);
+        return;
+      }
       setScrolled(window.scrollY > window.innerHeight * 0.55);
     };
 
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [isLightSurface]);
 
   return (
     <motion.header
       className={`z-50 flex w-full transition-all duration-300 ${
         scrolled
-          ? "fixed top-0 border-b border-line bg-surface/95 py-3 backdrop-blur-md"
+          ? "header-scrolled fixed top-0 border-b py-3"
           : "absolute bg-transparent pt-4"
       }`}
       variants={headerFade}
-      initial="hidden"
+      initial={false}
       animate="visible"
     >
       <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-5 md:px-8">
@@ -81,11 +88,11 @@ export function Header() {
           {navLinks.map((link) => (
             <a
               key={link.label}
-              href={link.href}
+              href={isLightSurface ? `/${link.href}` : link.href}
               className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                 onHero
-                  ? "border border-white/32 bg-white/16 text-white shadow-[0_2px_16px_rgba(8,48,96,0.18)] backdrop-blur-xl hover:bg-white/24 hover:text-white"
-                  : "border border-line/80 bg-surface/70 text-ink-2 backdrop-blur-sm hover:bg-surface hover:text-ink"
+                  ? "canvas-glass-on-painting text-white hover:bg-white/20 hover:text-white"
+                  : "canvas-glass text-ink-2 hover:text-ink"
               }`}
             >
               {link.label}
@@ -107,7 +114,7 @@ export function Header() {
             type="button"
             className={`flex size-10 items-center justify-center rounded-full transition-colors md:hidden ${
               onHero
-                ? "border border-white/28 bg-white/14 text-white/92 backdrop-blur-xl hover:bg-white/22"
+                ? "canvas-glass-on-painting text-white/92 hover:bg-white/20"
                 : "text-ink-2 hover:bg-black/5 hover:text-ink"
             }`}
             aria-label="Open menu"

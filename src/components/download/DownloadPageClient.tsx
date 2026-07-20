@@ -27,12 +27,12 @@ export function DownloadPageClient() {
   const primary = resolveDownloadTarget(platform);
 
   return (
-    <div className="mt-10 space-y-8">
-      <div className="flex justify-center">
+    <div className="space-y-6">
+      <div className="flex justify-center lg:justify-start">
         <PlatformDownloadButton animated={false} className="shimmer-button--hero" />
       </div>
 
-      <ul className="mx-auto max-w-md space-y-3 text-left">
+      <ul className="space-y-3">
         {DOWNLOAD_OPTIONS.map((opt) => {
           const active = opt.platform === primary.platform;
           return (

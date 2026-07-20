@@ -8,19 +8,14 @@ export function FooterCTA() {
   const { title, subtitle } = sections.footerCta;
 
   return (
-    <div
-      className="relative overflow-hidden border-t border-line bg-surface-2"
-      style={{
-        backgroundImage: [
-          "radial-gradient(60% 90% at 50% -10%, rgba(45,111,240,0.16) 0%, transparent 60%)",
-          "radial-gradient(40% 80% at 12% 110%, rgba(232,132,58,0.10) 0%, transparent 60%)",
-          "radial-gradient(40% 80% at 90% 110%, rgba(31,157,87,0.10) 0%, transparent 60%)",
-        ].join(", "),
-      }}
-    >
+    <div className="atelier-footer-cta canvas-footer-cta">
+      <div className="atelier-footer-cta__paint" aria-hidden="true" />
+      <div className="atelier-light atelier-light--gold" aria-hidden="true" />
+
       <SectionContainer>
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-7 text-center">
           <ScrollReveal>
+            <span className="atelier-pipeline__label font-mono mb-4 inline-flex is-active">LIVE RESULTS</span>
             <h2 className="font-serif text-4xl leading-[1.1] font-medium tracking-[-0.03em] text-ink lg:text-5xl">
               {title}
             </h2>

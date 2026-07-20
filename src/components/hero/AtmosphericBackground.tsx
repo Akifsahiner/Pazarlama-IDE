@@ -1,16 +1,26 @@
+import { HERO_PICTURE_FALLBACK, heroSrcSet } from "@/lib/hero-images";
+
 /**
- * Cluely hero atmosphere — sky blue + warm orange only. No purple/pink.
+ * Canvas hero — native picture/srcset for sharp impasto painting (no Next recompression).
  */
 export function AtmosphericBackground() {
   return (
-    <div className="cluely-atmosphere" aria-hidden="true">
-      <div className="cluely-atmosphere__sky" />
-      <div className="cluely-atmosphere__warmth" />
-      <div className="cluely-atmosphere__light-blend" />
-      <div className="cluely-atmosphere__horizon" />
-      <div className="cluely-atmosphere__sun" />
-      <div className="cluely-atmosphere__flare" />
-      <div className="cluely-atmosphere__noise" />
+    <div className="canvas-hero" aria-hidden="true">
+      <picture>
+        <source type="image/avif" srcSet={heroSrcSet("avif")} sizes="100vw" />
+        <source type="image/webp" srcSet={heroSrcSet("webp")} sizes="100vw" />
+        <img
+          src={HERO_PICTURE_FALLBACK}
+          alt=""
+          className="canvas-hero__painting-img"
+          fetchPriority="high"
+          decoding="async"
+        />
+      </picture>
+      <div className="canvas-hero__readability" />
+      <div className="canvas-hero__warm-glow" />
+      <div className="canvas-hero__scrim-bottom" />
+      <div className="canvas-hero__noise" />
     </div>
   );
 }

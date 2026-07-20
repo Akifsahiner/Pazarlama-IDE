@@ -24,7 +24,7 @@ export function OtherDownloads({ tone = "hero" }: { tone?: Tone }) {
 
   const linkClass =
     tone === "hero"
-      ? "inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-[12px] font-medium text-white/90 backdrop-blur-md transition-colors hover:bg-white/20"
+      ? "hero-other-downloads__pill"
       : "inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-[12px] font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink";
 
   return (
