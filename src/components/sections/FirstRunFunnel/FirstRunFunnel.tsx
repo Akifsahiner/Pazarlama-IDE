@@ -50,7 +50,7 @@ export function FirstRunFunnel() {
       <motion.ol
         className="mx-auto grid max-w-4xl gap-3 sm:grid-cols-2"
         variants={staggerContainer}
-        initial="hidden"
+        initial={false}
         whileInView="visible"
         viewport={{ once: true, margin: "-60px" }}
       >

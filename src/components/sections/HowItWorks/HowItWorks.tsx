@@ -66,7 +66,7 @@ export function HowItWorks() {
         <motion.ol
           className="flex flex-col gap-4"
           variants={staggerContainer}
-          initial="hidden"
+          initial={false}
           whileInView="visible"
           viewport={{ once: true, margin: "-80px" }}
         >
