@@ -1,83 +1,91 @@
 "use client";
 
+import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { FolderOpen, GitBranch, ScanSearch, Server, type LucideIcon } from "lucide-react";
+import { IDEWindow } from "@/components/ide-ui/IDEWindow";
 import { SectionContainer } from "@/components/layout/SectionContainer";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { ScrollReveal } from "@/components/layout/ScrollReveal";
-import { firstRunFunnel } from "@/lib/tokens";
-import { cardReveal, staggerContainer } from "@/lib/animations";
+import { launchTimeline } from "@/lib/tokens";
 
-const iconMap: Record<string, LucideIcon> = {
-  Server,
-  FolderOpen,
-  ScanSearch,
-  GitBranch,
-};
-
-const cardByAccent = {
-  blue: "card-blue",
-  orange: "card-orange",
-  green: "card-green",
+const accentClass = {
+  sky: "atelier-timeline-step--sky",
+  moss: "atelier-timeline-step--moss",
+  gold: "atelier-timeline-step--gold",
+  action: "atelier-timeline-step--action",
+  copper: "atelier-timeline-step--copper",
 } as const;
 
-const iconByAccent = {
-  blue: "step-icon step-icon--blue",
-  orange: "step-icon step-icon--orange",
-  green: "step-icon step-icon--green",
-} as const;
-
-/** Mirrors the desktop app's real onboarding funnel — sets expectations before download. */
+/** Launch Timeline — vertical clock + sticky product window (Launch Atelier). */
 export function FirstRunFunnel() {
   const reducedMotion = useReducedMotion() ?? false;
-  const { eyebrow, title, subtitle, steps } = firstRunFunnel;
+  const [active, setActive] = useState(0);
+  const { eyebrow, title, subtitle, steps } = launchTimeline;
 
   return (
-    <SectionContainer id="first-run" className="section-tint section-tint--dual pb-16 pt-10 lg:pb-20 lg:pt-14">
+    <SectionContainer
+      id="first-run"
+      className="atelier-section atelier-section--timeline section-tint section-tint--dual pb-16 pt-6 lg:pb-24 lg:pt-10"
+    >
+      <div className="atelier-grid-lines" aria-hidden="true" />
+
       <ScrollReveal>
         <SectionHeading
           eyebrow={eyebrow}
           title={title}
           subtitle={subtitle}
-          accent="orange"
-          align="center"
-          className="mb-10 lg:mb-12"
+          accent="blue"
+          align="left"
+          className="mb-12 max-w-2xl lg:mb-14"
         />
       </ScrollReveal>
 
-      <div className="canvas-path-ribbon" aria-hidden="true" />
-
-      <motion.ol
-        className="mx-auto grid max-w-4xl gap-3 sm:grid-cols-2"
-        variants={staggerContainer}
-        initial={false}
-        whileInView="visible"
-        viewport={{ once: true, margin: "-60px" }}
-      >
-        {steps.map((step, index) => {
-          const Icon = iconMap[step.icon];
-          return (
+      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-14">
+        <ol className="atelier-timeline relative">
+          <div className="atelier-timeline__spine" aria-hidden="true" />
+          {steps.map((step, index) => (
             <motion.li
-              key={step.title}
-              variants={reducedMotion ? undefined : cardReveal}
-              className={`${cardByAccent[step.accent]} card-hover flex items-start gap-4 p-5`}
+              key={step.time}
+              className={`atelier-timeline-step ${accentClass[step.accent]} ${active === index ? "is-active" : ""}`}
+              onMouseEnter={() => setActive(index)}
+              onFocus={() => setActive(index)}
+              tabIndex={0}
+              initial={false}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
             >
-              <span className={iconByAccent[step.accent]}>
-                {Icon ? <Icon className="size-5" aria-hidden="true" /> : null}
-              </span>
-              <div>
-                <span className="canvas-minute-pill">
-                  Minute {index === 0 ? "1–5" : index === 1 ? "5–10" : index === 2 ? "10–20" : "20–60"}
-                </span>
-                <h3 className="mt-2 text-[16px] font-semibold tracking-[-0.02em] text-ink">
-                  {step.title}
-                </h3>
-                <p className="mt-1 text-[14px] leading-relaxed text-ink-2">{step.description}</p>
-              </div>
+              <span className="atelier-timeline-step__node" aria-hidden="true" />
+              <span className="atelier-timeline-step__time font-mono">{step.time}</span>
+              <h3 className="atelier-timeline-step__title font-serif">{step.title}</h3>
+              <p className="atelier-timeline-step__desc">{step.description}</p>
+              <ul className="atelier-proof-row">
+                {step.proof.map((item) => (
+                  <li key={item} className="atelier-glass-capsule">
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </motion.li>
-          );
-        })}
-      </motion.ol>
+          ))}
+        </ol>
+
+        <div className="atelier-sticky-demo lg:sticky lg:top-24">
+          <div className="atelier-demo-glow" aria-hidden="true" />
+          <div className="product-frame">
+            <div className="product-frame__glow" aria-hidden="true" />
+            <div className="product-frame__inner">
+              <IDEWindow showThemePicker={false} interactive={!reducedMotion} />
+            </div>
+          </div>
+          <div className="atelier-status-bar">
+            <span className="atelier-glass-capsule atelier-glass-capsule--live">
+              <span className="atelier-status-dot" aria-hidden="true" />
+              {steps[active]?.proof[0] ?? "Live workspace"}
+            </span>
+            <span className="atelier-glass-capsule font-mono">{steps[active]?.time}</span>
+          </div>
+        </div>
+      </div>
     </SectionContainer>
   );
 }

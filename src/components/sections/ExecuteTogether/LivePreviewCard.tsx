@@ -27,7 +27,9 @@ export function LivePreviewCard() {
           <p className="font-serif text-xl leading-tight font-medium text-ink">
             Turn every interview into structured hiring evidence.
           </p>
-          <span className="canvas-cta-pill">Start free</span>
+          <span className="shimmer-button shimmer-button--compact inline-flex items-center rounded-lg px-4 py-2 text-xs font-medium text-white">
+            Start free
+          </span>
           <div className="mt-1 flex gap-1.5">
             <span className="h-1.5 w-12 rounded-full bg-[var(--canvas-warm-line)]" />
             <span className="h-1.5 w-8 rounded-full bg-[var(--canvas-warm-line)]" />

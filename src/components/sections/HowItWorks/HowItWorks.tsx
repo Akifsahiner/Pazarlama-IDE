@@ -48,7 +48,7 @@ export function HowItWorks() {
   const { eyebrow, title, subtitle, steps } = sections.howItWorks;
 
   return (
-    <SectionContainer id="how-it-works" className="section-tint section-tint--tri pt-20 lg:pt-28">
+    <SectionContainer id="how-it-works" className="atelier-section section-tint section-tint--tri pt-20 lg:pt-28">
       <ScrollReveal>
         <SectionHeading
           eyebrow={eyebrow}
@@ -60,11 +60,12 @@ export function HowItWorks() {
         />
       </ScrollReveal>
 
-      <div className="relative mx-auto max-w-3xl pl-8">
+      <div className="relative mx-auto max-w-3xl">
+        <div className="atelier-execution-path mb-8" aria-hidden="true" />
         <div className="canvas-path-line" aria-hidden="true" />
 
         <motion.ol
-          className="flex flex-col gap-4"
+          className="flex flex-col gap-4 pl-8"
           variants={staggerContainer}
           initial={false}
           whileInView="visible"

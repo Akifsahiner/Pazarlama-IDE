@@ -1,26 +1,23 @@
 import Image from "next/image";
 
 /**
- * Canvas hero — impasto golden landscape + modern glass scrims (no floating orbs).
- * Traditional art meets Cluely-style glass UI (download CTA, pills, mockup frame).
+ * Canvas hero — high-res impasto painting, sharp render, readability layer only on overlay.
  */
 export function AtmosphericBackground() {
   return (
     <div className="canvas-hero" aria-hidden="true">
-      <div className="canvas-hero__painting-wrap">
-        <Image
-          src="/hero/golden-landscape-hero.webp"
-          alt=""
-          fill
-          priority
-          quality={90}
-          sizes="100vw"
-          className="canvas-hero__painting-img"
-        />
-      </div>
+      <Image
+        src="/hero/marketing-ide-hero.png"
+        alt=""
+        fill
+        priority
+        quality={92}
+        sizes="100vw"
+        placeholder="empty"
+        className="canvas-hero__painting-img"
+      />
+      <div className="canvas-hero__readability" />
       <div className="canvas-hero__warm-glow" />
-      <div className="canvas-hero__scrim-top" />
-      <div className="canvas-hero__scrim-readability" />
       <div className="canvas-hero__scrim-bottom" />
       <div className="canvas-hero__noise" />
     </div>
