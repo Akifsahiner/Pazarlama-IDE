@@ -35,9 +35,18 @@ test("detectDownloadPlatform — Linux", () => {
 
 test("resolveDownloadTarget — stable artifact URLs", () => {
   const win = resolveDownloadTarget("windows");
+  assert.equal(win.label, "Get for Windows");
   assert.match(win.href, /Marketing-IDE-Setup-Windows\.exe$/);
   const mac = resolveDownloadTarget("macos");
+  assert.equal(mac.label, "Get for macOS");
   assert.match(mac.href, /Marketing-IDE-Setup-macOS\.dmg$/);
+});
+
+test("resolveDownloadTarget — unknown falls back to Windows artifact", () => {
+  const unknown = resolveDownloadTarget("unknown");
+  assert.equal(unknown.platform, "windows");
+  assert.match(unknown.href, /Marketing-IDE-Setup-Windows\.exe$/);
+  assert.notEqual(unknown.href, "/download");
 });
 
 test("otherDownloadOptions — excludes current platform", () => {

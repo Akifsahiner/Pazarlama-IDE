@@ -5,7 +5,7 @@ import { HeroMockup } from "./HeroMockup";
 
 export function Hero() {
   return (
-    <section className="hero relative flex min-h-svh flex-col items-center overflow-x-hidden pb-8 md:pb-12">
+    <section className="hero relative z-40 flex min-h-svh flex-col items-center overflow-x-hidden pb-24 md:pb-32">
       <AtmosphericBackground />
 
       <div className="hero-fade-bottom pointer-events-none absolute inset-x-0 bottom-0" aria-hidden="true" />

@@ -17,21 +17,21 @@ export interface DownloadOption {
 export const DOWNLOAD_OPTIONS: DownloadOption[] = [
   {
     platform: "windows",
-    label: "Download for Windows",
+    label: "Get for Windows",
     shortLabel: "Windows",
     href: `${RELEASE_DOWNLOAD_BASE}/Marketing-IDE-Setup-Windows.exe`,
     fileName: "Marketing-IDE-Setup-Windows.exe",
   },
   {
     platform: "macos",
-    label: "Download for macOS",
+    label: "Get for macOS",
     shortLabel: "macOS",
     href: `${RELEASE_DOWNLOAD_BASE}/Marketing-IDE-Setup-macOS.dmg`,
     fileName: "Marketing-IDE-Setup-macOS.dmg",
   },
   {
     platform: "linux",
-    label: "Download for Linux",
+    label: "Get for Linux",
     shortLabel: "Linux",
     href: `${RELEASE_DOWNLOAD_BASE}/Marketing-IDE-Setup-Linux.AppImage`,
     fileName: "Marketing-IDE-Setup-Linux.AppImage",
@@ -54,15 +54,10 @@ export function detectDownloadPlatform(
   return "unknown";
 }
 
+/** Primary CTA always points at a release artifact — never /download. */
 export function resolveDownloadTarget(platform: DownloadPlatform): DownloadOption {
   if (platform === "unknown") {
-    return {
-      platform: "unknown",
-      label: "Download Marketing IDE",
-      shortLabel: "Download",
-      href: "/download",
-      fileName: "",
-    };
+    return DOWNLOAD_OPTIONS[0];
   }
   const match = DOWNLOAD_OPTIONS.find((o) => o.platform === platform);
   if (match) return match;

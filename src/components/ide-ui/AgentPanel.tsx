@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { heroAgentCopy } from "@/lib/tokens";
 import type { HeroIDEDemoState } from "@/components/ide-ui/useHeroIDEDemo";
+import { useHeroDemoContext } from "@/components/ide-ui/HeroDemoContext";
 import type { TimelinePreset } from "@/lib/timeline-ide-presets";
 import type { IDETheme } from "@/lib/ide-themes";
 
@@ -14,7 +15,9 @@ type AgentPanelProps = {
   onApprove?: () => void;
 };
 
-export function AgentPanel({ theme, demo, preset, onApprove }: AgentPanelProps) {
+export function AgentPanel({ theme, demo: demoProp, preset, onApprove }: AgentPanelProps) {
+  const heroDemo = useHeroDemoContext();
+  const demo = demoProp ?? heroDemo;
   const isGlass = theme.blur !== "0px";
   const approved = demo?.phase === "approved";
   const approving = demo?.phase === "approving";
@@ -76,18 +79,21 @@ export function AgentPanel({ theme, demo, preset, onApprove }: AgentPanelProps) 
         )}
       </div>
 
-      {!preset && (onApprove || demo) && (
-        <div className="relative z-[3] flex flex-col gap-1.5">
+      {!preset && demo && (
+        <div className="relative z-[5] flex flex-col gap-1.5">
           <button
             type="button"
+            data-hero-approve
             disabled={approving}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               handleApprove();
             }}
-            className={`relative z-[3] w-full cursor-pointer rounded-lg py-2 text-[10px] font-semibold text-white shadow-md transition-transform touch-manipulation ${
+            className={`relative z-[5] w-full cursor-pointer rounded-lg py-2 text-[10px] font-semibold text-white shadow-md transition-transform touch-manipulation ${
               approved
                 ? "bg-gradient-to-b from-[#1f9d57] to-[#157a41]"
                 : approving

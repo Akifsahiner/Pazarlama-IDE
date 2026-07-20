@@ -645,9 +645,9 @@ body {
 
 .hero-to-canvas {
   position: relative;
-  z-index: 8;
-  margin-top: -48px;
-  padding-top: 160px;
+  z-index: 1;
+  margin-top: 0;
+  padding-top: 120px;
   pointer-events: none;
 }
 

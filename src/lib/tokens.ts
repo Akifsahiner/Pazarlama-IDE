@@ -11,7 +11,7 @@ export const heroCopy = {
   accentWord: "launch.",
   subheadline:
     "Open your project folder, get a 30-day launch plan you approve — agent tasks, diffs, and outreach you ship yourself.",
-  cta: "Download Marketing IDE",
+  cta: "Get for Windows",
   secondaryCta: "See your first hour",
 } as const;
 
