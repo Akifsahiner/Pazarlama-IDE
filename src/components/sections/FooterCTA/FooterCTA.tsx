@@ -8,10 +8,14 @@ export function FooterCTA() {
   const { title, subtitle } = sections.footerCta;
 
   return (
-    <div className="canvas-footer-cta">
+    <div className="atelier-footer-cta canvas-footer-cta">
+      <div className="atelier-footer-cta__paint" aria-hidden="true" />
+      <div className="atelier-light atelier-light--gold" aria-hidden="true" />
+
       <SectionContainer>
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-7 text-center">
           <ScrollReveal>
+            <span className="atelier-pipeline__label font-mono mb-4 inline-flex is-active">LIVE RESULTS</span>
             <h2 className="font-serif text-4xl leading-[1.1] font-medium tracking-[-0.03em] text-ink lg:text-5xl">
               {title}
             </h2>

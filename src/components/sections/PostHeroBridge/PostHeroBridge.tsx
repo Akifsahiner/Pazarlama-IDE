@@ -8,6 +8,7 @@ export function PostHeroBridge() {
       <div className="post-hero-bridge__atmosphere" aria-hidden="true" />
       <div className="post-hero-bridge__line" aria-hidden="true" />
       <div className="canvas-surface-grain" aria-hidden="true" />
+      <div className="atelier-grid-lines atelier-grid-lines--bridge" aria-hidden="true" />
       <OutcomeStrip />
     </section>
   );

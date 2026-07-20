@@ -1,21 +1,22 @@
-import Image from "next/image";
+import { HERO_PICTURE_FALLBACK, heroSrcSet } from "@/lib/hero-images";
 
 /**
- * Canvas hero — high-res impasto painting, sharp render, readability layer only on overlay.
+ * Canvas hero — native picture/srcset for sharp impasto painting (no Next recompression).
  */
 export function AtmosphericBackground() {
   return (
     <div className="canvas-hero" aria-hidden="true">
-      <Image
-        src="/hero/marketing-ide-hero.png"
-        alt=""
-        fill
-        priority
-        quality={92}
-        sizes="100vw"
-        placeholder="empty"
-        className="canvas-hero__painting-img"
-      />
+      <picture>
+        <source type="image/avif" srcSet={heroSrcSet("avif")} sizes="100vw" />
+        <source type="image/webp" srcSet={heroSrcSet("webp")} sizes="100vw" />
+        <img
+          src={HERO_PICTURE_FALLBACK}
+          alt=""
+          className="canvas-hero__painting-img"
+          fetchPriority="high"
+          decoding="async"
+        />
+      </picture>
       <div className="canvas-hero__readability" />
       <div className="canvas-hero__warm-glow" />
       <div className="canvas-hero__scrim-bottom" />

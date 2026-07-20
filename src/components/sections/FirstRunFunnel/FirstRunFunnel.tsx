@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 import { IDEWindow } from "@/components/ide-ui/IDEWindow";
 import { SectionContainer } from "@/components/layout/SectionContainer";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { ScrollReveal } from "@/components/layout/ScrollReveal";
 import { launchTimeline } from "@/lib/tokens";
+import { useScrollSection } from "@/lib/useScrollSection";
+import { presetByTimelineIndex } from "@/lib/timeline-ide-presets";
 
 const accentClass = {
   sky: "atelier-timeline-step--sky",
@@ -16,11 +17,15 @@ const accentClass = {
   copper: "atelier-timeline-step--copper",
 } as const;
 
-/** Launch Timeline — vertical clock + sticky product window (Launch Atelier). */
 export function FirstRunFunnel() {
   const reducedMotion = useReducedMotion() ?? false;
-  const [active, setActive] = useState(0);
   const { eyebrow, title, subtitle, steps } = launchTimeline;
+  const { activeIndex, setRef, activate } = useScrollSection({
+    count: steps.length,
+    reducedMotion,
+  });
+  const preset = presetByTimelineIndex(activeIndex);
+  const spineProgress = ((activeIndex + 1) / steps.length) * 100;
 
   return (
     <SectionContainer
@@ -28,6 +33,9 @@ export function FirstRunFunnel() {
       className="atelier-section atelier-section--timeline section-tint section-tint--dual pb-16 pt-6 lg:pb-24 lg:pt-10"
     >
       <div className="atelier-grid-lines" aria-hidden="true" />
+      <div className="atelier-light atelier-light--sky" aria-hidden="true" />
+      <div className="atelier-light atelier-light--gold" aria-hidden="true" />
+      <div className="atelier-light atelier-light--moss" aria-hidden="true" />
 
       <ScrollReveal>
         <SectionHeading
@@ -40,19 +48,25 @@ export function FirstRunFunnel() {
         />
       </ScrollReveal>
 
-      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-14">
+      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-14">
         <ol className="atelier-timeline relative">
           <div className="atelier-timeline__spine" aria-hidden="true" />
+          <div
+            className="atelier-timeline__spine-progress"
+            style={{ height: `${spineProgress}%` }}
+            aria-hidden="true"
+          />
           {steps.map((step, index) => (
-            <motion.li
+            <li
               key={step.time}
-              className={`atelier-timeline-step ${accentClass[step.accent]} ${active === index ? "is-active" : ""}`}
-              onMouseEnter={() => setActive(index)}
-              onFocus={() => setActive(index)}
+              ref={setRef(index)}
+              className={`atelier-timeline-step ${accentClass[step.accent]} ${
+                activeIndex === index ? "is-scroll-active" : ""
+              }`}
+              onClick={() => activate(index)}
+              onKeyDown={(e) => e.key === "Enter" && activate(index)}
               tabIndex={0}
-              initial={false}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
+              role="button"
             >
               <span className="atelier-timeline-step__node" aria-hidden="true" />
               <span className="atelier-timeline-step__time font-mono">{step.time}</span>
@@ -65,7 +79,7 @@ export function FirstRunFunnel() {
                   </li>
                 ))}
               </ul>
-            </motion.li>
+            </li>
           ))}
         </ol>
 
@@ -74,15 +88,15 @@ export function FirstRunFunnel() {
           <div className="product-frame">
             <div className="product-frame__glow" aria-hidden="true" />
             <div className="product-frame__inner">
-              <IDEWindow showThemePicker={false} interactive={!reducedMotion} />
+              <IDEWindow showThemePicker={false} preset={preset} />
             </div>
           </div>
           <div className="atelier-status-bar">
             <span className="atelier-glass-capsule atelier-glass-capsule--live">
               <span className="atelier-status-dot" aria-hidden="true" />
-              {steps[active]?.proof[0] ?? "Live workspace"}
+              {preset.activityLines[0]}
             </span>
-            <span className="atelier-glass-capsule font-mono">{steps[active]?.time}</span>
+            <span className="atelier-glass-capsule font-mono">{steps[activeIndex]?.time}</span>
           </div>
         </div>
       </div>

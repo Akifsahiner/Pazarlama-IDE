@@ -2,13 +2,12 @@ import { ChevronDown, FileText, Folder } from "lucide-react";
 import { projectTree } from "@/lib/tokens";
 import type { IDETheme } from "@/lib/ide-themes";
 
-const ACTIVE_ITEM = "Launch plan";
-
 type ProjectExplorerProps = {
   theme: IDETheme;
+  highlightItem?: string | null;
 };
 
-export function ProjectExplorer({ theme }: ProjectExplorerProps) {
+export function ProjectExplorer({ theme, highlightItem = "Launch plan" }: ProjectExplorerProps) {
   return (
     <div className="flex h-full flex-col gap-3 p-3">
       <span className="text-[10px] font-semibold tracking-widest text-white/50 uppercase">
@@ -24,7 +23,7 @@ export function ProjectExplorer({ theme }: ProjectExplorerProps) {
             </div>
             <div className="flex flex-col gap-0.5 pl-5">
               {group.children.map((child) => {
-                const isActive = child === ACTIVE_ITEM;
+                const isActive = highlightItem !== null && child === highlightItem;
                 return (
                   <span
                     key={child}

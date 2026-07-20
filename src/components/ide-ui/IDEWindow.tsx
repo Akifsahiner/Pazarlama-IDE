@@ -14,22 +14,26 @@ import { AgentPanel } from "./AgentPanel";
 import { ActivityBar } from "./ActivityBar";
 import { IDEThemePicker } from "./IDEThemePicker";
 import { useHeroIDEDemo } from "./useHeroIDEDemo";
+import type { TimelinePreset } from "@/lib/timeline-ide-presets";
 
 type IDEWindowProps = {
   showThemePicker?: boolean;
   initialTheme?: IDEThemeId;
   /** Hero landing demo — Approve plan triggers scripted UI sequence */
   interactive?: boolean;
+  /** Preset-driven view for timeline/workbench sections */
+  preset?: TimelinePreset | null;
 };
 
 export function IDEWindow({
   showThemePicker = true,
   initialTheme = defaultIDETheme,
   interactive = false,
+  preset = null,
 }: IDEWindowProps) {
   const [themeId, setThemeId] = useState<IDEThemeId>(initialTheme);
   const theme: IDETheme = ideThemes[themeId];
-  const demo = useHeroIDEDemo(interactive);
+  const demo = useHeroIDEDemo(interactive && !preset);
 
   return (
     <div className="ide-shell flex w-full flex-col">
@@ -47,37 +51,34 @@ export function IDEWindow({
             className="ide-glass-sidebar hidden min-h-[280px] sm:block"
             style={{
               background: theme.sidebarBg,
-              backdropFilter:
-                theme.blur !== "0px" ? `blur(${theme.blur})` : undefined,
+              backdropFilter: theme.blur !== "0px" ? `blur(${theme.blur})` : undefined,
             }}
           >
-            <ProjectExplorer theme={theme} />
+            <ProjectExplorer theme={theme} highlightItem={preset?.explorerHighlight} />
           </div>
 
           <div
             className="ide-glass-panel min-h-[220px]"
             style={{
               background: theme.editorBg,
-              backdropFilter:
-                theme.blur !== "0px" ? `blur(${theme.blur})` : undefined,
+              backdropFilter: theme.blur !== "0px" ? `blur(${theme.blur})` : undefined,
             }}
           >
-            <CanvasPanel theme={theme} demo={demo} />
+            <CanvasPanel theme={theme} demo={preset ? null : demo} preset={preset} />
           </div>
 
           <div
             className="ide-glass-panel hidden min-h-[280px] border-l border-white/6 lg:block"
             style={{
               background: theme.agentBg,
-              backdropFilter:
-                theme.blur !== "0px" ? `blur(${theme.blur})` : undefined,
+              backdropFilter: theme.blur !== "0px" ? `blur(${theme.blur})` : undefined,
             }}
           >
-            <AgentPanel theme={theme} demo={demo} />
+            <AgentPanel theme={theme} demo={preset ? null : demo} preset={preset} />
           </div>
         </div>
 
-        <ActivityBar theme={theme} demo={demo} />
+        <ActivityBar theme={theme} demo={preset ? null : demo} preset={preset} />
       </div>
     </div>
   );

@@ -9,7 +9,11 @@ import { sections } from "@/lib/tokens";
 
 export function FAQ() {
   return (
-    <SectionContainer id="faq" className="section-tint section-tint--tri">
+    <SectionContainer id="faq" className="atelier-section section-tint section-tint--tri">
+      <div className="atelier-grid-lines" aria-hidden="true" />
+      <div className="atelier-light atelier-light--sky" aria-hidden="true" />
+      <div className="atelier-light atelier-light--moss" aria-hidden="true" />
+
       <ScrollReveal>
         <SectionHeading
           eyebrow={sections.faq.eyebrow}
@@ -23,23 +27,15 @@ export function FAQ() {
         <div className="mx-auto max-w-3xl">
           <Accordion.Root type="single" collapsible className="flex flex-col gap-2">
             {sections.faq.items.map((item, index) => (
-              <Accordion.Item
-                key={item.question}
-                value={`item-${index}`}
-                className="faq-glass-item"
-              >
+              <Accordion.Item key={item.question} value={`item-${index}`} className="faq-glass-item">
                 <Accordion.Header>
                   <Accordion.Trigger className="group flex w-full items-center justify-between gap-4 px-5 py-4 text-left">
-                    <span className="text-base font-medium tracking-tight text-ink">
-                      {item.question}
-                    </span>
+                    <span className="text-base font-medium tracking-tight text-ink">{item.question}</span>
                     <ChevronDown className="faq-chevron-open size-5 shrink-0 text-ink-3 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                   </Accordion.Trigger>
                 </Accordion.Header>
                 <Accordion.Content className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                  <p className="max-w-[616px] px-5 pb-4 text-sm leading-relaxed text-ink-2">
-                    {item.answer}
-                  </p>
+                  <p className="max-w-[616px] px-5 pb-4 text-sm leading-relaxed text-ink-2">{item.answer}</p>
                 </Accordion.Content>
               </Accordion.Item>
             ))}

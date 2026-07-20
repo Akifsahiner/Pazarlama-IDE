@@ -1,19 +1,32 @@
+"use client";
+
+import { useReducedMotion } from "framer-motion";
 import { SectionContainer } from "@/components/layout/SectionContainer";
 import { ScrollReveal } from "@/components/layout/ScrollReveal";
 import { TonalBadge } from "@/components/ui/TonalBadge";
 import { outcomeStrip } from "@/lib/tokens";
+import { useScrollSection } from "@/lib/useScrollSection";
 
 const pipeline = ["PROJECT", "PRODUCT MODEL", "LAUNCH SYSTEM", "APPROVED ACTIONS", "LIVE RESULTS"] as const;
 
 export function OutcomeStrip() {
   const [lead, emphasis] = outcomeStrip.line.split("\u2014");
+  const reducedMotion = useReducedMotion() ?? false;
+  const { activeIndex, setRef } = useScrollSection({
+    count: pipeline.length,
+    reducedMotion,
+  });
 
   return (
     <SectionContainer className="relative z-10 pt-14 pb-16 md:pt-16 md:pb-20 lg:pt-20 lg:pb-24">
       <ScrollReveal>
         <div className="atelier-pipeline mb-10" aria-label="Launch pipeline">
           {pipeline.map((stage, index) => (
-            <span key={stage} className="atelier-pipeline__stage">
+            <span
+              key={stage}
+              ref={setRef(index)}
+              className={`atelier-pipeline__stage ${activeIndex === index ? "is-active" : ""}`}
+            >
               <span className="atelier-pipeline__label font-mono">{stage}</span>
               {index < pipeline.length - 1 && (
                 <span className="atelier-pipeline__connector" aria-hidden="true" />
