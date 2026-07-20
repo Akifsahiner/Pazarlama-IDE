@@ -20,6 +20,7 @@ import { PeakDayWarning } from "@renderer/components/PeakDayWarning";
 import { FeedbackThumbs } from "@renderer/components/FeedbackThumbs";
 import { GtmTacticTeachCard } from "./GtmTacticTeachCard";
 import { DraftAssetPreview } from "./DraftAssetPreview";
+import { WhyPanel } from "@renderer/components/WhyPanel";
 
 interface MarketingDecisionCardProps {
   decision: MarketingDecision;
@@ -187,6 +188,28 @@ export function MarketingDecisionCard({
         <p className="mt-1 text-[14px] font-medium text-text">{decision.decision}</p>
         <p className="mt-1 text-body-sm text-text-2">{decision.rationale}</p>
       </div>
+
+      {(decision.claim_citations?.length ?? 0) > 0 && (
+        <WhyPanel
+          graph={{
+            version: 1,
+            project_id: projectId ?? "decision",
+            computed_at: new Date().toISOString(),
+            claims: decision.claim_citations!.map((c) => ({
+              dimension: c.dimension as import("@shared/productUnderstandingInput").ProductUnderstandingDimension,
+              value: c.field ?? c.dimension,
+              confidence: c.confidence,
+              evidence: c.evidence_refs.map((e) => ({
+                ...e,
+                kind: e.kind as import("@shared/productUnderstandingInput").EvidenceSourceKind,
+              })),
+              updated_at: new Date().toISOString(),
+            })),
+          }}
+          title="Sources for this decision"
+          defaultOpen
+        />
+      )}
 
       {decision.options_compared.length > 1 && (
         <details className="rounded-[var(--radius-md)] border border-line bg-surface px-3 py-2">

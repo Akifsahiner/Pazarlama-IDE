@@ -21,6 +21,7 @@ import {
   compactProfile,
   type Persona,
 } from "./prompts.js";
+import { validateDecisionCitations, type ClaimGraphRow } from "./citationValidator.js";
 import { generateDecision } from "./generate.js";
 import { generateAnswer, generateDraft, generateResearchBrief } from "./generateVariants.js";
 import {
@@ -336,6 +337,30 @@ async function runDecisionPath(
   });
 
   let decision = await generateDecision(baseDecisionOpts());
+
+  const graphRows: ClaimGraphRow[] = (profile.product_understanding?.claims ?? []).map((c) => ({
+    dimension: c.dimension,
+    value: c.value,
+    confidence: c.confidence,
+    evidence: c.evidence,
+  }));
+  if (graphRows.length && (decision.claim_citations?.length || decision.profile_citations?.length)) {
+    const citationCheck = validateDecisionCitations(decision, graphRows);
+    if (!citationCheck.ok) {
+      opts.emit({
+        type: "brain.status",
+        phase: "revising",
+        text: "Fixing unsourced claim citations…",
+        skills: skillLabels,
+      });
+      decision = await generateDecision(
+        baseDecisionOpts([
+          ...citationCheck.errors.map((e) => `Citation gate: ${e}`),
+          "Remove invalid claim_citations or downgrade confidence to assumption/missing.",
+        ]),
+      );
+    }
+  }
 
   if (needsPhListSizeGate(opts.message, profile) && !decision.missing_info.some((q) => /email|list/i.test(q))) {
     decision = {

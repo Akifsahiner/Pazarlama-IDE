@@ -57,8 +57,11 @@ const QUESTIONS: Record<
 export function useNextProfileGap(): string | null {
   const profile = useApp((s) => s.marketingProfile);
   return useMemo(() => {
-    if (!profile?.gaps?.length) return null;
-    return profile.gaps.find((g) => g in QUESTIONS) ?? null;
+    const gaps = profile?.strategic_gaps?.length
+      ? profile.strategic_gaps
+      : profile?.gaps;
+    if (!gaps?.length) return null;
+    return gaps.find((g) => g in QUESTIONS) ?? null;
   }, [profile]);
 }
 
@@ -74,8 +77,11 @@ export function MissingInfoCard() {
   const [value, setValue] = useState("");
 
   const nextGap = useMemo(() => {
-    if (!profile?.gaps?.length) return null;
-    return profile.gaps.find((g) => !skipped.has(g) && g in QUESTIONS) ?? null;
+    const gaps = profile?.strategic_gaps?.length
+      ? profile.strategic_gaps
+      : profile?.gaps;
+    if (!gaps?.length) return null;
+    return gaps.find((g) => !skipped.has(g) && g in QUESTIONS) ?? null;
   }, [profile, skipped]);
 
   if (!profile || !nextGap) return null;

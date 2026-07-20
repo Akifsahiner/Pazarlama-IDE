@@ -8,6 +8,7 @@ import type {
 import { Badge } from "@renderer/components/ui/Badge";
 import { Button } from "@renderer/components/ui/Button";
 import { Card } from "@renderer/components/ui/Card";
+import { WhyPanel } from "@renderer/components/WhyPanel";
 
 const POSTURE_LABEL: Record<StrategicOption["posture"], string> = {
   safe: "Safe foundation",
@@ -172,6 +173,12 @@ export function StrategicDecisionCard({
           </ul>
         </div>
       </div>
+
+      <WhyPanel
+        dimensions={["business_model", "target_user", "activation_event", "founder_constraints"]}
+        title="Evidence before you seal"
+        defaultOpen
+      />
 
       <div className="mt-5 flex justify-end">
         <Button

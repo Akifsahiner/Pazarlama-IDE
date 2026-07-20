@@ -42,6 +42,10 @@ interface WalkResult {
   hasAnalytics: boolean;
   packageJsonCandidates: Array<{ rel: string; content: string }>;
   readme?: string;
+  readmePath?: string;
+  analyticsFiles: string[];
+  pricingPath?: string;
+  pricingRaw?: string;
   appPackages: string[];
 }
 
@@ -60,6 +64,7 @@ async function walk(
     excluded: [],
     hasAnalytics: false,
     packageJsonCandidates: [],
+    analyticsFiles: [],
     appPackages: [],
   };
   let lastEmit = Date.now();
@@ -113,6 +118,7 @@ async function walk(
       const lower = entry.name.toLowerCase();
       if (lower === "readme.md" && !result.readme) {
         result.readme = await safeRead(full);
+        result.readmePath = rel.replace(/\\/g, "/");
         if (result.readme && !readmeEmitted) {
           readmeEmitted = true;
           emitMilestone("README parsed");
@@ -139,6 +145,8 @@ async function walk(
         }
       }
       if (/(gtag|analytics|posthog|plausible|mixpanel|segment)/i.test(entry.name)) {
+        const relPath = rel.replace(/\\/g, "/");
+        if (result.analyticsFiles.length < 8) result.analyticsFiles.push(relPath);
         if (!result.hasAnalytics) {
           result.hasAnalytics = true;
           if (!analyticsEmitted) {
@@ -155,6 +163,17 @@ async function walk(
                     : "Analytics integration found";
             emitMilestone(label);
           }
+        }
+      }
+      if (
+        /pricing/i.test(rel.replace(/\\/g, "/")) &&
+        /(page|route|index)\.(t|j)sx?$/.test(lower) &&
+        !result.pricingRaw
+      ) {
+        const content = await safeRead(full);
+        if (content) {
+          result.pricingPath = rel.replace(/\\/g, "/");
+          result.pricingRaw = content.slice(0, 12_000);
         }
       }
     }
@@ -288,6 +307,30 @@ export async function scanProject(
     ? walked.readme.replace(/[#>*_`-]/g, "").trim().slice(0, 600)
     : undefined;
 
+  const readmeLines = walked.readme?.split(/\r?\n/) ?? [];
+  const scanCitations =
+    walked.readme || walked.analyticsFiles.length || walked.pricingRaw
+      ? {
+          readme: walked.readme
+            ? {
+                path: walked.readmePath ?? "README.md",
+                excerpt: walked.readme.slice(0, 4000),
+                startLine: 1,
+                endLine: Math.min(readmeLines.length, 120),
+              }
+            : undefined,
+          analyticsFiles: walked.analyticsFiles.map((p) => ({ path: p })),
+          pricingPage: walked.pricingRaw
+            ? {
+                path: walked.pricingPath!,
+                excerpt: walked.pricingRaw.slice(0, 2000),
+                startLine: 1,
+                endLine: Math.min(walked.pricingRaw.split(/\r?\n/).length, 80),
+              }
+            : undefined,
+        }
+      : undefined;
+
   return {
     id: hashId(root),
     source,
@@ -297,6 +340,7 @@ export async function scanProject(
     monorepoRoot,
     appPackages: walked.appPackages.length ? walked.appPackages : undefined,
     readmeSummary,
+    scanCitations,
     routes: walked.routes,
     hasAnalytics: walked.hasAnalytics,
     excludedPaths: walked.excluded,

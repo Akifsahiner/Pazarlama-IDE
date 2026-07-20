@@ -318,6 +318,15 @@ Build toward Software CMO in this order:
 - **Implemented:** `cmoGrowthMechanismKnowledge.ts`, `cmoGrowthEngine.ts`, `PublicPresenceCard`, spec `CMO_GROWTH_ENGINE_SPEC.md`
 - **Calibration:** No case-study browser; company names in calibration metadata only; no LLM mechanism picking
 
+### Part 6 — Product Understanding (evidence SSOT)
+
+- Eleven dimensions (category, business model, pricing, ICP, problem, activation, analytics, site structure, founder constraints, distribution assets, competitors)
+- Every `measured` claim requires `EvidenceRef[]` (repo path, live URL, user answer, analytics snapshot)
+- Unknowns labeled `missing`, `assumption`, or `needs_confirmation` — never silent facts
+- FAB gates block strategic seal when critical dimensions unsourced; Why panel answers "why this thesis?"
+- **Implemented:** `productUnderstanding*.ts`, `WhyPanel.tsx`, spec `PRODUCT_UNDERSTANDING_SPEC.md`
+- **Exit gate:** Zero fabricated claims on 5 dogfood projects; critical decisions show clickable evidence
+
 ---
 
 ## 12. Feature decision checklist (use on every PR)

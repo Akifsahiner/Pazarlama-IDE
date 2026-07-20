@@ -207,6 +207,12 @@ import {
   persistSessionOutcomesLocal,
 } from "@renderer/state/quickStartWedgeHelpers";
 import { buildCmoIntake, buildFinalChannelThesis } from "@shared/cmoIntake";
+import { buildProductUnderstanding } from "@shared/productUnderstandingPolicy";
+import {
+  auditClaimFabrication,
+  hasBlockingFabrication,
+  blockingDimensions,
+} from "@shared/productUnderstandingFabrication";
 import type { ChannelThesis } from "@shared/cmoIntake";
 import { validateFounderFit } from "@shared/cmoFounderFit";
 import { synthesizeGrowthNarrative } from "@shared/cmoGrowthNarrative";
@@ -2017,12 +2023,39 @@ export const useApp = create<AppState>((set, get) => {
     const pid = get().activeProjectId ?? get().project?.id;
     if (pid) persistProductActivationLocal(pid, state);
     const profile = get().marketingProfile ?? emptyMarketingProfile();
+    const project = get().project;
+    const graph = project
+      ? buildProductUnderstanding({ project, profile: { ...profile, product_activation: state } })
+      : profile.product_understanding;
     set({
       productActivation: state,
-      marketingProfile: { ...profile, product_activation: state },
+      marketingProfile: {
+        ...profile,
+        product_activation: state,
+        product_understanding: graph ?? profile.product_understanding,
+      },
     });
-    void get().updateMarketingProfile({ product_activation: state });
+    void get().updateMarketingProfile({
+      product_activation: state,
+      product_understanding: graph ?? undefined,
+    });
   };
+
+  const UNDERSTANDING_REFRESH_KEYS = new Set([
+    "business_model",
+    "target_audience",
+    "competitors",
+    "primary_problem",
+    "product_activation",
+    "founder_fit",
+    "connector_snapshots",
+    "manual_kpis",
+    "price_range",
+    "existing_proof",
+    "available_assets",
+    "product_description",
+    "category",
+  ]);
 
   const hydrateProductActivationLocal = (projectId: string) => {
     try {
@@ -4551,10 +4584,15 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     updateMarketingProfile: async (patch) => {
-      const { settings, auth, activeProjectId, marketingProfile } = get();
+      const { settings, auth, activeProjectId, marketingProfile, project } = get();
       // Optimistic local merge first so MissingInfoCard collapses immediately.
       if (marketingProfile) {
-        set({ marketingProfile: { ...marketingProfile, ...patch } });
+        let merged: MarketingProfile = { ...marketingProfile, ...patch };
+        if (Object.keys(patch).some((k) => UNDERSTANDING_REFRESH_KEYS.has(k)) && project) {
+          const graph = buildProductUnderstanding({ project, profile: merged });
+          if (graph) merged = { ...merged, product_understanding: graph };
+        }
+        set({ marketingProfile: merged });
       }
       if (!activeProjectId) return;
       try {
@@ -5073,10 +5111,17 @@ export const useApp = create<AppState>((set, get) => {
         profile,
         draft: true,
       });
+      const understanding =
+        profile.product_understanding ??
+        buildProductUnderstanding({ project, profile });
       track("cmo_intake", { thesis_id: thesis.id, verdict: thesis.verdict });
       set({
         channelThesis: thesis,
-        marketingProfile: { ...profile, channel_thesis: thesis },
+        marketingProfile: {
+          ...profile,
+          channel_thesis: thesis,
+          product_understanding: understanding ?? profile.product_understanding,
+        },
       });
       if (!isStrategicDecisionSealed(profile) && !profile.ops_cadence) {
         void get().updateMarketingProfile({ channel_thesis: thesis });
@@ -5232,6 +5277,24 @@ export const useApp = create<AppState>((set, get) => {
       const founderFit = marketingProfile?.founder_fit;
       const narrative = marketingProfile?.growth_narrative;
       if (!project || !marketingProfile || !decision || !founderFit || !narrative) return false;
+
+      const graph =
+        marketingProfile.product_understanding ??
+        buildProductUnderstanding({ project, profile: marketingProfile });
+      const fabAudits = auditClaimFabrication(graph, {
+        action: "seal",
+        url_only: project.source.kind === "url",
+      });
+      if (hasBlockingFabrication(fabAudits)) {
+        const dims = blockingDimensions(fabAudits).join(", ");
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: `Seal blocked — confirm or fill: ${dims}. Open Why panel on intake card for evidence gaps.`,
+        });
+        return false;
+      }
+
       const id = selectedId ?? decision.selected_id ?? decision.recommended_id;
       const sealed = sealStrategicDecisionCore(decision, id);
       if (!sealed.sealed_at) return false;
@@ -5440,6 +5503,9 @@ export const useApp = create<AppState>((set, get) => {
         salesPipelineEmpty: marketingProfile.sales_pipeline_empty,
         existing: get().revenueProfile ?? marketingProfile.revenue_profile,
         intake: input,
+        understandingGraph:
+          marketingProfile.product_understanding ??
+          buildProductUnderstanding({ project, profile: marketingProfile }),
       });
       syncRevenueProfileState(built);
       track("revenue_profile_saved", {
@@ -5712,6 +5778,22 @@ export const useApp = create<AppState>((set, get) => {
         });
         return;
       }
+      const understandingGraph =
+        marketingProfile!.product_understanding ??
+        buildProductUnderstanding({ project, profile: marketingProfile! });
+      const week1Fab = auditClaimFabrication(understandingGraph, {
+        action: "week1",
+        url_only: project.source.kind === "url",
+      });
+      if (hasBlockingFabrication(week1Fab)) {
+        const dims = blockingDimensions(week1Fab).join(", ");
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: `Week 1 blocked — confirm or fill: ${dims}. Open Why panel on intake for evidence gaps.`,
+        });
+        return;
+      }
       if (!get().revenueProfile && !marketingProfile?.revenue_profile) {
         appendEvent({
           role: "system",
@@ -5776,6 +5858,9 @@ export const useApp = create<AppState>((set, get) => {
           persona: settings.persona,
           manualKpis: marketingProfile?.manual_kpis,
           salesPipelineEmpty: marketingProfile?.sales_pipeline_empty,
+          understandingGraph:
+            marketingProfile?.product_understanding ??
+            buildProductUnderstanding({ project, profile: marketingProfile }),
         });
       syncRevenueProfileState(revenueProfile);
       const productBinding = detectProductBinding({
@@ -5783,6 +5868,9 @@ export const useApp = create<AppState>((set, get) => {
         activation: productActivation,
         growthBinding: get().growthControlPlane?.binding,
         gaps: marketingProfile?.gaps,
+        understandingGraph:
+          marketingProfile?.product_understanding ??
+          buildProductUnderstanding({ project, profile: marketingProfile }),
       });
       let opsCadence = productBinding.active
         ? createProductLoopOpsCadence({
@@ -5827,6 +5915,9 @@ export const useApp = create<AppState>((set, get) => {
         activation: productActivation,
         gaps: marketingProfile?.gaps,
         manualKpis: marketingProfile?.manual_kpis,
+        understandingGraph:
+          marketingProfile?.product_understanding ??
+          buildProductUnderstanding({ project, profile: marketingProfile }),
       });
       const monetizationWs = createMonetizationWorkspaceFromBinding({
         thesis,
@@ -6563,6 +6654,9 @@ export const useApp = create<AppState>((set, get) => {
         activation: productActivation,
         growthBinding: get().growthControlPlane?.binding,
         gaps: marketingProfile?.gaps,
+        understandingGraph:
+          marketingProfile?.product_understanding ??
+          buildProductUnderstanding({ project, profile: marketingProfile }),
       });
       const newCadence = productBinding.active
         ? createProductLoopOpsCadence({
@@ -6618,6 +6712,9 @@ export const useApp = create<AppState>((set, get) => {
           persona: settings.persona,
           manualKpis: marketingProfile?.manual_kpis,
           salesPipelineEmpty: marketingProfile?.sales_pipeline_empty,
+          understandingGraph:
+            marketingProfile?.product_understanding ??
+            buildProductUnderstanding({ project, profile: marketingProfile }),
         });
       const revenueBinding = detectRevenueBinding({
         founderFit: marketingProfile?.founder_fit,
@@ -6628,6 +6725,9 @@ export const useApp = create<AppState>((set, get) => {
         activation: productActivation,
         gaps: marketingProfile?.gaps,
         manualKpis: marketingProfile?.manual_kpis,
+        understandingGraph:
+          marketingProfile?.product_understanding ??
+          buildProductUnderstanding({ project, profile: marketingProfile }),
       });
       const nextMonetization = createMonetizationWorkspaceFromBinding({
         thesis: newThesis,

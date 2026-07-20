@@ -10,7 +10,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --import tsx --test src/tier/tiers.test.ts src/billing/pricing.test.ts src/brain/marketingStrategyRoute.test.ts src/brain/answerCritic.test.ts src/brain/executionClassifier.test.ts",
+    "test": "node --import tsx --test src/tier/tiers.test.ts src/billing/pricing.test.ts src/brain/marketingStrategyRoute.test.ts src/brain/answerCritic.test.ts src/brain/executionClassifier.test.ts src/brain/citationValidator.test.ts",
     "eval:gtm": "npm run build && node evals/gtm-golden.mjs && node evals/gtm-behavioral.mjs",
     "eval:skill-coverage": "npm run build && node evals/skill-coverage.mjs",
     "skill:audit": "node scripts/skill-audit.mjs",

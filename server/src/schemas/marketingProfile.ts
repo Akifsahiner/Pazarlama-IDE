@@ -1458,6 +1458,48 @@ export const marketingProfileSchema = z.object({
     })
     .optional(),
 
+  // Part 6 — product understanding evidence graph
+  product_understanding: z
+    .object({
+      version: z.literal(1),
+      project_id: z.string(),
+      computed_at: z.string(),
+      claims: z.array(
+        z.object({
+          dimension: z.string(),
+          value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+          confidence: z.enum(["measured", "assumption", "missing", "needs_confirmation"]),
+          evidence: z.array(
+            z.object({
+              id: z.string(),
+              kind: z.string(),
+              label: z.string(),
+              ref: z.string(),
+              excerpt: z.string().optional(),
+              startLine: z.number().optional(),
+              endLine: z.number().optional(),
+              captured_at: z.string().optional(),
+              rule_id: z.string().optional(),
+            }),
+          ),
+          updated_at: z.string(),
+        }),
+      ),
+    })
+    .optional(),
+  scan_gaps: z.array(z.string()).optional(),
+  strategic_gaps: z.array(z.string()).optional(),
+  confirmation_queue: z
+    .array(
+      z.object({
+        id: z.string(),
+        dimension: z.string(),
+        prompt: z.string(),
+        cta_label: z.string(),
+      }),
+    )
+    .optional(),
+
   // Meta
   last_updated: z.string().default(() => new Date().toISOString()),
   confidence_score: z.number().min(0).max(1).default(0),

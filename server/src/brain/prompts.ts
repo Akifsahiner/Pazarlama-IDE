@@ -14,6 +14,29 @@ export interface PlanProgressSummary {
   byPlaybook?: Record<string, { done: number; total: number }>;
 }
 
+function productUnderstandingBlock(profile: MarketingProfile): string {
+  const graph = profile.product_understanding;
+  if (!graph?.claims?.length) return "";
+  const rows = graph.claims.map((c) => ({
+    dimension: c.dimension,
+    value: c.value,
+    confidence: c.confidence,
+    evidence: c.evidence.map((e) => ({
+      kind: e.kind,
+      ref: e.ref,
+      label: e.label,
+      startLine: e.startLine,
+    })),
+  }));
+  return [
+    "PRODUCT UNDERSTANDING (evidence SSOT — never cite missing dimensions as measured facts):",
+    "```json",
+    JSON.stringify(rows, null, 2),
+    "```",
+    "When using claim_citations, each measured citation MUST include evidence_refs from this graph.",
+  ].join("\n");
+}
+
 /**
  * Trim the structured profile to the fields a marketing operator actually
  * needs in-context — keeps token spend down and reduces "lost in noise".
@@ -157,6 +180,7 @@ function baseContext(opts: {
     opts.profile.product_name || opts.profile.product_description
       ? "```json\n" + compactProfile(opts.profile) + "\n```"
       : "(profile is mostly empty — ask up to 3 specific questions in missing_info if needed)",
+    productUnderstandingBlock(opts.profile),
     opts.skillContext
       ? "SKILL CONTEXT (principles, playbook, decision-tree, templates, anti-patterns, KPIs):\n" +
         opts.skillContext
@@ -205,6 +229,7 @@ export function decisionSystemPrompt(opts: {
     "- honest_ceiling: one sentence stating what is realistically achievable and why (builds trust).",
     "- tactic_stack: ≥5 items with registry ids from skill playbooks (e.g. ph_submit_1201_pt). Each action measurable.",
     "- profile_citations: ≥3 profile field names you actually used (product_name, email_list_size, …).",
+    "- claim_citations: optional — cite product_understanding dimensions with confidence + evidence_refs; never cite missing dimensions as facts.",
     "- Never suggest upvote farms, paid hunters, or vote rings.",
     DEEP_LINK_RULES,
   ]

@@ -7,6 +7,8 @@ import type { LaneAItem, LaneAWorkspace } from "./cmoLaneA";
 import type { CmoOpsCadence, CmoOpsTask } from "./cmoOpsCadence";
 import type { BindingBottleneck } from "./cmoGrowthPlane";
 import type { FounderFitProfile, ManualKpi, ProjectProfile } from "./types";
+import type { ProductUnderstandingGraph } from "./productUnderstandingInput";
+import { bindingEvidenceRefs } from "./productUnderstandingEvidenceBridge";
 
 export type ProductMetricConfidence = "measured" | "assumption" | "missing";
 export type ProductFixScope = "site_level" | "core_product";
@@ -41,6 +43,8 @@ export interface ProductBinding {
   headline: string;
   rationale: string[];
   evidence: string[];
+  /** Part 6 — structured refs from product understanding graph when available. */
+  evidence_refs?: import("./productUnderstandingInput").EvidenceRef[];
   confidence: ProductMetricConfidence;
   trigger?:
     | "scale_not_ready"
@@ -101,6 +105,21 @@ export interface ProductBindingInput {
   activation?: ProductActivationProfile | null;
   growthBinding?: Pick<BindingBottleneck, "stage_id" | "headline" | "evidence"> | null;
   gaps?: string[];
+  understandingGraph?: ProductUnderstandingGraph | null;
+}
+
+function finalizeProductBinding(
+  binding: ProductBinding,
+  input: ProductBindingInput,
+): ProductBinding {
+  return {
+    ...binding,
+    evidence_refs: bindingEvidenceRefs(input.understandingGraph, binding.evidence, [
+      "activation_event",
+      "site_structure",
+      "traffic_analytics",
+    ]),
+  };
 }
 
 const URL_RE = /^https?:\/\/[^\s]+$/i;
@@ -175,40 +194,49 @@ export function buildProductActivationProfile(input: {
   };
 }
 
-function inactiveBinding(): ProductBinding {
-  return {
-    active: false,
-    stage_id: "activation",
-    headline: "Product loop is not the binding constraint",
-    rationale: ["Continue the current marketing thesis while activation evidence is healthy or missing."],
-    evidence: [],
-    confidence: "missing",
-  };
+function inactiveBinding(input: ProductBindingInput): ProductBinding {
+  return finalizeProductBinding(
+    {
+      active: false,
+      stage_id: "activation",
+      headline: "Product loop is not the binding constraint",
+      rationale: ["Continue the current marketing thesis while activation evidence is healthy or missing."],
+      evidence: [],
+      confidence: "missing",
+    },
+    input,
+  );
 }
 
 export function detectProductBinding(input: ProductBindingInput): ProductBinding {
   if (input.founderFit?.scale_readiness === "not_yet") {
-    return {
-      active: true,
-      stage_id: "activation",
-      headline: "Product readiness — do not scale acquisition yet",
-      rationale: ["The founder marked the product unable to handle a traffic spike."],
-      evidence: ["Scale readiness: not yet"],
-      confidence: "measured",
-      trigger: "scale_not_ready",
-    };
+    return finalizeProductBinding(
+      {
+        active: true,
+        stage_id: "activation",
+        headline: "Product readiness — do not scale acquisition yet",
+        rationale: ["The founder marked the product unable to handle a traffic spike."],
+        evidence: ["Scale readiness: not yet"],
+        confidence: "measured",
+        trigger: "scale_not_ready",
+      },
+      input,
+    );
   }
 
   if (input.growthBinding?.stage_id === "activation") {
-    return {
-      active: true,
-      stage_id: "activation",
-      headline: input.growthBinding.headline,
-      rationale: ["Users exist, but the growth plane identifies first value as the constraint."],
-      evidence: input.growthBinding.evidence,
-      confidence: "measured",
-      trigger: "growth_plane_activation",
-    };
+    return finalizeProductBinding(
+      {
+        active: true,
+        stage_id: "activation",
+        headline: input.growthBinding.headline,
+        rationale: ["Users exist, but the growth plane identifies first value as the constraint."],
+        evidence: input.growthBinding.evidence,
+        confidence: "measured",
+        trigger: "growth_plane_activation",
+      },
+      input,
+    );
   }
 
   const activation = input.activation;
@@ -217,17 +245,20 @@ export function detectProductBinding(input: ProductBindingInput): ProductBinding
     activation.activation_rate_target_pct != null &&
     activation.activation_rate_pct < activation.activation_rate_target_pct
   ) {
-    return {
-      active: true,
-      stage_id: "activation",
-      headline: "Activation — measured rate is below the founder's target",
-      rationale: ["Scaling reach would send more users into a product path that is under target."],
-      evidence: [
-        `Activation ${activation.activation_rate_pct}% vs target ${activation.activation_rate_target_pct}%`,
-      ],
-      confidence: "measured",
-      trigger: "activation_below_target",
-    };
+    return finalizeProductBinding(
+      {
+        active: true,
+        stage_id: "activation",
+        headline: "Activation — measured rate is below the founder's target",
+        rationale: ["Scaling reach would send more users into a product path that is under target."],
+        evidence: [
+          `Activation ${activation.activation_rate_pct}% vs target ${activation.activation_rate_target_pct}%`,
+        ],
+        confidence: "measured",
+        trigger: "activation_below_target",
+      },
+      input,
+    );
   }
 
   if (
@@ -238,33 +269,39 @@ export function detectProductBinding(input: ProductBindingInput): ProductBinding
     (activation.activated_count / activation.signup_count) * 100 < 20
   ) {
     const rate = Math.round((activation.activated_count / activation.signup_count) * 1000) / 10;
-    return {
-      active: true,
-      stage_id: "activation",
-      headline: "Activation — signup-to-value is below the conservative floor",
-      rationale: ["The deterministic 20% floor is an assumption, not an industry benchmark."],
-      evidence: [`${activation.activated_count}/${activation.signup_count} activated (${rate}%)`],
-      confidence: "assumption",
-      trigger: "activation_below_floor",
-    };
+    return finalizeProductBinding(
+      {
+        active: true,
+        stage_id: "activation",
+        headline: "Activation — signup-to-value is below the conservative floor",
+        rationale: ["The deterministic 20% floor is an assumption, not an industry benchmark."],
+        evidence: [`${activation.activated_count}/${activation.signup_count} activated (${rate}%)`],
+        confidence: "assumption",
+        trigger: "activation_below_floor",
+      },
+      input,
+    );
   }
 
   if (
     input.gaps?.includes("product.onboarding_missing") &&
     (input.founderFit?.magic_moment?.trim().length ?? 0) >= 3
   ) {
-    return {
-      active: true,
-      stage_id: "activation",
-      headline: "Onboarding — the path to first value is missing",
-      rationale: ["The product has a defined magic moment but no detected onboarding path."],
-      evidence: ["Scan gap: product.onboarding_missing"],
-      confidence: "assumption",
-      trigger: "onboarding_missing",
-    };
+    return finalizeProductBinding(
+      {
+        active: true,
+        stage_id: "activation",
+        headline: "Onboarding — the path to first value is missing",
+        rationale: ["The product has a defined magic moment but no detected onboarding path."],
+        evidence: ["Scan gap: product.onboarding_missing"],
+        confidence: "assumption",
+        trigger: "onboarding_missing",
+      },
+      input,
+    );
   }
 
-  return inactiveBinding();
+  return inactiveBinding(input);
 }
 
 function request(
