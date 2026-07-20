@@ -64,11 +64,11 @@ export function Header() {
     <motion.header
       className={`z-50 flex w-full transition-all duration-300 ${
         scrolled
-          ? "header-scrolled fixed top-0 border-b py-3"
+          ? "fixed top-0 border-b border-line bg-surface/95 py-3 backdrop-blur-md"
           : "absolute bg-transparent pt-4"
       }`}
       variants={headerFade}
-      initial="hidden"
+      initial={false}
       animate="visible"
     >
       <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-5 md:px-8">
@@ -82,11 +82,11 @@ export function Header() {
             <a
               key={link.label}
               href={link.href}
-              className={
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                 onHero
-                  ? "hero-nav-pill rounded-full px-4 py-2 text-sm font-medium transition-colors"
-                  : "rounded-full border border-line/80 bg-surface/70 px-4 py-2 text-sm font-medium text-ink-2 backdrop-blur-sm transition-colors hover:bg-surface hover:text-ink"
-              }
+                  ? "border border-white/32 bg-white/16 text-white shadow-[0_2px_16px_rgba(8,48,96,0.18)] backdrop-blur-xl hover:bg-white/24 hover:text-white"
+                  : "border border-line/80 bg-surface/70 text-ink-2 backdrop-blur-sm hover:bg-surface hover:text-ink"
+              }`}
             >
               {link.label}
             </a>

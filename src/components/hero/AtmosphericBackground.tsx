@@ -13,7 +13,6 @@ export function AtmosphericBackground() {
       <div className="canvas-hero__glass-orb canvas-hero__glass-orb--a" />
       <div className="canvas-hero__glass-orb canvas-hero__glass-orb--b" />
       <div className="canvas-hero__glass-orb canvas-hero__glass-orb--c" />
-      <div className="canvas-hero__flare" />
       <div className="canvas-hero__noise" />
     </div>
   );

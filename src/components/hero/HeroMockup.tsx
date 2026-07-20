@@ -9,7 +9,7 @@ export function HeroMockup() {
   return (
     <motion.div
       className="product-frame relative -mt-2 w-full md:-mt-4"
-      initial={reducedMotion ? false : { opacity: 0, y: 40 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
       transition={reducedMotion ? { duration: 0 } : { duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
     >

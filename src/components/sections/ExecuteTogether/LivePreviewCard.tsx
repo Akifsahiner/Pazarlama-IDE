@@ -11,8 +11,8 @@ export function LivePreviewCard() {
         {preview.badge}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-[rgba(255,255,255,0.78)] bg-[rgba(255,252,245,0.72)] backdrop-blur-md">
-        <div className="flex items-center gap-2 border-b border-[rgba(200,170,130,0.18)] bg-[rgba(255,252,245,0.55)] px-3 py-2">
+      <div className="overflow-hidden rounded-xl border border-line bg-surface">
+        <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-3 py-2">
           <span className="size-2.5 rounded-full bg-ink-3/40" />
           <span className="size-2.5 rounded-full bg-ink-3/40" />
           <span className="size-2.5 rounded-full bg-ink-3/40" />
@@ -27,7 +27,9 @@ export function LivePreviewCard() {
           <p className="font-serif text-xl leading-tight font-medium text-ink">
             Turn every interview into structured hiring evidence.
           </p>
-          <span className="canvas-cta-pill">Start free</span>
+          <span className="rounded-lg bg-blue px-4 py-2 text-xs font-medium text-white">
+            Start free
+          </span>
           <div className="mt-1 flex gap-1.5">
             <span className="h-1.5 w-12 rounded-full bg-line" />
             <span className="h-1.5 w-8 rounded-full bg-line" />

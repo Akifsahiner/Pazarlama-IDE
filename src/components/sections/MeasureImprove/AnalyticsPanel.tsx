@@ -26,7 +26,7 @@ export function AnalyticsPanel() {
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-surface-2">
                   <div
-                    className="canvas-bar h-full rounded-full"
+                    className="h-full rounded-full bg-blue"
                     style={{ width: `${(channel.visits / maxVisits) * 100}%` }}
                   />
                 </div>
@@ -35,7 +35,7 @@ export function AnalyticsPanel() {
           })}
         </div>
 
-        <div className="flex items-start gap-2 rounded-xl border border-[rgba(255,255,255,0.78)] bg-[rgba(255,252,245,0.65)] p-3 backdrop-blur-md">
+        <div className="flex items-start gap-2 rounded-xl border border-line bg-surface-2 p-3">
           <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-orange" />
           <p className="text-xs leading-relaxed text-ink-2">{insight}</p>
         </div>
