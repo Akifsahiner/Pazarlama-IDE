@@ -51,6 +51,21 @@ export function AgentPanel({ theme, demo, preset }: AgentPanelProps) {
             </motion.div>
           ))}
         </AnimatePresence>
+
+        {interactive && demo?.isTyping && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="flex items-center gap-1 px-1 py-1"
+            aria-live="polite"
+            aria-label="Agent is typing"
+          >
+            <span className="size-1.5 animate-bounce rounded-full bg-white/50 [animation-delay:0ms]" />
+            <span className="size-1.5 animate-bounce rounded-full bg-white/50 [animation-delay:120ms]" />
+            <span className="size-1.5 animate-bounce rounded-full bg-white/50 [animation-delay:240ms]" />
+          </motion.div>
+        )}
       </div>
 
       {!preset && (
@@ -59,13 +74,15 @@ export function AgentPanel({ theme, demo, preset }: AgentPanelProps) {
             type="button"
             disabled={approving}
             onClick={interactive ? demo?.approve : undefined}
-            className={`w-full rounded-lg py-1.5 text-[10px] font-semibold text-white shadow-md ${
+            className={`w-full rounded-lg py-1.5 text-[10px] font-semibold text-white shadow-md transition-transform ${
               approved
                 ? "bg-gradient-to-b from-[#1f9d57] to-[#157a41]"
-                : "bg-gradient-to-b from-[#3c83f6] to-[#1d4ed8]"
+                : approving
+                  ? "bg-gradient-to-b from-[#3c83f6] to-[#1d4ed8] opacity-80"
+                  : "bg-gradient-to-b from-[#3c83f6] to-[#1d4ed8] hero-approve-pulse"
             }`}
           >
-            {approved ? "Approved" : approving ? "Approving…" : "Approve plan"}
+            {approved ? "Approved ✓" : approving ? "Approving…" : "Approve plan"}
           </button>
         </div>
       )}

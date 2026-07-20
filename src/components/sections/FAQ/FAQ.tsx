@@ -9,7 +9,7 @@ import { sections } from "@/lib/tokens";
 
 export function FAQ() {
   return (
-    <SectionContainer id="faq" className="atelier-section section-tint section-tint--tri">
+    <SectionContainer id="faq" fullBleed className="atelier-section section-tint section-tint--tri">
       <div className="atelier-grid-lines" aria-hidden="true" />
       <div className="atelier-light atelier-light--sky" aria-hidden="true" />
       <div className="atelier-light atelier-light--moss" aria-hidden="true" />

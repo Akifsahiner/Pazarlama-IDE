@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -47,18 +48,24 @@ function Logo({ onHero }: { onHero: boolean }) {
 }
 
 export function Header() {
-  const [scrolled, setScrolled] = useState(false);
-  const onHero = !scrolled;
+  const pathname = usePathname();
+  const isLightSurface = pathname !== "/";
+  const [scrolled, setScrolled] = useState(isLightSurface);
+  const onHero = !scrolled && !isLightSurface;
 
   useEffect(() => {
     const handleScroll = () => {
+      if (isLightSurface) {
+        setScrolled(true);
+        return;
+      }
       setScrolled(window.scrollY > window.innerHeight * 0.55);
     };
 
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [isLightSurface]);
 
   return (
     <motion.header
@@ -81,7 +88,7 @@ export function Header() {
           {navLinks.map((link) => (
             <a
               key={link.label}
-              href={link.href}
+              href={isLightSurface ? `/${link.href}` : link.href}
               className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                 onHero
                   ? "canvas-glass-on-painting text-white hover:bg-white/20 hover:text-white"

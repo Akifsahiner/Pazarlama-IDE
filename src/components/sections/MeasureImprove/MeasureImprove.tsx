@@ -48,7 +48,7 @@ export function MeasureImprove() {
   const maxVisits = Math.max(...channels.map((c) => c.visits));
 
   return (
-    <SectionContainer className="atelier-section atelier-section--campaign section-tint section-tint--green">
+    <SectionContainer fullBleed className="atelier-section atelier-section--campaign section-tint section-tint--green">
       <div className="atelier-grid-lines" aria-hidden="true" />
       <div className="atelier-light atelier-light--moss" aria-hidden="true" />
       <div className="atelier-light atelier-light--ember" aria-hidden="true" />

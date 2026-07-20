@@ -570,13 +570,15 @@ body {
   right: 0;
   bottom: 0;
   z-index: 2;
-  height: 55%;
+  height: 62%;
   background: linear-gradient(
     180deg,
     transparent 0%,
-    rgba(245, 240, 231, 0.04) 28%,
-    rgba(245, 240, 231, 0.22) 52%,
-    rgba(245, 240, 231, 0.72) 78%,
+    rgba(245, 240, 231, 0.02) 22%,
+    rgba(245, 240, 231, 0.12) 42%,
+    rgba(245, 240, 231, 0.38) 62%,
+    rgba(245, 240, 231, 0.68) 80%,
+    rgba(245, 240, 231, 0.88) 92%,
     #f5f0e7 100%
   );
   pointer-events: none;
@@ -592,21 +594,49 @@ body {
 }
 
 .hero-fade-bottom {
-  z-index: 1;
-  height: 10rem;
+  z-index: 5;
+  height: 22rem;
   background: linear-gradient(
     180deg,
     transparent 0%,
-    rgba(245, 240, 231, 0.08) 35%,
-    rgba(245, 240, 231, 0.45) 70%,
+    rgba(245, 240, 231, 0.04) 18%,
+    rgba(245, 240, 231, 0.18) 38%,
+    rgba(245, 240, 231, 0.52) 58%,
+    rgba(245, 240, 231, 0.82) 78%,
+    rgba(245, 240, 231, 0.96) 92%,
     #f5f0e7 100%
   );
 }
 
+.hero-mockup-zone {
+  position: relative;
+  z-index: 20;
+  pointer-events: auto;
+}
+
+.hero-mockup-hint {
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+}
+
+@keyframes hero-approve-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(60, 131, 246, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(60, 131, 246, 0.22);
+  }
+}
+
+.hero-approve-pulse {
+  animation: hero-approve-glow 2.4s ease-in-out infinite;
+}
+
 .hero-to-canvas {
   position: relative;
-  margin-top: -160px;
-  padding-top: 220px;
+  z-index: 8;
+  margin-top: -48px;
+  padding-top: 160px;
 }
 
 .hero-to-canvas__wash {
@@ -615,9 +645,12 @@ body {
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(245, 240, 231, 0) 0%,
-    rgba(245, 240, 231, 0.72) 16%,
-    #f5f0e7 42%
+    transparent 0%,
+    rgba(245, 240, 231, 0.08) 10%,
+    rgba(245, 240, 231, 0.28) 24%,
+    rgba(245, 240, 231, 0.55) 40%,
+    rgba(245, 240, 231, 0.82) 58%,
+    #f5f0e7 72%
   );
 }
 
@@ -640,10 +673,82 @@ body {
   position: relative;
   background: linear-gradient(
     180deg,
-    var(--canvas-cream) 0%,
-    #fffbf7 12%,
-    var(--canvas-paper) 28%,
+    rgba(245, 240, 231, 0.55) 0%,
+    var(--canvas-cream) 8%,
+    #fffbf7 18%,
+    var(--canvas-paper) 36%,
     var(--canvas-paper) 100%
+  );
+}
+
+/* ---- Section seams: soft blends between major blocks ---- */
+.canvas-section-seam {
+  position: relative;
+  z-index: 6;
+  height: 0;
+  pointer-events: none;
+}
+
+.canvas-section-seam::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 140px;
+  transform: translateY(-50%);
+}
+
+.canvas-section-seam--hero-bridge::before {
+  top: 0;
+  height: 120px;
+  transform: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(245, 240, 231, 0.35) 45%,
+    rgba(245, 240, 231, 0.75) 100%
+  );
+}
+
+.canvas-section-seam--bridge-timeline::before {
+  top: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(245, 240, 231, 0) 0%,
+    rgba(255, 251, 247, 0.65) 35%,
+    rgba(245, 240, 231, 0.95) 100%
+  );
+}
+
+.canvas-section-seam--timeline-path::before {
+  top: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(245, 240, 231, 0) 0%,
+    rgba(255, 248, 238, 0.55) 40%,
+    rgba(255, 252, 245, 0.92) 100%
+  );
+}
+
+.canvas-section-seam--path-workbench::before {
+  top: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 252, 245, 0) 0%,
+    rgba(220, 235, 248, 0.22) 45%,
+    rgba(245, 240, 231, 0.88) 100%
+  );
+}
+
+.canvas-section-seam--workbench-dark::before {
+  top: 0;
+  height: 160px;
+  background: linear-gradient(
+    180deg,
+    rgba(245, 240, 231, 0) 0%,
+    rgba(245, 240, 231, 0.45) 28%,
+    rgba(11, 16, 23, 0.35) 72%,
+    rgba(11, 16, 23, 0.92) 100%
   );
 }
 
@@ -1741,4 +1846,60 @@ body {
     animation: none !important;
     transition: none !important;
   }
+
+  .hero-approve-pulse {
+    animation: none;
+  }
+}
+
+/* ---- Download page (atelier continuity) ---- */
+.download-atelier {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 55% at 0% 0%, rgba(152, 185, 209, 0.28) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 100% 12%, rgba(229, 181, 102, 0.24) 0%, transparent 52%),
+    radial-gradient(ellipse 55% 45% at 40% 100%, rgba(92, 99, 58, 0.16) 0%, transparent 55%),
+    linear-gradient(180deg, #f5f0e7 0%, #faf6f0 45%, var(--canvas-paper) 100%);
+}
+
+.download-atelier__paint {
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background-image: url("/hero/marketing-ide-hero-bottom-crop.avif");
+  background-size: cover;
+  background-position: center top;
+  pointer-events: none;
+}
+
+.download-atelier__wash {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(245, 240, 231, 0.72) 0%,
+    rgba(245, 240, 231, 0.35) 22%,
+    transparent 48%
+  );
+  pointer-events: none;
+}
+
+.download-atelier__panel {
+  box-shadow:
+    0 32px 96px rgba(36, 22, 10, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+}
+
+.download-atelier__pipeline {
+  justify-content: flex-start;
+}
+
+.download-atelier__highlight {
+  padding: 0.85rem 1rem;
+  border-left: 2px solid rgba(45, 111, 240, 0.35);
+  border-radius: 0 12px 12px 0;
+  background: rgba(255, 252, 245, 0.55);
+  backdrop-filter: blur(8px);
 }

@@ -30,7 +30,11 @@ export function WorkspacePreview() {
   const preset = timelinePresets[presetId as TimelinePresetId];
 
   return (
-    <SectionContainer id="workspace" className="atelier-section atelier-section--workbench section-tint section-tint--blue">
+    <SectionContainer
+      id="workspace"
+      fullBleed
+      className="atelier-section atelier-section--workbench section-tint section-tint--blue"
+    >
       <div className="atelier-grid-lines" aria-hidden="true" />
       <div className="atelier-light atelier-light--sky" aria-hidden="true" />
       <div className="atelier-light atelier-light--gold" aria-hidden="true" />

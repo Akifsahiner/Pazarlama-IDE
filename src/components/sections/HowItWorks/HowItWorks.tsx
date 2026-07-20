@@ -24,7 +24,12 @@ export function HowItWorks() {
   });
 
   return (
-    <SectionContainer id="how-it-works" className="atelier-section atelier-section--path section-tint section-tint--tri pt-20 lg:pt-28">
+    <SectionContainer
+      id="how-it-works"
+      fullBleed
+      className="atelier-section atelier-section--path section-tint section-tint--tri"
+      innerClassName="pt-16 lg:pt-24"
+    >
       <div className="atelier-grid-lines" aria-hidden="true" />
       <div className="atelier-light atelier-light--sky" aria-hidden="true" />
       <div className="atelier-light atelier-light--ember" aria-hidden="true" />

@@ -30,7 +30,9 @@ export function FirstRunFunnel() {
   return (
     <SectionContainer
       id="first-run"
-      className="atelier-section atelier-section--timeline section-tint section-tint--dual pb-16 pt-6 lg:pb-24 lg:pt-10"
+      fullBleed
+      className="atelier-section atelier-section--timeline section-tint section-tint--dual"
+      innerClassName="pb-16 pt-6 lg:pb-24 lg:pt-10"
     >
       <div className="atelier-grid-lines" aria-hidden="true" />
       <div className="atelier-light atelier-light--sky" aria-hidden="true" />

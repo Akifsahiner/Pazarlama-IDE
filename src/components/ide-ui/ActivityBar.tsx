@@ -20,7 +20,7 @@ export function ActivityBar({ theme, demo, preset }: ActivityBarProps) {
 
   const lines = preset?.activityLines ?? (demo
     ? approved
-      ? heroDemoActivity.approved.slice(0, 2)
+      ? heroDemoActivity.approved
       : heroDemoActivity.idle
     : activityLog.slice(0, 2));
 
