@@ -15,6 +15,7 @@ import type { CmoWeek1Priority } from "./cmoIntake";
 import { capWeek1Priorities } from "./cmoExecutionBind";
 import type { RedListItem } from "./cmoGrowthPlane";
 import type { FounderFitProfile, MarketingProfile, ProjectProfile } from "./types";
+import { bindingEvidenceRefs } from "./productUnderstandingEvidenceBridge";
 
 export type Persona = "marketing" | "sales";
 
@@ -76,6 +77,7 @@ export interface MechanismEligibility {
   score: number;
   blockers: string[];
   evidence: string[];
+  evidence_refs?: import("./productUnderstandingInput").EvidenceRef[];
   confidence: "measured" | "assumption" | "missing";
 }
 
@@ -351,7 +353,18 @@ function gapsInclude(ctx: MechanismEvalContext, gap: string): boolean {
 }
 
 export function assessGrowthMechanisms(ctx: MechanismEvalContext): GrowthMechanismAssessment {
-  const ranked = GROWTH_MECHANISM_IDS.map((id) => scoreMechanism(id, ctx))
+  const graph = ctx.profile?.product_understanding;
+  const ranked = GROWTH_MECHANISM_IDS.map((id) => {
+    const row = scoreMechanism(id, ctx);
+    return {
+      ...row,
+      evidence_refs: bindingEvidenceRefs(graph, row.evidence, [
+        "product_category",
+        "site_structure",
+        "distribution_assets",
+      ]),
+    };
+  })
     .filter((row) => row.score > 0)
     .sort((a, b) => b.score - a.score);
   const primary = ranked[0]?.engine_id;

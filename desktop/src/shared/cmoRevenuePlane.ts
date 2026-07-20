@@ -10,6 +10,8 @@ import type { BudgetChannelCloseout } from "./cmoBudgetPlane";
 import type { GrowthExperimentRecord } from "./cmoGrowthMemory";
 import type { FounderFitProfile, ManualKpi, ProjectProfile, StrategicDecision } from "./types";
 import type { ProductActivationProfile } from "./cmoLaneD";
+import type { ProductUnderstandingGraph } from "./productUnderstandingInput";
+import { bindingEvidenceRefs } from "./productUnderstandingEvidenceBridge";
 
 export type RevenueMetricConfidence = "measured" | "assumption" | "missing";
 export type ConversionConfidence = "measured" | "insufficient_data";
@@ -42,6 +44,7 @@ export interface PricingThesis {
   headline: string;
   rationale: string[];
   evidence: string[];
+  evidence_refs?: import("./productUnderstandingInput").EvidenceRef[];
   confidence: RevenueMetricConfidence;
 }
 
@@ -104,6 +107,7 @@ export interface RevenueBinding {
   headline: string;
   rationale: string[];
   evidence: string[];
+  evidence_refs?: import("./productUnderstandingInput").EvidenceRef[];
   confidence: RevenueMetricConfidence;
   trigger?:
     | "paying_customers_goal_no_infra"
@@ -192,6 +196,7 @@ export interface PricingThesisInput {
   persona?: "marketing" | "sales" | "founder";
   productClass?: "b2b_saas" | "consumer" | "devtool" | "other";
   salesPipelineEmpty?: boolean;
+  understandingGraph?: ProductUnderstandingGraph | null;
 }
 
 export interface RevenueBindingInput {
@@ -203,6 +208,7 @@ export interface RevenueBindingInput {
   activation?: ProductActivationProfile | null;
   gaps?: string[];
   manualKpis?: ManualKpi[];
+  understandingGraph?: ProductUnderstandingGraph | null;
 }
 
 export interface RevenueProfileInput {
@@ -212,6 +218,7 @@ export interface RevenueProfileInput {
   persona?: "marketing" | "sales" | "founder";
   productClass?: "b2b_saas" | "consumer" | "devtool" | "other";
   salesPipelineEmpty?: boolean;
+  understandingGraph?: ProductUnderstandingGraph | null;
   manualKpis?: ManualKpi[];
   existing?: Partial<RevenueProfile> | null;
   intake?: {
@@ -280,7 +287,39 @@ function detectPaymentProvider(signals: RevenueScanSignals): PaymentProvider {
   return "none_detected";
 }
 
+function finalizePricingThesis(
+  thesis: PricingThesis,
+  graph?: ProductUnderstandingGraph | null,
+): PricingThesis {
+  return {
+    ...thesis,
+    evidence_refs: bindingEvidenceRefs(graph, thesis.evidence, [
+      "pricing",
+      "business_model",
+      "site_structure",
+    ]),
+  };
+}
+
+function finalizeRevenueBinding(
+  binding: RevenueBinding,
+  graph?: ProductUnderstandingGraph | null,
+): RevenueBinding {
+  return {
+    ...binding,
+    evidence_refs: bindingEvidenceRefs(graph, binding.evidence, [
+      "pricing",
+      "business_model",
+      "traffic_analytics",
+    ]),
+  };
+}
+
 export function inferPricingThesis(input: PricingThesisInput): PricingThesis {
+  return finalizePricingThesis(inferPricingThesisRaw(input), input.understandingGraph);
+}
+
+function inferPricingThesisRaw(input: PricingThesisInput): PricingThesis {
   const routes = input.scan?.routes ?? [];
   const hasPricing = input.scan?.hasPricing ?? hasRoute(routes, /pricing/i);
   const hasSignup = input.scan?.hasSignup ?? hasRoute(routes, /(signup|register|trial)/i);
@@ -537,6 +576,7 @@ export function buildRevenueProfile(input: RevenueProfileInput): RevenueProfile 
     persona: input.persona,
     productClass: input.productClass,
     salesPipelineEmpty: input.salesPipelineEmpty,
+    understandingGraph: input.understandingGraph,
   });
   const model = input.intake?.modelOverride ?? thesis.model;
   const paymentProvider =
@@ -585,19 +625,23 @@ export function buildRevenueProfile(input: RevenueProfileInput): RevenueProfile 
   };
 }
 
-function inactiveRevenueBinding(): RevenueBinding {
-  return {
-    active: false,
-    stage_id: "revenue",
-    headline: "Revenue is not the binding monetization constraint",
-    rationale: ["Continue the current thesis while monetization evidence is healthy or missing."],
-    evidence: [],
-    confidence: "missing",
-  };
+function inactiveRevenueBinding(input: RevenueBindingInput): RevenueBinding {
+  return finalizeRevenueBinding(
+    {
+      active: false,
+      stage_id: "revenue",
+      headline: "Revenue is not the binding monetization constraint",
+      rationale: ["Continue the current thesis while monetization evidence is healthy or missing."],
+      evidence: [],
+      confidence: "missing",
+    },
+    input.understandingGraph,
+  );
 }
 
 export function detectRevenueBinding(input: RevenueBindingInput): RevenueBinding {
-  if (input.productBindingActive || input.marketingPaused) return inactiveRevenueBinding();
+  const fin = (binding: RevenueBinding) => finalizeRevenueBinding(binding, input.understandingGraph);
+  if (input.productBindingActive || input.marketingPaused) return inactiveRevenueBinding(input);
 
   const payingGoal = input.founderFit?.thirty_day_win === "paying_customers";
   const paidCount =
@@ -613,7 +657,7 @@ export function detectRevenueBinding(input: RevenueBindingInput): RevenueBinding
     (paidCount == null || paidCount === 0) &&
     (pricingMissing || funnelMissing || checkoutMissing)
   ) {
-    return {
+    return fin({
       active: true,
       stage_id: "revenue",
       headline: "Revenue — monetization infra missing for paying-customer goal",
@@ -624,11 +668,11 @@ export function detectRevenueBinding(input: RevenueBindingInput): RevenueBinding
       evidence: gaps.filter((g) => g.startsWith("revenue.")),
       confidence: "assumption",
       trigger: "paying_customers_goal_no_infra",
-    };
+    });
   }
 
   if (input.growthBinding?.gtm === "revenue" && (funnelMissing || checkoutMissing)) {
-    return {
+    return fin({
       active: true,
       stage_id: "revenue",
       headline: input.growthBinding.headline,
@@ -638,7 +682,7 @@ export function detectRevenueBinding(input: RevenueBindingInput): RevenueBinding
       evidence: input.growthBinding.evidence,
       confidence: "measured",
       trigger: "growth_plane_revenue",
-    };
+    });
   }
 
   const trialCount = kpiValue(input.manualKpis, "trial_starts") ??
@@ -650,7 +694,7 @@ export function detectRevenueBinding(input: RevenueBindingInput): RevenueBinding
     trialToPaid != null &&
     trialToPaid < TRIAL_TO_PAID_FLOOR_PCT
   ) {
-    return {
+    return fin({
       active: true,
       stage_id: "revenue",
       headline: "Trial-to-paid — measured conversion is below the conservative floor",
@@ -661,11 +705,11 @@ export function detectRevenueBinding(input: RevenueBindingInput): RevenueBinding
       evidence: [`${trialToPaid}% trial-to-paid with ${trialCount} trials`],
       confidence: "measured",
       trigger: "trial_to_paid_below_floor",
-    };
+    });
   }
 
   if (funnelMissing && payingGoal) {
-    return {
+    return fin({
       active: true,
       stage_id: "revenue",
       headline: "Payment funnel — events are not instrumented",
@@ -673,10 +717,10 @@ export function detectRevenueBinding(input: RevenueBindingInput): RevenueBinding
       evidence: ["Gap: revenue.funnel_events_missing"],
       confidence: "assumption",
       trigger: "funnel_events_missing",
-    };
+    });
   }
 
-  return inactiveRevenueBinding();
+  return inactiveRevenueBinding(input);
 }
 
 function monetizationTask(

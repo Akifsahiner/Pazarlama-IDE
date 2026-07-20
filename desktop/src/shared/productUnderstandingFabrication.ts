@@ -106,6 +106,15 @@ export function auditClaimFabrication(
           recovery: confirmationPromptFor(dim).cta_label,
         });
       }
+      if (claim?.confidence === "needs_confirmation") {
+        audits.push({
+          gate_id: "FAB-01-WEEK1",
+          dimension: dim,
+          message: `"${dim}" needs confirmation before Week 1`,
+          blocked: dim === "activation_event" || dim === "business_model",
+          recovery: confirmationPromptFor(dim).cta_label,
+        });
+      }
     }
   }
 

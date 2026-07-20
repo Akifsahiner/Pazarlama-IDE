@@ -51,12 +51,14 @@ Every CMO recommendation must be **grounded** in repo paths, live URLs, user ans
 ## Code anchors
 
 - `productUnderstandingPolicy.ts` — `buildProductUnderstanding`
-- `productUnderstandingFromScan.ts` — scan extractors
+- `productUnderstandingFromScan.ts` — scan extractors (`extractReadmeClaims`, `extractPricingSignals`, `extractAnalyticsSignals`)
+- `productUnderstandingSignalBind.ts` — intake `signals` → claim bindings
+- `productUnderstandingEvidenceBridge.ts` — P15/P16/P17 `evidence_refs` from graph
 - `productUnderstandingFabrication.ts` — `auditClaimFabrication`
-- `productUnderstandingIntakeBind.ts` — thesis rationale links
-- `WhyPanel.tsx` — user-facing "Why?"
-- `store.ts` — seal gate
-- `server/src/brain/citationValidator.ts` — brain post-check
+- `productUnderstandingIntakeBind.ts` — thesis rationale + `explainThesisPick` audit log
+- `WhyPanel.tsx` — user-facing "Why?" (repo paths open in editor)
+- `store.ts` — seal + Week 1 FAB gates; profile refresh hooks
+- `server/src/brain/citationValidator.ts` + `turn.ts` — brain post-check
 
 ## Verification
 

@@ -197,26 +197,36 @@ function computeVerdict(project: ProjectProfile, signals: IntakeSignals): {
   };
 }
 
-function pickThesisId(
+export interface ThesisPickResult {
+  id: ChannelThesisId;
+  matched_rules: string[];
+}
+
+/** Deterministic thesis pick with auditable matched rules (Part 6). */
+export function explainThesisPick(
   input: CmoIntakeInput,
   signals: IntakeSignals,
   bottleneck: GtmBottleneck,
-): ChannelThesisId {
+): ThesisPickResult {
+  const rules: string[] = [];
   const { persona, profile } = input;
 
   if (persona === "sales" && (signals.salesPipelineEmpty || bottleneck === "revenue")) {
-    return "outbound_sales";
+    rules.push("rule.persona.sales", "rule.pipeline.empty_or_bottleneck_revenue");
+    return { id: "outbound_sales", matched_rules: rules };
   }
 
   if (!signals.hasAnalytics && bottleneck === "measurement") {
-    return "landing_conversion";
+    rules.push("rule.analytics.missing", "rule.bottleneck.measurement");
+    return { id: "landing_conversion", matched_rules: rules };
   }
 
   if (
     signals.controversialOrViral ||
     (signals.isConsumer && !signals.isB2bSaas && /prelaunch|idea|^$/.test(signals.companyStage))
   ) {
-    return "viral_short_form";
+    rules.push("rule.consumer.viral_or_prelaunch", "signal.controversial_hook");
+    return { id: "viral_short_form", matched_rules: rules };
   }
 
   if (
@@ -224,40 +234,57 @@ function pickThesisId(
     signals.daysUntilLaunch <= 21 &&
     signals.daysUntilLaunch >= 0
   ) {
-    return "product_hunt_launch";
+    rules.push("rule.launch.window_21d", "signal.days_until_launch");
+    return { id: "product_hunt_launch", matched_rules: rules };
   }
   if (
     profile?.marketing_goals?.some((g) => /launch|product hunt|ph\b/i.test(g)) ||
     profile?.days_until_launch != null
   ) {
-    return "product_hunt_launch";
+    rules.push("rule.launch.profile_goal", "signal.days_until_launch");
+    return { id: "product_hunt_launch", matched_rules: rules };
   }
 
   if (signals.hasBlog && /growing|scaling|launched/.test(signals.companyStage)) {
-    return "seo_content";
+    rules.push("rule.content.blog_route", "signal.company_stage");
+    return { id: "seo_content", matched_rules: rules };
   }
 
   if (signals.isDevTool && bottleneck === "distribution") {
-    return "community_launch";
+    rules.push("rule.devtool.distribution", "signal.product_class");
+    return { id: "community_launch", matched_rules: rules };
   }
 
   if (signals.isB2bSaas && bottleneck === "awareness") {
-    return "founder_social";
+    rules.push("rule.b2b.awareness", "signal.product_class");
+    return { id: "founder_social", matched_rules: rules };
   }
 
   if (signals.isConsumer && bottleneck === "awareness" && !signals.controversialOrViral) {
-    return "influencer_partnerships";
+    rules.push("rule.consumer.awareness", "signal.product_class");
+    return { id: "influencer_partnerships", matched_rules: rules };
   }
 
   if (signals.heroPath && (bottleneck === "conversion" || signals.hasAnalytics)) {
-    return "landing_conversion";
+    rules.push("rule.hero.conversion_or_analytics", "signal.hero");
+    return { id: "landing_conversion", matched_rules: rules };
   }
 
   if (bottleneck === "distribution") {
-    return signals.isDevTool ? "community_launch" : "product_hunt_launch";
+    rules.push("rule.bottleneck.distribution");
+    if (signals.isDevTool) {
+      rules.push("signal.product_class.devtools");
+      return { id: "community_launch", matched_rules: rules };
+    }
+    rules.push("signal.launch.default_ph");
+    return { id: "product_hunt_launch", matched_rules: rules };
   }
 
-  return signals.isB2bSaas ? "founder_social" : "landing_conversion";
+  rules.push("rule.default.fallback");
+  return {
+    id: signals.isB2bSaas ? "founder_social" : "landing_conversion",
+    matched_rules: rules,
+  };
 }
 
 function inferBottleneck(signals: IntakeSignals, persona: Persona): GtmBottleneck {
@@ -698,8 +725,13 @@ export function buildCmoIntake(input: CmoIntakeInput): ChannelThesis {
   const { verdict, reason } = computeVerdict(input.project, signals);
   const primary_bottleneck = inferBottleneck(signals, input.persona);
   const weekIndex = Math.max(1, input.context?.cycle_index ?? 1);
-  const id =
-    input.context?.force_thesis_id ?? pickThesisId(input, signals, primary_bottleneck);
+  const pick = input.context?.force_thesis_id
+    ? {
+        id: input.context.force_thesis_id,
+        matched_rules: [`rule.forced.${input.context.force_thesis_id}`],
+      }
+    : explainThesisPick(input, signals, primary_bottleneck);
+  const id = pick.id;
   const template = THESIS_TEMPLATES[id];
   const playbooks = BOTTLENECK_PLAYBOOKS[primary_bottleneck] ?? ["landing-conversion"];
 
@@ -728,7 +760,7 @@ export function buildCmoIntake(input: CmoIntakeInput): ChannelThesis {
   const graph =
     input.profile?.product_understanding ??
     buildProductUnderstanding({ project: input.project, profile: input.profile });
-  return attachIntakeUnderstanding(thesis, input, graph);
+  return attachIntakeUnderstanding(thesis, input, graph, pick);
 }
 
 export function buildFinalChannelThesis(

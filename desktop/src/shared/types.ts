@@ -11,6 +11,20 @@ export type ProjectSource =
   | { kind: "repo"; url: string }
   | { kind: "url"; url: string };
 
+/** Part 6 — structured scan citation for repo evidence refs. */
+export interface ScanFileCitation {
+  path: string;
+  startLine?: number;
+  endLine?: number;
+  excerpt?: string;
+}
+
+export interface ProjectScanCitations {
+  readme?: ScanFileCitation;
+  analyticsFiles?: ScanFileCitation[];
+  pricingPage?: ScanFileCitation;
+}
+
 export interface ProjectProfile {
   id: string;
   source: ProjectSource;
@@ -24,6 +38,8 @@ export interface ProjectProfile {
   /** Detected app package paths inside a monorepo. */
   appPackages?: string[];
   readmeSummary?: string;
+  /** Part 6 — path/line citations from scanner (Why panel + FAB). */
+  scanCitations?: ProjectScanCitations;
   routes: string[];
   hasAnalytics: boolean;
   excludedPaths: string[];

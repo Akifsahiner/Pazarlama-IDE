@@ -22,8 +22,25 @@ const project = {
 };
 
 describe("productUnderstandingFromScan extended", () => {
-  it("buildClaimsFromScan returns 6 claims", () => {
-    assert.equal(buildClaimsFromScan(project).length, 6);
+  it("buildClaimsFromScan returns ≥8 claims", () => {
+    assert.ok(buildClaimsFromScan(project).length >= 8);
+  });
+
+  it("scanCitations add line refs to readme evidence", () => {
+    const withCite = {
+      ...project,
+      scanCitations: {
+        readme: {
+          path: "README.md",
+          excerpt: "# DevTool CLI\n\nOpen source SDK for developers",
+          startLine: 1,
+          endLine: 3,
+        },
+      },
+    };
+    const claims = buildClaimsFromScan(withCite);
+    const category = claims.find((c) => c.dimension === "product_category");
+    assert.ok(category?.evidence.some((e) => e.ref === "README.md" && e.startLine != null));
   });
 
   it("devtool readme elevates category", () => {

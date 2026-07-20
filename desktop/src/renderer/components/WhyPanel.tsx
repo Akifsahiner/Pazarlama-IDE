@@ -32,17 +32,32 @@ function ConfidencePill({ confidence }: { confidence: ClaimConfidence }) {
 }
 
 function EvidenceRow({ ref: evidence }: { ref: EvidenceRef }) {
+  const project = useApp((s) => s.project);
   const isUrl = evidence.kind === "live_url" || evidence.ref.startsWith("http");
+  const isRepo = evidence.kind === "repo_path" && !isUrl;
 
   const open = () => {
     if (isUrl && window.api?.shell?.openExternal) {
       void window.api.shell.openExternal(evidence.ref);
+      return;
+    }
+    if (isRepo && window.api?.shell?.openInEditor) {
+      const root =
+        project?.source.kind === "folder" ? project.source.path : project?.localPath;
+      if (!root) return;
+      const rel = evidence.ref.replace(/^[\\/]+/, "");
+      const abs = `${root.replace(/[\\/]+$/, "")}/${rel.replace(/\\/g, "/")}`;
+      void window.api.shell.openInEditor({
+        editor: "cursor",
+        path: abs,
+        line: evidence.startLine,
+      });
     }
   };
 
   return (
     <li className="flex items-start gap-2 text-[11px] text-text-2">
-      {evidence.kind === "repo_path" ? (
+      {isRepo ? (
         <FileText size={12} className="mt-0.5 shrink-0 text-text-3" />
       ) : isUrl ? (
         <ExternalLink size={12} className="mt-0.5 shrink-0 text-text-3" />
@@ -50,7 +65,7 @@ function EvidenceRow({ ref: evidence }: { ref: EvidenceRef }) {
         <HelpCircle size={12} className="mt-0.5 shrink-0 text-text-3" />
       )}
       <div className="min-w-0">
-        {isUrl ? (
+        {isUrl || isRepo ? (
           <button
             type="button"
             onClick={open}
@@ -62,8 +77,14 @@ function EvidenceRow({ ref: evidence }: { ref: EvidenceRef }) {
         ) : (
           <span className="text-text-2">{evidence.label}</span>
         )}
-        {evidence.kind === "repo_path" && (
-          <p className="mt-0.5 font-mono text-[10px] text-text-3">{evidence.ref}</p>
+        {isRepo && (
+          <p className="mt-0.5 font-mono text-[10px] text-text-3">
+            {evidence.ref}
+            {evidence.startLine != null ? `:${evidence.startLine}` : ""}
+            {evidence.endLine != null && evidence.endLine !== evidence.startLine
+              ? `–${evidence.endLine}`
+              : ""}
+          </p>
         )}
         {evidence.excerpt && (
           <p className="mt-0.5 line-clamp-2 text-[10px] text-text-3">{evidence.excerpt}</p>
