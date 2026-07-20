@@ -139,6 +139,13 @@ const MARKERS = [
   ["src/shared/cmoCommandSurface.ts", "command-surface-start-next-cycle", "Faz 3 replan primary CTA"],
   ["e2e/cmo-multi-week.spec.ts", "@cmo-multi", "Faz 3 multi-week E2E"],
   ["src/renderer/features/workspace/CmoBackstage.tsx", "cmo-backstage", "P12 backstage"],
+  // Part 0 — Execution Record Center
+  ["src/shared/executionRecord.ts", "buildBottleneckSentence", "Part 0 bottleneck sentence"],
+  ["src/shared/executionRecord.ts", "buildActiveExecutionRecord", "Part 0 record view-model"],
+  ["src/renderer/features/workspace/executionRecord/ExecutionRecordStage.tsx", "execution-record-stage", "Part 0 workspace center"],
+  ["src/renderer/features/workspace/executionRecord/BottleneckSentence.tsx", "bottleneck-sentence", "Part 0 bottleneck UI"],
+  ["src/renderer/features/workspace/executionRecord/ExecutionRecordCard.tsx", "execution-record-card", "Part 0 accountability card"],
+  ["src/renderer/app/Workspace.tsx", "ExecutionRecordStage", "Part 0 workspace shell"],
   ["src/shared/types.ts", "growth_memory", "P11 growth memory profile schema"],
   // CMO P13 — Founder-Fit + Strategic Options
   ["src/shared/cmoFounderFit.ts", "FOUNDER_FIT_QUESTIONS", "P13 seven-question founder fit"],

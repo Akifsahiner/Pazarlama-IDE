@@ -157,6 +157,7 @@ import {
   type WorkSurface,
 } from "@shared/workSurfaces";
 import type { FeedFilter, FeedItem } from "@shared/feed";
+import type { ExecutionRecordDetailTab } from "@shared/executionRecord";
 import { railSectionToWorkSurface, type RailSection } from "@shared/projectRail";
 import { mockConnectorFeedItems, runEventToFeedItem } from "@renderer/features/workspace/feed/feedModel";
 import {
@@ -772,6 +773,9 @@ interface AppState {
   feedFilter: FeedFilter;
   feedCollapsed: boolean;
   activeFeedItemId?: string;
+  /** Part 0 — Execution Record detail panel tab. */
+  executionRecordDetailTab: ExecutionRecordDetailTab;
+  executionHistoryExpanded: boolean;
   selectedRailSection: RailSection | null;
   selectedRailEntityId?: string;
 
@@ -1114,6 +1118,8 @@ interface AppState {
   openFeedItem: (id: string) => void;
   setFeedFilter: (filter: FeedFilter) => void;
   toggleFeedCollapsed: (collapsed?: boolean) => void;
+  setExecutionRecordDetailTab: (tab: ExecutionRecordDetailTab) => void;
+  toggleExecutionHistoryExpanded: () => void;
   selectRailSection: (section: RailSection, entityId?: string) => void;
   seedMockConnectorFeed: () => void;
   seedConnectorFeedPlaceholder: () => void;
@@ -3799,8 +3805,10 @@ export const useApp = create<AppState>((set, get) => {
     feedItems: [],
     feedFilter: "all",
     feedCollapsed:
-      typeof localStorage !== "undefined" && localStorage.getItem(FEED_COLLAPSED_KEY) === "1",
+      typeof localStorage === "undefined" || localStorage.getItem(FEED_COLLAPSED_KEY) !== "0",
     activeFeedItemId: undefined,
+    executionRecordDetailTab: "record",
+    executionHistoryExpanded: false,
     selectedRailSection: null,
     selectedRailEntityId: undefined,
 
@@ -9706,12 +9714,15 @@ export const useApp = create<AppState>((set, get) => {
         get().navigate("workspace");
         if (item.source === "browser" || get().browser.pendingApprovalId === item.approvalId) {
           get().setActiveCanvas("browser");
+          get().setExecutionRecordDetailTab("browser");
           return;
         }
         if (item.source === "run" || get().run?.pendingApproval?.approvalId === item.approvalId) {
           get().setActiveCanvas("run");
+          get().setExecutionRecordDetailTab("diff");
           return;
         }
+        get().setExecutionRecordDetailTab("proof");
       }
 
       const target = item.canvasTarget;
@@ -9769,6 +9780,11 @@ export const useApp = create<AppState>((set, get) => {
         }
         return { feedCollapsed: next };
       }),
+
+    setExecutionRecordDetailTab: (tab) => set({ executionRecordDetailTab: tab }),
+
+    toggleExecutionHistoryExpanded: () =>
+      set((s) => ({ executionHistoryExpanded: !s.executionHistoryExpanded })),
 
     selectRailSection: (section, entityId) => {
       let surface = railSectionToWorkSurface(section);
