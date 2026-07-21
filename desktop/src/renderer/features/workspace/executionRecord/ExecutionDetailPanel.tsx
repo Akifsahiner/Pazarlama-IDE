@@ -3,6 +3,7 @@ import type { ExecutionRecordDetailTab } from "@shared/executionRecord";
 import { normalizeToWorkSurface } from "@shared/workSurfaces";
 import { buildDoneWhenChecklist } from "@shared/doneWhenChecklist";
 import { getNowTask } from "@shared/cmoOpsCadence";
+import { shipReceiptToProofView } from "@shared/shipReceipt";
 import { Segmented } from "@renderer/components/ui/Segmented";
 import { useApp } from "@renderer/state/store";
 import { ShipPipelineBar } from "../ShipPipelineBar";
@@ -55,6 +56,11 @@ export function ExecutionDetailPanel({
         qualityFindings: lastShipReceipt?.qualityWarnings,
       }),
     [nowTask, channelThesis, lastShipReceipt, shipPipeline?.stage, record.lifecycle],
+  );
+
+  const proofView = useMemo(
+    () => (lastShipReceipt ? shipReceiptToProofView(lastShipReceipt, nowTask) : null),
+    [lastShipReceipt, nowTask],
   );
 
   useEffect(() => {
@@ -132,9 +138,9 @@ export function ExecutionDetailPanel({
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto">
             <ProofDetailView
-              receipt={lastShipReceipt}
-              taskLabel={nowTask?.what}
-              doneWhen={nowTask?.done_when}
+              receipt={proofView?.receipt}
+              taskLabel={proofView?.taskLabel}
+              doneWhen={proofView?.doneWhen}
             />
           </div>
         )}

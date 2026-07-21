@@ -50,7 +50,7 @@ import { profileFromProjectScan } from "@shared/profileFromScan";
 import { parseMentionsFromText } from "@shared/mentionParse";
 import { enrichEditGoal } from "@shared/editGoalEnrich";
 import { buildTurnReceipt, type TurnReceipt } from "@shared/turnReceipt";
-import { aggregatePatchStats } from "@shared/turnReceipt";
+import { aggregatePatchDiffText, aggregatePatchStats } from "@shared/turnReceipt";
 import { presentError } from "@renderer/lib/errorPresenter";
 import { reportBackgroundError, swallowBackground } from "@renderer/lib/backgroundError";
 import {
@@ -232,6 +232,8 @@ import {
 } from "@shared/cmoOpsCadence";
 import {
   buildVerifyFixGoal,
+  buildVerifyChecklistFromTask,
+  doneWhenRequiresBrowserVerify,
 } from "@shared/browserVerify";
 import {
   assessMeasurementBaseline,
@@ -3523,6 +3525,9 @@ export const useApp = create<AppState>((set, get) => {
       }
     } else if (event.type === "approval.required") {
       const p = event.payload as { approvalId?: string; intent?: string } | undefined;
+      if (get().wedgePhase === "ship" || get().firstHourActive || get().firstShipAt) {
+        bumpShipPipeline("approval.required");
+      }
       if (p?.approvalId && !hasThreadApproval(p.approvalId)) {
         appendEvent({
           role: "agent",
@@ -8918,8 +8923,16 @@ export const useApp = create<AppState>((set, get) => {
 
         const qualityFindings = runShipQualityLint({
           after: afterMeta,
+          diffText: aggregatePatchDiffText(run.events),
           thesisId: get().channelThesis?.id ?? get().marketingProfile?.channel_thesis?.id,
         });
+        const cadenceBeforeApply = get().opsCadence;
+        const activeOpsBeforeApply = cadenceBeforeApply?.tasks.find(
+          (t) => t.status === "in_progress" && t.owner === "system",
+        );
+        const requiresVerify = activeOpsBeforeApply
+          ? doneWhenRequiresBrowserVerify(activeOpsBeforeApply.done_when, activeOpsBeforeApply)
+          : Boolean(previewUrl);
         const shipReceipt = {
           ...buildShipReceiptFromApply({
             runId: run.runId,
@@ -8933,6 +8946,7 @@ export const useApp = create<AppState>((set, get) => {
             after: afterMeta,
             events: run.events,
             ledger,
+            requiresVerify,
           }),
           qualityWarnings: qualityFindings,
         };
@@ -9030,11 +9044,12 @@ export const useApp = create<AppState>((set, get) => {
               set({ lastShipReceipt: runningReceipt });
               scheduleVerifyAfterApply(previewUrl, plan.checklist);
             }
-          } else if (!get().capabilityMatrix.canBrowse) {
+          } else if (!get().capabilityMatrix.canBrowse && requiresVerify) {
             const skipped = markShipReceiptVerifySkipped(shipReceipt);
             if (pid) persistShipReceiptLocal(pid, skipped);
-            set({ lastShipReceipt: skipped });
             set({
+              lastShipReceipt: skipped,
+              shipRecovery: buildShipRecovery("verify_unavailable"),
               workspaceHandoff: {
                 eyebrow: "Verify live",
                 title: "Connect Computer Use to verify",
@@ -9043,6 +9058,12 @@ export const useApp = create<AppState>((set, get) => {
                 primaryLabel: "Open settings",
                 primaryAction: "home",
               },
+            });
+          } else if (requiresVerify && !previewUrl) {
+            if (pid) persistShipReceiptLocal(pid, shipReceipt);
+            set({
+              lastShipReceipt: shipReceipt,
+              shipRecovery: buildShipRecovery("preview_missing"),
             });
           }
         } else {
@@ -9906,18 +9927,23 @@ export const useApp = create<AppState>((set, get) => {
         target.mode === "browser" &&
         (item.id.startsWith("browser-verify-") || target.payload?.verify === "1")
       ) {
+        const receipt = get().lastShipReceipt;
+        const cadenceBefore = get().opsCadence ?? get().marketingProfile?.ops_cadence;
+        const thesisBefore =
+          get().channelThesis ?? get().marketingProfile?.channel_thesis ?? null;
+        const activeOps = cadenceBefore?.tasks.find(
+          (t) => t.status === "in_progress" && t.owner === "system",
+        );
+        const previewEv = get().run?.events
+          .slice()
+          .reverse()
+          .find((ev) => ev.type === "preview.ready");
         const previewUrl =
-          get().run?.events
-            .slice()
-            .reverse()
-            .find((ev) => ev.type === "preview.ready")?.payload as { url?: string } | undefined;
-        const url = previewUrl?.url ?? "";
+          receipt?.previewUrl ??
+          ((previewEv?.payload as { url?: string } | undefined)?.url?.trim() ?? "");
+        const checklist = buildVerifyChecklistFromTask(activeOps, thesisBefore);
         get().navigate("workspace");
-        void get().startVerifyAfterApply(url, [
-          "Page loads without obvious errors",
-          "Hero and primary CTA visible",
-          "No broken layout above the fold",
-        ]);
+        void get().startVerifyAfterApply(previewUrl, checklist);
         return;
       }
 

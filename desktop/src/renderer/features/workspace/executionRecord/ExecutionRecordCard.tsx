@@ -12,6 +12,14 @@ import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
 import { OurContractStrip } from "./OurContractStrip";
 import { MorningBriefHero } from "./MorningBriefHero";
 
+function resolveStatusLabel(record: ExecutionRecordView): string | undefined {
+  if (record.lifecycle === "queued") return record.lifecycleLabel;
+  if (record.lifecycle === "verifying") return record.lifecycleLabel;
+  if (record.lifecycle === "awaiting_approval") return record.lifecycleLabel;
+  if (record.productLoopPaused) return record.lifecycleLabel;
+  return undefined;
+}
+
 function ResultChip({
   label,
   value,
@@ -80,12 +88,18 @@ export function ExecutionRecordCard({
         aria-label="Execution Record"
       >
         <div className="rounded-[var(--radius-lg)] border border-line/70 bg-elevated/90 px-4 py-2.5 shadow-[var(--shadow-1)] backdrop-blur-sm">
+          {record.approvalHeroLine && (
+            <p
+              className="mb-2 rounded-[var(--radius-sm)] border border-warn/30 bg-warn/8 px-2 py-1 text-micro text-warn"
+              data-testid="approval-hero-line"
+            >
+              {record.approvalHeroLine}
+            </p>
+          )}
           <div className="flex items-center gap-3">
             <ExecutionRecordStatusPill
               lifecycle={record.lifecycle}
-              labelOverride={
-                record.lifecycle === "queued" ? record.lifecycleLabel : undefined
-              }
+              labelOverride={resolveStatusLabel(record)}
             />
             <div className="min-w-0 flex-1">
               {brief ? (
@@ -94,6 +108,7 @@ export function ExecutionRecordCard({
                   primaryAction={primary}
                   onPrimaryAction={handlePrimary}
                   dispatchAllowed={dispatchAllowed}
+                  verifying={record.lifecycle === "verifying"}
                   compact
                 />
               ) : (
@@ -161,9 +176,7 @@ export function ExecutionRecordCard({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <ExecutionRecordStatusPill
             lifecycle={record.lifecycle}
-            labelOverride={
-              record.lifecycle === "queued" ? record.lifecycleLabel : undefined
-            }
+            labelOverride={resolveStatusLabel(record)}
           />
           <div className="flex items-center gap-2">
             <ExecutionRecordProgress lifecycle={record.lifecycle} />
@@ -191,6 +204,7 @@ export function ExecutionRecordCard({
               primaryAction={primary}
               onPrimaryAction={handlePrimary}
               dispatchAllowed={dispatchAllowed}
+              verifying={record.lifecycle === "verifying"}
             />
           </div>
         ) : (

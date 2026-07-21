@@ -46,4 +46,15 @@ describe("shipReceipt", () => {
     const chips = shipReceiptToResultChips(enriched);
     assert.ok(chips.some((c) => c.id === "receipt-live-url"));
   });
+
+  it("shows missing preview chip when verify pending without URL", () => {
+    const receipt = buildShipReceiptFromApply({
+      runId: "run-2",
+      filesApplied: ["page.tsx"],
+      requiresVerify: true,
+    });
+    assert.equal(receipt.verifyStatus, "pending");
+    const chips = shipReceiptToResultChips(receipt);
+    assert.ok(chips.some((c) => c.id === "receipt-verify-no-preview"));
+  });
 });

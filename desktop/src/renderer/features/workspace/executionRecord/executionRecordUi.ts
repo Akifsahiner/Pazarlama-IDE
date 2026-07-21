@@ -29,6 +29,7 @@ export type StatusTone = "accent" | "warn" | "ok" | "neutral";
 export function lifecycleStatusTone(lifecycle: ExecutionRecordLifecycle): StatusTone {
   switch (lifecycle) {
     case "running":
+    case "verifying":
       return "accent";
     case "awaiting_approval":
     case "awaiting_proof":

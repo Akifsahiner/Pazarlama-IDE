@@ -27,6 +27,9 @@ test.describe("Ship receipt @cmo @ship-receipt", () => {
       await expect(page.getByTestId("execution-record-card")).toBeVisible({ timeout: 60_000 });
       await expect(page.getByTestId("morning-brief-grid")).toBeVisible();
       await expect(page.getByTestId("execution-detail-panel")).toBeVisible();
+
+      await page.getByRole("button", { name: "Proof" }).click();
+      await expect(page.getByTestId("proof-detail-view")).toBeVisible();
     } finally {
       await app.close();
     }

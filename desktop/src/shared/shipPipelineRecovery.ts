@@ -8,7 +8,9 @@ export type ShipRecoveryKind =
   | "run_timeout"
   | "apply_failed"
   | "preview_failed"
-  | "verify_failed";
+  | "preview_missing"
+  | "verify_failed"
+  | "verify_unavailable";
 
 export interface ShipRecoveryAction {
   kind: ShipRecoveryKind;
@@ -49,6 +51,19 @@ export function buildShipRecovery(
         kind,
         title: "Preview server did not start",
         detail: "Your changes may still be applied — open the edited file or retry preview.",
+      };
+    case "preview_missing":
+      return {
+        kind,
+        title: "Preview URL missing",
+        detail: "Changes are applied — start dev server or paste a live URL, then re-run verify.",
+        retryGoal: "Start preview server and verify hero CTA + title on the landing page.",
+      };
+    case "verify_unavailable":
+      return {
+        kind,
+        title: "Connect Computer Use to verify",
+        detail: "Changes are applied — connect backend + Computer Use to capture live proof.",
       };
     case "verify_failed":
       return {

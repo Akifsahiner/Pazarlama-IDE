@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { LayoutList, Play } from "lucide-react";
+import { LayoutList, Play, Radio } from "lucide-react";
 import type { MorningBriefView } from "@shared/morningBrief";
 import type { CommandSurfaceAction } from "@shared/cmoCommandSurface";
 import { Button } from "@renderer/components/ui/Button";
@@ -14,6 +14,7 @@ export function MorningBriefHero({
   onPrimaryAction,
   dispatchAllowed = true,
   compact = false,
+  verifying = false,
 }: {
   brief: MorningBriefView;
   primaryAction: Exclude<CommandSurfaceAction, { kind: "none" }> | null;
@@ -21,6 +22,7 @@ export function MorningBriefHero({
   /** False when governance blocks ops dispatch — button stays visible but disabled. */
   dispatchAllowed?: boolean;
   compact?: boolean;
+  verifying?: boolean;
 }) {
   const id = useId();
   const toggleWarRoomExpanded = useApp((s) => s.toggleWarRoomExpanded);
@@ -36,7 +38,9 @@ export function MorningBriefHero({
   if (compact) {
     return (
       <div data-testid="morning-brief-hero" data-compact="true">
-        <p className="truncate text-micro text-text-3">{brief.headerLine}</p>
+        <p className="truncate text-micro text-text-3">
+          {verifying ? "Verifying live page…" : brief.headerLine}
+        </p>
         <p className="mt-0.5 truncate text-body-sm font-semibold text-text">{brief.today}</p>
       </div>
     );
@@ -44,6 +48,15 @@ export function MorningBriefHero({
 
   return (
     <div className="space-y-4" data-testid="morning-brief-hero">
+      {verifying && (
+        <div
+          className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-accent/30 bg-accent/8 px-3 py-1.5 text-mini font-medium text-accent"
+          data-testid="morning-brief-verifying"
+        >
+          <Radio size={11} className="animate-pulse" />
+          Verifying live page…
+        </div>
+      )}
       {pauseHeadline && (
         <div
           className="rounded-[var(--radius-md)] border border-warn/40 bg-warn/8 px-3 py-2 text-body-sm font-medium text-warn"

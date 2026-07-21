@@ -8,6 +8,7 @@ import {
   formatExecutionResults,
   resolveRecordDetailTab,
 } from "./executionRecord";
+import { buildShipReceiptFromApply } from "./shipReceipt";
 import type { GrowthControlPlane } from "./cmoGrowthPlane";
 import type { CmoOpsCadence } from "./cmoOpsCadence";
 
@@ -169,5 +170,31 @@ describe("executionRecord", () => {
     });
     assert.ok(history.some((h) => h.id === "task.0"));
     assert.ok(history.some((h) => h.results.some((r) => r.label === "Kayıt")));
+  });
+
+  it("buildActiveExecutionRecord shows verifying lifecycle with ship receipt", () => {
+    const receipt = buildShipReceiptFromApply({
+      runId: "run-v",
+      filesApplied: ["page.tsx"],
+      previewUrl: "http://localhost:3000",
+    });
+    const record = buildActiveExecutionRecord({
+      plane: plane(),
+      cadence: cadence(),
+      shipReceipt: { ...receipt, verifyStatus: "running" },
+      pendingVerify: true,
+    });
+    assert.equal(record.lifecycle, "verifying");
+    assert.ok(record.results.some((r) => r.id === "receipt-live-running"));
+  });
+
+  it("formatExecutionResults prefers ship receipt chips over proof", () => {
+    const receipt = buildShipReceiptFromApply({
+      runId: "run-r",
+      commitSha: "abc123456789",
+      filesApplied: ["page.tsx"],
+    });
+    const chips = formatExecutionResults({ shipReceipt: receipt });
+    assert.ok(chips.some((c) => c.id === "receipt-commit"));
   });
 });

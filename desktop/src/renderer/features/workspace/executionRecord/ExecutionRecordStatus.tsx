@@ -25,7 +25,7 @@ export function ExecutionRecordStatusPill({
 }) {
   if (lifecycle === "intake") return null;
   const tone = lifecycleStatusTone(lifecycle);
-  const active = lifecycle === "running";
+  const active = lifecycle === "running" || lifecycle === "verifying";
 
   return (
     <span
@@ -57,7 +57,7 @@ export function ExecutionRecordProgress({ lifecycle }: { lifecycle: ExecutionRec
           key={step}
           className={`h-1 rounded-full transition-all ${
             i <= activeIdx ? "w-4 bg-accent" : "w-1.5 bg-line"
-          } ${i === activeIdx && lifecycle === "running" ? "animate-pulse" : ""}`}
+          } ${i === activeIdx && (lifecycle === "running" || lifecycle === "verifying") ? "animate-pulse" : ""}`}
           title={lifecycleStatusLabel(step)}
         />
       ))}

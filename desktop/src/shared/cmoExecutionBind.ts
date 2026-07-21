@@ -30,14 +30,12 @@ import {
   WEEK2_PLUS_MAX_USER,
 } from "./cmoExecutionBindConstants";
 
-const LIVE_URL_RE = /\b(url|live post|link|published|posted)\b/i;
+import { inferExpectedProofKindFromDoneWhen } from "./browserVerify";
 
 export function inferExpectedProofKind(
   doneWhen: string,
 ): ExpectedProofKind | undefined {
-  if (LIVE_URL_RE.test(doneWhen)) return "live_url";
-  if (/\bkpi\b|\bmetric\b|\bsignup\b|\bconversion\b|\bview\b/i.test(doneWhen)) return "kpi";
-  return undefined;
+  return inferExpectedProofKindFromDoneWhen(doneWhen);
 }
 
 /** Enforce max 3 system + 2 user/delegate, total ≤ 5. */

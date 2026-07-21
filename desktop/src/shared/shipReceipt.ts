@@ -44,6 +44,8 @@ export interface BuildShipReceiptFromApplyInput {
   after?: Partial<FirstShipSnapshot>;
   events?: RunEvent[];
   ledger?: FirstShipLedger | null;
+  /** When true, verify stays pending even without preview URL (done_when requires live proof). */
+  requiresVerify?: boolean;
 }
 
 export function buildShipReceiptFromApply(input: BuildShipReceiptFromApplyInput): ShipReceipt {
@@ -54,6 +56,8 @@ export function buildShipReceiptFromApply(input: BuildShipReceiptFromApplyInput)
   const linesAdded = input.linesAdded ?? patchStats?.linesAdded ?? input.ledger?.linesDelta?.add ?? 0;
   const linesRemoved =
     input.linesRemoved ?? patchStats?.linesRemoved ?? input.ledger?.linesDelta?.del ?? 0;
+  const previewUrl = input.previewUrl ?? input.ledger?.previewUrl;
+  const requiresVerify = input.requiresVerify ?? Boolean(previewUrl);
 
   return {
     runId: input.runId,
@@ -64,7 +68,7 @@ export function buildShipReceiptFromApply(input: BuildShipReceiptFromApplyInput)
     files,
     linesAdded,
     linesRemoved,
-    previewUrl: input.previewUrl ?? input.ledger?.previewUrl,
+    previewUrl,
     before: input.before ?? (input.ledger?.before
       ? {
           heroPath: input.ledger.before.heroPath,
@@ -75,7 +79,7 @@ export function buildShipReceiptFromApply(input: BuildShipReceiptFromApplyInput)
         }
       : undefined),
     after: input.after ?? input.ledger?.after,
-    verifyStatus: input.previewUrl || input.ledger?.previewUrl ? "pending" : "skipped",
+    verifyStatus: requiresVerify ? "pending" : "skipped",
     qualityWarnings: [],
   };
 }
@@ -157,6 +161,17 @@ export function shipReceiptToResultChips(receipt: ShipReceipt | null | undefined
       label: "Live URL",
       value: "Verifying…",
       tone: "neutral",
+    });
+  } else if (
+    receipt.verifyStatus === "pending" &&
+    !receipt.previewUrl &&
+    !receipt.liveUrl
+  ) {
+    chips.push({
+      id: "receipt-verify-no-preview",
+      label: "Live URL",
+      value: "No preview URL",
+      tone: "missing",
     });
   } else if (receipt.verifyStatus === "failed") {
     chips.push({
