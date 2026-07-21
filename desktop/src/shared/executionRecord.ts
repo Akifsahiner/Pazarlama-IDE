@@ -15,6 +15,7 @@ import {
   type CommandSurfaceAction,
   type CommandSurfaceGovernance,
 } from "./cmoCommandSurface";
+import { buildMorningBriefView, type MorningBriefView } from "./morningBrief";
 import { computeRunSummary, runChangedFiles } from "./runs";
 import type { RunEvent, RunStatus } from "./types";
 
@@ -58,6 +59,7 @@ export interface ExecutionRecordView {
   detailHint: ExecutionRecordDetailTab;
   growthStatePlaceholder?: string;
   governance?: CommandSurfaceGovernance;
+  morningBrief?: MorningBriefView;
 }
 
 export interface ExecutionHistoryEntry {
@@ -448,12 +450,30 @@ export function buildActiveExecutionRecord(
         ? "proof"
         : "record";
 
+  const morningBrief = commandInput
+    ? buildMorningBriefView({
+        ...commandInput,
+        firstShipAt: input.firstShipAt,
+        wedgePhase: input.wedgePhase,
+        hasActiveRun: Boolean(
+          input.activeRun?.runId &&
+            (input.activeRun.status === "completed" || isRunActive(input.activeRun)),
+        ),
+        mechanismFallback: input.channelThesis?.title,
+      }) ?? undefined
+    : undefined;
+
+  const lifecycleLabel =
+    lifecycle === "queued" && morningBrief?.queuedHint
+      ? morningBrief.queuedHint.message
+      : buildLifecycleProgressLabel(lifecycle);
+
   return {
     id: recordId,
     goal,
     experiment,
     lifecycle,
-    lifecycleLabel: buildLifecycleProgressLabel(lifecycle),
+    lifecycleLabel,
     done: formatExecutionDone({ task, activeRun: input.activeRun }),
     results: formatExecutionResults({
       proof: task?.proof,
@@ -467,13 +487,14 @@ export function buildActiveExecutionRecord(
       cadence: input.cadence,
     }),
     next: {
-      label: nextAction.kind === "none" ? "Devam et" : nextAction.label,
+      label: nextAction.kind === "none" ? "Continue" : nextAction.label,
       action: nextAction,
     },
     bottleneckSentence: buildBottleneckSentence({ bottleneck, nextMove }),
     detailHint,
     growthStatePlaceholder: input.plane?.binding.headline,
     governance: model?.governance,
+    morningBrief,
   };
 }
 

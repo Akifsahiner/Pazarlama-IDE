@@ -16,7 +16,13 @@ function stepIndex(lifecycle: ExecutionRecordLifecycle): number {
 }
 
 /** Single clear status — not a noisy step chain (Claude-style). */
-export function ExecutionRecordStatusPill({ lifecycle }: { lifecycle: ExecutionRecordLifecycle }) {
+export function ExecutionRecordStatusPill({
+  lifecycle,
+  labelOverride,
+}: {
+  lifecycle: ExecutionRecordLifecycle;
+  labelOverride?: string;
+}) {
   if (lifecycle === "intake") return null;
   const tone = lifecycleStatusTone(lifecycle);
   const active = lifecycle === "running";
@@ -30,7 +36,7 @@ export function ExecutionRecordStatusPill({ lifecycle }: { lifecycle: ExecutionR
         className={`h-1.5 w-1.5 rounded-full bg-current ${active ? "animate-pulse" : ""}`}
         aria-hidden
       />
-      {lifecycleStatusLabel(lifecycle)}
+      {labelOverride ?? lifecycleStatusLabel(lifecycle)}
     </span>
   );
 }

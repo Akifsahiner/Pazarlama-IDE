@@ -28,6 +28,8 @@ export function Shell() {
   const restoredProjectName = useApp((s) => s.restoredProjectName);
   const measurementIntakeOpen = useApp((s) => s.measurementIntakeOpen);
   const closeMeasurementIntake = useApp((s) => s.closeMeasurementIntake);
+  const morningUnlockToast = useApp((s) => s.morningUnlockToast);
+  const clearMorningUnlockToast = useApp((s) => s.clearMorningUnlockToast);
   const { toast } = useToast();
 
   // Returning-user fast path lands here — greet once, then clear the flag.
@@ -40,6 +42,16 @@ export function Shell() {
     });
     useApp.setState({ restoredProjectName: undefined });
   }, [restoredProjectName, toast]);
+
+  useEffect(() => {
+    if (!morningUnlockToast) return;
+    toast({
+      title: `Day ${morningUnlockToast.dayIndex} unlocked`,
+      description: morningUnlockToast.today,
+      tone: "success",
+    });
+    clearMorningUnlockToast();
+  }, [morningUnlockToast, toast, clearMorningUnlockToast]);
 
   useEffect(() => {
     registerBackgroundErrorToast((message) => {

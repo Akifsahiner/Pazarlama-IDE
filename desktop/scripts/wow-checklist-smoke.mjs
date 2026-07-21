@@ -101,7 +101,8 @@ const MARKERS = [
   ["src/shared/types.ts", "lane_a_workspace", "P6 Lane A profile schema"],
   ["src/shared/cmoGrowthPlane.ts", "buildGrowthControlPlane", "P7 growth plane engine"],
   ["src/shared/cmoGrowthPlane.ts", "resolveBindingBottleneck", "P7 binding bottleneck"],
-  ["src/renderer/features/workspace/GrowthCommandSurface.tsx", "growth-command-surface", "P12 command surface"],
+  ["src/renderer/features/workspace/executionRecord/MorningBriefHero.tsx", "morning-brief-grid", "Faz 3 morning brief grid"],
+  ["src/shared/morningBrief.ts", "buildMorningBriefView", "Faz 3 morning brief view model"],
   ["src/shared/types.ts", "growth_control_plane", "P7 growth plane profile schema"],
   ["src/renderer/state/store.ts", "recomputeGrowthPlane", "P7 growth plane recompute"],
   ["src/renderer/state/store.ts", "toggleWarRoomExpanded", "P7 war room expand"],
@@ -132,7 +133,7 @@ const MARKERS = [
   // CMO P12 — Command Surface Simplification
   ["src/shared/cmoCommandSurface.ts", "resolveTodayWhy", "P12 deterministic why"],
   ["src/shared/cmoCommandSurface.ts", "isCommandSurfaceOwnedAction", "P12 action ownership"],
-  ["src/renderer/features/workspace/GrowthCommandSurface.tsx", "growth-command-surface", "P12 four-field surface"],
+  ["src/renderer/features/workspace/executionRecord/MorningBriefHero.tsx", "morning-brief-grid", "Faz 3 four-field morning brief"],
   ["src/renderer/features/workspace/CommandSurfaceGovernanceBanner.tsx", "command-surface-governance", "P12 governance banner"],
   ["src/shared/cmoHumanExecutionBind.ts", "bindHumanExecutionForCadence", "Faz 3 human execution bind"],
   ["src/renderer/features/workspace/ReplanPreviewStrip.tsx", "replan-preview-strip", "Faz 3 replan strip"],

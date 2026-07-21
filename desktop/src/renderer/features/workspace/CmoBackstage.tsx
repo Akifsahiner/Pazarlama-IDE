@@ -100,14 +100,14 @@ export function CmoBackstage({
     <section
       className={wrap}
       data-testid="cmo-backstage"
-      aria-label="CMO backstage"
+      aria-label="CMO war room"
     >
       <nav
         className="sticky top-0 z-10 -mx-1 mb-3 flex flex-wrap items-center gap-1 border-b border-line bg-surface/95 px-1 py-2 backdrop-blur-sm"
-        aria-label="Backstage sections"
+        aria-label="War room sections"
       >
         <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-text-3">
-          Backstage
+          War room — full week plan
         </span>
         {links.map((link) => (
           <button

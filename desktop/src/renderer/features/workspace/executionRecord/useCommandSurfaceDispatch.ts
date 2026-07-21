@@ -1,7 +1,8 @@
-import type { CommandSurfaceAction } from "@shared/cmoCommandSurface";
+import type { CommandSurfaceAction, CommandSurfaceGovernance } from "@shared/cmoCommandSurface";
+import { canDispatchOpsTask } from "@shared/morningBrief";
 import { useApp } from "@renderer/state/store";
 
-/** Shared dispatch for GrowthCommandSurface and ExecutionRecordCard primary CTA. */
+/** Shared dispatch for ExecutionRecordCard primary CTA. */
 export function useCommandSurfaceDispatch() {
   const startOpsSystemTask = useApp((s) => s.startOpsSystemTask);
   const openOpsProofModal = useApp((s) => s.openOpsProofModal);
@@ -16,13 +17,18 @@ export function useCommandSurfaceDispatch() {
   const openWeekReviewModal = useApp((s) => s.openWeekReviewModal);
   const startNextCmoCycle = useApp((s) => s.startNextCmoCycle);
   const openLaneBProofModal = useApp((s) => s.openLaneBProofModal);
-  const focusBackstageAnchor = useApp((s) => s.focusBackstageAnchor);
+  const focusWarRoomAnchor = useApp((s) => s.focusWarRoomAnchor);
   const beginQuickStartShip = useApp((s) => s.beginQuickStartShip);
   const promptApplyFirstChange = useApp((s) => s.promptApplyFirstChange);
   const laneDWorkspace = useApp((s) => s.laneDWorkspace ?? s.marketingProfile?.lane_d_workspace);
   const setExecutionRecordDetailTab = useApp((s) => s.setExecutionRecordDetailTab);
 
-  return (resolved: CommandSurfaceAction) => {
+  return (
+    resolved: CommandSurfaceAction,
+    governance?: CommandSurfaceGovernance | null,
+  ) => {
+    if (!canDispatchOpsTask(governance, resolved)) return;
+
     switch (resolved.kind) {
       case "ship_first":
         if (resolved.label.includes("Apply")) promptApplyFirstChange();
@@ -52,12 +58,13 @@ export function useCommandSurfaceDispatch() {
         }
         break;
       }
+      case "focus_war_room":
       case "focus_backstage":
-        focusBackstageAnchor(resolved.anchor);
+        focusWarRoomAnchor(resolved.anchor);
         break;
       case "export":
         if (resolved.exportKind === "outreach") {
-          focusBackstageAnchor("lane-b-panel-wrap");
+          focusWarRoomAnchor("lane-b-panel-wrap");
         }
         break;
       case "week_review":

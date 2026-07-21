@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, LayoutList, Play } from "lucide-react";
+import { ChevronDown, ChevronUp, Play } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import type { ExecutionRecordView } from "@shared/executionRecord";
@@ -6,11 +6,10 @@ import { Button } from "@renderer/components/ui/Button";
 import { cardReveal, spring } from "@renderer/design/animations";
 import { ExecutionRecordProgress, ExecutionRecordStatusPill } from "./ExecutionRecordStatus";
 import { useCommandSurfaceDispatch } from "./useCommandSurfaceDispatch";
-import { CommandSurfaceGovernanceBanner } from "../CommandSurfaceGovernanceBanner";
 import { useApp } from "@renderer/state/store";
 import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
-import { parseBottleneckSentence, parseExperimentHeadline } from "./executionRecordUi";
 import { OurContractStrip } from "./OurContractStrip";
+import { MorningBriefHero } from "./MorningBriefHero";
 
 function ResultChip({
   label,
@@ -52,8 +51,6 @@ export function ExecutionRecordCard({
   compact?: boolean;
 }) {
   const dispatch = useCommandSurfaceDispatch();
-  const toggleWarRoomExpanded = useApp((s) => s.toggleWarRoomExpanded);
-  const warRoomExpanded = useApp((s) => s.warRoomExpanded);
   const toggleExecutionHeroExpanded = useApp((s) => s.toggleExecutionHeroExpanded);
   const run = useApp((s) => s.run);
   const marketingProfile = useApp((s) => s.marketingProfile);
@@ -62,10 +59,13 @@ export function ExecutionRecordCard({
     run?.status === "running" || run?.status === "planning" || run?.status === "created";
   const primary = record.next.action.kind !== "none" ? record.next.action : null;
   const [detailsOpen, setDetailsOpen] = useState(false);
-
-  const { headline, subline } = parseExperimentHeadline(record.experiment);
-  const bottleneck = parseBottleneckSentence(record.bottleneckSentence);
+  const brief = record.morningBrief;
   const realResults = record.results.filter((r) => r.id !== "results-empty");
+
+  const handlePrimary = () => {
+    if (!primary) return;
+    dispatch(primary, record.governance);
+  };
 
   if (compact) {
     return (
@@ -79,10 +79,26 @@ export function ExecutionRecordCard({
       >
         <div className="rounded-[var(--radius-lg)] border border-line/70 bg-elevated/90 px-4 py-2.5 shadow-[var(--shadow-1)] backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <ExecutionRecordStatusPill lifecycle={record.lifecycle} />
+            <ExecutionRecordStatusPill
+              lifecycle={record.lifecycle}
+              labelOverride={
+                record.lifecycle === "queued" ? record.lifecycleLabel : undefined
+              }
+            />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-body-sm font-semibold text-text">{headline}</p>
-              <p className="truncate text-micro text-text-3">{record.goal}</p>
+              {brief ? (
+                <MorningBriefHero
+                  brief={brief}
+                  primaryAction={primary}
+                  onPrimaryAction={handlePrimary}
+                  compact
+                />
+              ) : (
+                <>
+                  <p className="truncate text-body-sm font-semibold text-text">{record.experiment}</p>
+                  <p className="truncate text-micro text-text-3">{record.goal}</p>
+                </>
+              )}
             </div>
             <ExecutionRecordProgress lifecycle={record.lifecycle} />
             {primary && (
@@ -91,7 +107,7 @@ export function ExecutionRecordCard({
                 size="sm"
                 className="hidden shrink-0 sm:inline-flex"
                 data-testid={primary.testId}
-                onClick={() => dispatch(primary)}
+                onClick={handlePrimary}
               >
                 <Play size={13} className="mr-1" />
                 {primary.label}
@@ -131,7 +147,12 @@ export function ExecutionRecordCard({
           </div>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <ExecutionRecordStatusPill lifecycle={record.lifecycle} />
+          <ExecutionRecordStatusPill
+            lifecycle={record.lifecycle}
+            labelOverride={
+              record.lifecycle === "queued" ? record.lifecycleLabel : undefined
+            }
+          />
           <div className="flex items-center gap-2">
             <ExecutionRecordProgress lifecycle={record.lifecycle} />
             {runActive && (
@@ -151,38 +172,32 @@ export function ExecutionRecordCard({
           {record.goal}
         </p>
 
-        <h1 className="mt-2 text-display text-[clamp(1.35rem,3.5vw,1.75rem)] font-semibold leading-tight text-text">
-          {headline}
-        </h1>
-
-        {subline && (
-          <p className="mt-2 max-w-2xl text-body-sm leading-relaxed text-text-2">{subline}</p>
-        )}
-
-        {bottleneck.constraint && (
-          <p className="mt-3 text-mini text-text-3">
-            <span className="text-text-2">Bottleneck:</span> {bottleneck.constraint}
-            {bottleneck.move && (
-              <>
-                {" "}
-                <span className="text-text-3">→</span>{" "}
-                <span className="font-medium text-accent">{bottleneck.move}</span>
-              </>
+        {brief ? (
+          <div className="mt-4">
+            <MorningBriefHero
+              brief={brief}
+              primaryAction={primary}
+              onPrimaryAction={handlePrimary}
+            />
+          </div>
+        ) : (
+          <>
+            <h1 className="mt-2 text-display text-[clamp(1.35rem,3.5vw,1.75rem)] font-semibold leading-tight text-text">
+              {record.experiment}
+            </h1>
+            {primary && (
+              <Button
+                variant="primary"
+                size="md"
+                className="mt-6 w-full justify-center px-6 py-2.5 text-body-sm sm:w-auto sm:min-w-[220px]"
+                data-testid={primary.testId}
+                onClick={handlePrimary}
+              >
+                <Play size={16} className="mr-2" />
+                {primary.label}
+              </Button>
             )}
-          </p>
-        )}
-
-        {primary && (
-          <Button
-            variant="primary"
-            size="md"
-            className="mt-6 w-full justify-center px-6 py-2.5 text-body-sm sm:w-auto sm:min-w-[220px]"
-            data-testid={primary.testId}
-            onClick={() => dispatch(primary)}
-          >
-            <Play size={16} className="mr-2" />
-            {primary.label}
-          </Button>
+          </>
         )}
 
         <div className="mt-6 flex flex-wrap gap-2">
@@ -258,19 +273,6 @@ export function ExecutionRecordCard({
             </motion.div>
           )}
         </AnimatePresence>
-
-        <div className="mt-4 flex justify-end">
-          <Button variant="subtle" size="sm" onClick={() => toggleWarRoomExpanded()}>
-            <LayoutList size={14} className="mr-1" />
-            {warRoomExpanded ? "Close backstage" : "Backstage"}
-          </Button>
-        </div>
-
-        {record.governance && (
-          <div className="mt-3">
-            <CommandSurfaceGovernanceBanner governance={record.governance} />
-          </div>
-        )}
       </div>
     </motion.section>
   );

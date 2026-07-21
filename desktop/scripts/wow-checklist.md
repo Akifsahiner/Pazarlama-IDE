@@ -124,6 +124,18 @@ Run after Plan Studio / GTM brain / design-system changes.
 - [ ] **Backstage overlay** — war room opens on demand from Record footer; default collapsed
 - [ ] **Golden path** — reveal → run → apply updates Yapılan + diff tab; next task on Record
 
+## Faz 3 — Morning Brief (Daily Ritual)
+- [ ] **Morning brief grid** — `morning-brief-grid` shows Bottleneck / Today / Why / Done when on Execution Record
+- [ ] **Day header meta** — `Day N · mechanism · ~Xm total · owner breakdown` in hero header
+- [ ] **Effort budget** — max 3 focus tasks; owner breakdown (`2 IDE · 1 you`)
+- [ ] **Single CTA** — NextActionBar hidden on workspace when command surface active (blocking actions excepted)
+- [ ] **No duplicate CTA** — detail panel empty diff does not repeat primary button
+- [ ] **Day unlock toast** — first open each calendar day: `Day N unlocked — [today]`
+- [ ] **War room rename** — "War room — full week plan" (not Backstage)
+- [ ] **Day 1 auto-expand** — war room opens once when Week 1 begins
+- [ ] **Governance guard** — week review / pivot / product loop blocks ops dispatch until resolved
+- [ ] **E2E @morning-brief** — record grid + CTA visible within 10s of card mount
+
 ## CMO Founder-Fit + Strategic Options (P13)
 - [ ] **Exactly 7 questions** — one FounderFitWizard question per step, no long-form intake
 - [ ] **Founder-fit eligibility** — camera, risk, time, budget, and scale constraints change recommendation

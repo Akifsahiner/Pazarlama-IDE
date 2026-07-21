@@ -240,6 +240,11 @@ import {
 } from "@shared/measurementBaseline";
 import { resolveLaunchReadinessSteps } from "@shared/launchReadiness";
 import {
+  buildMorningBriefView,
+  morningBriefDayKey,
+  shouldShowDayUnlockToast,
+} from "@shared/morningBrief";
+import {
   allOpsTasksTerminal,
   attachKpiToCompletedProof,
   buildManualKpiFromOpsProof,
@@ -734,6 +739,10 @@ interface AppState {
   week1FocusMode?: boolean;
   /** P13 — first-session founder-fit / strategic decision surface. */
   strategicIntakeOpen: boolean;
+  /** Faz 3 — calendar day key for morning unlock toast (`projectId:YYYY-MM-DD`). */
+  lastMorningBriefDayKey?: string;
+  /** Faz 3 — pending morning unlock toast payload for Shell. */
+  morningUnlockToast?: { dayIndex: number; today: string };
   /** Faz 2 — Week 1 briefing modal after strategic seal. */
   week1BriefingOpen: boolean;
   /** Faz 2 — unified launch readiness stepper (activation / revenue / measurement). */
@@ -883,8 +892,13 @@ interface AppState {
   skipMonetizationTask: (taskId: string, reason?: string) => void;
   /** P7 — toggle war-room panel stack under command strip. */
   toggleWarRoomExpanded: () => void;
-  /** P7/P12 — expand backstage then scroll to anchor id. */
+  /** P7/P12 — expand war room then scroll to anchor id. */
+  focusWarRoomAnchor: (anchorId: string) => void;
+  /** @deprecated use focusWarRoomAnchor */
   focusBackstageAnchor: (anchorId: string) => void;
+  /** Faz 3 — detect calendar day rollover and queue morning unlock toast. */
+  checkMorningDayUnlock: () => void;
+  clearMorningUnlockToast: () => void;
   /** P8 — distribution operator proof actions. */
   openDistributionProofModal: (slotId: string) => void;
   dismissDistributionProofModal: () => void;
@@ -1762,7 +1776,7 @@ export const useApp = create<AppState>((set, get) => {
 
   const openHumanExecutionProof = (ref: HumanExecutionRef) => {
     if (ref.export_kind === "outreach_csv") {
-      get().focusBackstageAnchor("lane-b-panel-wrap");
+      get().focusWarRoomAnchor("lane-b-panel-wrap");
       return;
     }
     if (ref.proof_surface === "lane_b_modal") {
@@ -3820,6 +3834,8 @@ export const useApp = create<AppState>((set, get) => {
     week1BriefingOpen: false,
     launchReadinessOpen: false,
     measurementIntakeOpen: false,
+    lastMorningBriefDayKey: undefined,
+    morningUnlockToast: undefined,
 
     feedItems: [],
     feedFilter: "all",
@@ -5558,12 +5574,54 @@ export const useApp = create<AppState>((set, get) => {
         warRoomExpanded: !s.warRoomExpanded,
         week1FocusMode: !s.warRoomExpanded ? false : s.week1FocusMode,
       })),
-    focusBackstageAnchor: (anchorId) => {
+    focusWarRoomAnchor: (anchorId) => {
       if (!get().warRoomExpanded) get().toggleWarRoomExpanded();
       requestAnimationFrame(() => {
         document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     },
+    focusBackstageAnchor: (anchorId) => {
+      get().focusWarRoomAnchor(anchorId);
+    },
+
+    checkMorningDayUnlock: () => {
+      const state = get();
+      const { project, opsCadence, growthControlPlane, lastMorningBriefDayKey, marketingProfile } =
+        state;
+      if (!project?.id || !opsCadence || !growthControlPlane?.today) return;
+      const dayKey = morningBriefDayKey(project.id);
+      if (!shouldShowDayUnlockToast(lastMorningBriefDayKey, project.id, opsCadence)) return;
+      const brief = buildMorningBriefView({
+        plane: growthControlPlane,
+        cadence: opsCadence,
+        laneBWorkspace: state.laneBWorkspace ?? marketingProfile?.lane_b_workspace,
+        laneDWorkspace: state.laneDWorkspace ?? marketingProfile?.lane_d_workspace,
+        monetizationWorkspace:
+          state.monetizationWorkspace ?? marketingProfile?.monetization_workspace,
+        distributionOperator:
+          state.distributionOperator ?? marketingProfile?.distribution_operator,
+        influencerOperator:
+          state.influencerOperator ?? marketingProfile?.influencer_operator,
+        delegateOperator:
+          state.delegateOperator ??
+          state.delegateWorkspace ??
+          marketingProfile?.delegate_operator,
+        continuous: state.cmoContinuous ?? marketingProfile?.cmo_continuous,
+        campaignPhase: marketingProfile?.campaign_session?.phase,
+        growthMemory: state.growthMemory ?? marketingProfile?.growth_memory,
+        narrativeOneLiner: marketingProfile?.growth_narrative?.one_liner,
+        firstShipAt: state.firstShipAt,
+        wedgePhase: state.wedgePhase,
+        mechanismFallback:
+          state.channelThesis?.title ?? marketingProfile?.channel_thesis?.title,
+      });
+      if (!brief) return;
+      set({
+        lastMorningBriefDayKey: dayKey,
+        morningUnlockToast: { dayIndex: brief.dayIndex, today: brief.today },
+      });
+    },
+    clearMorningUnlockToast: () => set({ morningUnlockToast: undefined }),
 
     openDistributionProofModal: (slotId) =>
       set({ pendingDistributionProofSlotId: slotId }),
@@ -6025,7 +6083,7 @@ export const useApp = create<AppState>((set, get) => {
         workspaceHandoff: undefined,
         firstHourActive: true,
         week1FocusMode: true,
-        warRoomExpanded: false,
+        warRoomExpanded: true,
         launchReadinessOpen: false,
         week1BriefingOpen: false,
       });

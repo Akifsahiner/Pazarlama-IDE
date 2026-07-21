@@ -182,7 +182,7 @@ const exportChecks = [
   { file: "src/shared/cmoGrowthMemory.ts", needle: "buildReplanPreview" },
   { file: "src/renderer/features/workspace/GrowthMemoryPanel.tsx", needle: "growth-memory-panel" },
   { file: "src/renderer/features/workspace/ReplanPreviewCard.tsx", needle: "replan-preview-card" },
-  { file: "src/renderer/features/workspace/GrowthCommandSurface.tsx", needle: "growth-command-surface" },
+  { file: "src/renderer/features/workspace/executionRecord/MorningBriefHero.tsx", needle: "morning-brief-grid" },
   { file: "src/shared/executionRecord.ts", needle: "buildActiveExecutionRecord" },
   { file: "src/renderer/features/workspace/executionRecord/ExecutionRecordStage.tsx", needle: "execution-record-stage" },
   { file: "src/renderer/features/workspace/executionRecord/ExecutionRecordCard.tsx", needle: "execution-record-card" },

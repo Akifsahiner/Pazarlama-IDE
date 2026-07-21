@@ -371,6 +371,7 @@ export type CommandSurfaceAction =
       thesisId?: ChannelThesisId;
     }
   | { kind: "lane_b_proof"; itemId: string; label: string; testId: string }
+  | { kind: "focus_war_room"; anchor: string; label: string; testId: string }
   | { kind: "focus_backstage"; anchor: string; label: string; testId: string }
   | { kind: "none"; reason: string };
 
@@ -571,7 +572,7 @@ export function resolveCommandSurfaceAction(
 
   if (governance?.kind === "measuring") {
     return {
-      kind: "focus_backstage",
+      kind: "focus_war_room",
       anchor: "cmo-cycle-panel",
       label: governance.primaryLabel,
       testId: "command-surface-view-cycle",
@@ -580,7 +581,7 @@ export function resolveCommandSurfaceAction(
 
   if (governance?.kind === "revenue_focus") {
     return {
-      kind: "focus_backstage",
+      kind: "focus_war_room",
       anchor: "revenue-plane-panel-wrap",
       label: governance.primaryLabel,
       testId: "command-surface-revenue-focus",
@@ -589,7 +590,7 @@ export function resolveCommandSurfaceAction(
 
   if (governance?.kind === "product_loop") {
     return {
-      kind: "focus_backstage",
+      kind: "focus_war_room",
       anchor: "lane-d-panel-wrap",
       label: governance.primaryLabel,
       testId: "command-surface-product-loop-focus",

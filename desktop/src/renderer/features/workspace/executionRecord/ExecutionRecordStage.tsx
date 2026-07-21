@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useApp } from "@renderer/state/store";
 import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
 import { isQuickStartTrack } from "@shared/quickStartWedge";
@@ -27,6 +28,16 @@ export function ExecutionRecordStage() {
   const shipRecovery = useApp((s) => s.shipRecovery);
   const openStrategicIntake = useApp((s) => s.openStrategicIntake);
   const onboardingTrack = useApp((s) => s.onboardingTrack);
+  const checkMorningDayUnlock = useApp((s) => s.checkMorningDayUnlock);
+  const week1FocusMode = useApp((s) => s.week1FocusMode);
+
+  useEffect(() => {
+    if (!opsCadence) return;
+    checkMorningDayUnlock();
+    if (week1FocusMode && opsCadence.day_index === 1) {
+      useApp.setState({ week1FocusMode: false });
+    }
+  }, [checkMorningDayUnlock, opsCadence?.id, opsCadence?.day_index, week1FocusMode]);
 
   const runActive =
     run?.status === "running" || run?.status === "planning" || run?.status === "created";

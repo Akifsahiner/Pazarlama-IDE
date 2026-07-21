@@ -9,7 +9,6 @@ import { BrowserCanvas } from "../canvas/BrowserCanvas";
 import { WorkSurfaceShell } from "../canvas/WorkSurfaceShell";
 import { WorkSurfaceBody } from "../canvas/work/WorkSurfaceBody";
 import { ProofDetailView } from "./ProofDetailView";
-import { useCommandSurfaceDispatch } from "./useCommandSurfaceDispatch";
 import type { ExecutionRecordView } from "@shared/executionRecord";
 import { Radio } from "lucide-react";
 
@@ -34,12 +33,11 @@ export function ExecutionDetailPanel({
   const run = useApp((s) => s.run);
   const canvasMode = useApp((s) => s.canvas.mode);
   const surface = normalizeToWorkSurface(canvasMode);
-  const dispatch = useCommandSurfaceDispatch();
 
   const runActive =
     run?.status === "running" || run?.status === "planning" || run?.status === "created";
   const hasRun = Boolean(run?.runId);
-  const primary = record.next.action.kind !== "none" ? record.next.action : null;
+  const hasPrimaryAction = record.next.action.kind !== "none";
 
   useEffect(() => {
     if (tab === "record") setTab(defaultHint);
@@ -98,15 +96,10 @@ export function ExecutionDetailPanel({
               <p className="max-w-sm text-body-sm text-text-2">
                 Diff appears here — patches and apply show up once a run starts.
               </p>
-              {primary && (
-                <button
-                  type="button"
-                  className="btn-accent rounded-[var(--radius-md)] px-4 py-2 text-body-sm font-medium"
-                  data-testid="detail-empty-cta"
-                  onClick={() => dispatch(primary)}
-                >
-                  {primary.label}
-                </button>
+              {hasPrimaryAction && (
+                <p className="text-mini text-text-3">
+                  Primary action is on the execution record above.
+                </p>
               )}
             </div>
           )
