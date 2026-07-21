@@ -6,18 +6,27 @@ import {
   BarChart3,
   Check,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Clock,
   Compass,
   FileCode2,
   FileText,
   Rocket,
   Route as RouteIcon,
   Search,
+  Sparkles,
   Target,
   Wand2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { inferMarketingGaps } from "@shared/marketingGaps";
-import { orderRevealRoutes, resolveFirstShipTarget } from "@shared/firstHourWow";
+import {
+  buildYourGameBeat,
+  orderRevealRoutes,
+  resolveFirstShipTarget,
+  resolveWeek0FirstAction,
+} from "@shared/firstHourWow";
 import {
   QUICK_ACTION_GOALS,
   type QuickActionId,
@@ -43,6 +52,53 @@ import {
 import logoUrl from "@renderer/assets/logo.png";
 import { QuickStartForkCard } from "@renderer/features/onboarding/QuickStartForkCard";
 import { ThesisChip } from "@renderer/components/ThesisChip";
+
+function RevealAdvancedOptions({
+  connected,
+  hasFolder,
+  onPlan,
+  onCompetitors,
+  onDashboard,
+}: {
+  connected: boolean;
+  hasFolder: boolean;
+  onPlan: () => void;
+  onCompetitors: () => void;
+  onDashboard: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-4 border-t border-line/60 pt-4">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between text-left text-mini text-text-2 hover:text-text"
+        onClick={() => setOpen((v) => !v)}
+        data-testid="reveal-advanced-toggle"
+      >
+        <span>Advanced options</span>
+        {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+      </button>
+      {open && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button variant="secondary" size="sm" onClick={onPlan}>
+            {connected ? "30-day plan only" : "Preview plan outline"}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onCompetitors}
+            disabled={!hasFolder}
+          >
+            Competitor scan
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onDashboard}>
+            Open dashboard
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Move {
   icon: LucideIcon;
@@ -130,11 +186,13 @@ export function ProjectReveal() {
 
   const enterHome = () => useApp.setState({ phase: "workspace", route: "home" });
 
-  const goWorkspace = () => {
+  const goWorkspaceExecution = () => {
     useApp.setState({ phase: "workspace", route: "workspace" });
     setActiveCanvas("campaign-plan");
     useApp.getState().setWorkSurface("campaign-plan");
   };
+
+  const goWorkspace = goWorkspaceExecution;
 
   useEffect(() => {
     if (!project) enterHome();
@@ -169,6 +227,17 @@ export function ProjectReveal() {
   const shipTarget = useMemo(() => (project ? resolveFirstShipTarget(project) : null), [project]);
   const orderedRoutes = useMemo(() => (project ? orderRevealRoutes(project) : { rest: [] }), [project]);
 
+  const week0Action = useMemo(
+    () => (project ? resolveWeek0FirstAction(project, channelThesis) : null),
+    [project, channelThesis],
+  );
+  const yourGame = useMemo(
+    () =>
+      project && channelThesis && channelThesis.verdict !== "not_ready"
+        ? buildYourGameBeat(channelThesis, project)
+        : null,
+    [project, channelThesis],
+  );
   const primaryCta = resolveRevealPrimaryCta({
     firstShipAt,
     heroPath: shipTarget?.heroPath,
@@ -412,9 +481,26 @@ export function ProjectReveal() {
               key="thesis"
               initial={reducedMotion ? false : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-6"
+              className="mb-6 space-y-4"
               data-testid="reveal-cmo-thesis"
             >
+              {yourGame && (
+                <Card className="border-accent/30 bg-accent-soft/10 p-4" data-testid="reveal-your-game">
+                  <div className="flex items-start gap-2">
+                    <Sparkles size={16} className="mt-0.5 shrink-0 text-accent" />
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
+                        Your growth game
+                      </p>
+                      <h3 className="mt-1 text-body font-semibold text-text">{yourGame.thesisLabel}</h3>
+                      <p className="mt-1 text-body-sm text-text-2">{yourGame.whyLine}</p>
+                      <p className="mt-2 text-mini text-warn">
+                        <span className="font-medium">Not this week:</span> {yourGame.antiPatternRed}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              )}
               {quickStart && thesisLine ? (
                 <>
                   <div className="mb-1.5 text-caption uppercase tracking-wider">Channel thesis</div>
@@ -442,51 +528,42 @@ export function ProjectReveal() {
               initial={reducedMotion ? false : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <div className="mb-3 flex items-center gap-2">
-                <h2 className="text-h3 text-text">Suggested first moves</h2>
-                <Badge tone={persona === "sales" ? "sales" : "marketing"}>
-                  {persona === "sales" ? "Sales" : "Marketing"}
-                </Badge>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {moves.map((m) => {
-                  const actionId =
-                    m.action === "generate_plan" ? "plan" : m.action === "first_hour_wow" ? null : m.action;
-                  const disabled =
-                    m.action === "generate_plan" || m.action === "first_hour_wow"
-                      ? null
-                      : isQuickActionDisabled(resolveQuickAction(actionId!), {
-                          connected,
-                          hasFolder,
-                        });
-                  return (
-                    <Card
-                      key={m.title}
-                      interactive
-                      onClick={() => runMove(m)}
-                      className={`flex flex-col gap-2 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
-                      title={disabled ?? undefined}
-                    >
-                      <span
-                        className={`flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] ${
-                          m.tone === "sales" ? "bg-sales-soft text-sales" : "bg-accent-soft text-accent"
-                        }`}
-                      >
-                        <m.icon size={17} />
-                      </span>
-                      <span className="text-body font-medium text-text">{m.title}</span>
-                    </Card>
-                  );
-                })}
-              </div>
+              {!firstShipAt && week0Action && primaryCta === "ship_first_win" ? (
+                <Card className="border-accent/25 p-5" data-testid="reveal-week0-primary">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-accent-soft text-accent">
+                      <Rocket size={18} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-text-3">
+                        CMO&apos;s Week 0 move
+                      </p>
+                      <h2 className="mt-1 text-h3 text-text">{week0Action.primaryLabel}</h2>
+                      <p className="mt-2 text-body-sm text-text-2">{week0Action.primaryDescription}</p>
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-mini text-text-3">
+                        <span className="inline-flex items-center gap-1">
+                          <Clock size={12} /> ~{week0Action.estimatedMinutes} min
+                        </span>
+                        <span className="text-line">·</span>
+                        <span>{week0Action.deliverable}</span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ) : (
+                <div className="mb-3 flex items-center gap-2">
+                  <h2 className="text-h3 text-text">Next step</h2>
+                  <Badge tone={persona === "sales" ? "sales" : "marketing"}>
+                    {persona === "sales" ? "Sales" : "Marketing"}
+                  </Badge>
+                </div>
+              )}
 
-              <div className="mt-9 flex flex-col gap-3">
-                {!firstShipAt && quickStart && (
-                  <QuickStartForkCard compact />
-                )}
+              <div className="mt-6 flex flex-col gap-3">
+                {!firstShipAt && quickStart && <QuickStartForkCard compact />}
                 {!connected && (
                   <p className="text-body-sm text-text-2">
-                    Offline is fine — preview a scan-based plan outline first.
+                    Offline is fine — preview a scan-based plan outline in Advanced.
                     <button type="button" onClick={openConnectFlow} className="ml-1 text-accent hover:underline">
                       Connect for full AI
                     </button>
@@ -500,14 +577,14 @@ export function ProjectReveal() {
                   </>
                 )}
                 <div className="flex flex-wrap items-center gap-3">
-                  {primaryCta === "ship_first_win" && shipTarget?.heroPath ? (
+                  {primaryCta === "ship_first_win" ? (
                     <Button
                       variant="primary"
                       iconRight={<ArrowRight size={16} />}
                       onClick={() => beginQuickStartShip()}
                       data-testid="reveal-ship-first-win"
                     >
-                      Ship first win — hero & meta
+                      {week0Action?.primaryLabel ?? "Ship first win"}
                     </Button>
                   ) : primaryCta === "start_week1" ? (
                     <Button
@@ -545,33 +622,44 @@ export function ProjectReveal() {
                       Full CMO setup
                     </Button>
                   )}
+                  {firstShipAt && (
+                    <Button
+                      variant="primary"
+                      iconRight={<ArrowRight size={16} />}
+                      onClick={goWorkspaceExecution}
+                      data-testid="reveal-open-execution-record"
+                    >
+                      Open Execution Record
+                    </Button>
+                  )}
                   {firstShipAt && channelThesis && (
                     <Button variant="secondary" onClick={() => beginFirstHour()}>
                       {connected ? "Full launch plan" : "Preview plan outline"}
                     </Button>
                   )}
-                  {!firstShipAt && primaryCta !== "ship_first_win" && shipTarget?.heroPath && (
-                    <Button
-                      variant="secondary"
-                      onClick={() => beginQuickStartShip()}
-                      data-testid="reveal-first-hour-wow"
-                    >
-                      Quick hero ship
-                    </Button>
-                  )}
-                  <Button variant="secondary" onClick={enterHome}>
-                    Open dashboard
-                  </Button>
                 </div>
                 <p className="text-mini text-text-3">
-                  {!firstShipAt && shipTarget?.heroPath
-                    ? "Agent reads your landing file, cites path:line, then you apply one patch — same folder as Cursor."
+                  {!firstShipAt && week0Action
+                    ? week0Action.mode === "content_draft"
+                      ? "Agent creates marketing/ deliverables in your repo — review and apply when ready."
+                      : "Agent reads your repo, cites path:line, then you apply one patch — same folder as Cursor."
                     : firstShipAt && channelThesis
-                      ? "First change shipped — complete CMO strategy to unlock Week 1 ops with owners and deadlines."
+                      ? "First change shipped — Execution Record is your daily ops home. Complete CMO strategy to unlock Week 1."
                       : channelThesis
                         ? "CMO picked your primary channel thesis — Week 1 tasks have owners, deadlines, and done criteria."
-                        : `One click opens Plan Studio${connected ? " and generates your plan" : " with a scan-based outline"}.`}
+                        : `Use Advanced for Plan Studio${connected ? " with full AI" : " outline"}.`}
                 </p>
+                <RevealAdvancedOptions
+                  connected={connected}
+                  hasFolder={hasFolder}
+                  onPlan={() => {
+                    if (connected) void generatePlan();
+                    else previewPlanOutline();
+                    goWorkspace();
+                  }}
+                  onCompetitors={() => runMove(moves.find((m) => m.action === "competitors") ?? moves[0]!)}
+                  onDashboard={enterHome}
+                />
                 {strategicIntakeOpen &&
                   channelThesis &&
                   channelThesis.verdict !== "not_ready" &&

@@ -177,7 +177,12 @@ import {
   type ConversationIntent,
 } from "@shared/conversationIntent";
 import { handoffFromResolved, type HandoffConfirmState } from "@shared/workspaceHandoff";
-import { resolveFirstShipTarget, resolveFirstHourAutoHandoff, FIRST_HOUR_AUTO_HANDOFF_DELAY_MS } from "@shared/firstHourWow";
+import {
+  resolveFirstShipTarget,
+  resolveWeek0FirstAction,
+  resolveFirstHourAutoHandoff,
+  FIRST_HOUR_AUTO_HANDOFF_DELAY_MS,
+} from "@shared/firstHourWow";
 import {
   parseShipSnapshotFromSource,
   buildShipSummary,
@@ -193,7 +198,7 @@ import {
   initialShipPipelineState,
   type ShipPipelineState,
 } from "@shared/shipPipeline";
-import { buildShipRecovery, type ShipRecoveryAction } from "@shared/shipPipelineRecovery";
+import { buildShipRecoveryForThesis, type ShipRecoveryAction } from "@shared/shipPipelineRecovery";
 import { appendExecutionMetric, type ExecutionMetricsRollup } from "@shared/executionMetrics";
 import type { FirstShipLedger } from "@shared/types";
 import {
@@ -248,7 +253,6 @@ import {
   canCompleteWeekReview,
   evaluateWeek1Metrics,
   evaluateWeek1MetricsWithGa4Priority,
-  hasGa4Connected,
   validateFullOpsProof,
 } from "@shared/cmoProofLoop";
 import {
@@ -1466,28 +1470,12 @@ export const useApp = create<AppState>((set, get) => {
       firstHourActive: false,
       firstHourScoutPending: false,
       wedgePhase: "shipped",
+      phase: "workspace",
+      route: "workspace",
       shipPipeline: nextShipPipelineStage(get().shipPipeline ?? initialShipPipelineState(), {
         type: "first_ship",
       }),
     });
-    const profile = get().marketingProfile;
-    const project = get().project;
-    const baseline = assessMeasurementBaseline(profile, project);
-    if (!baseline.ready) {
-      const ga4 = hasGa4Connected(profile);
-      set({
-        workspaceHandoff: {
-          eyebrow: "Measure outcomes",
-          title: ga4 ? "Sync GA4 baseline" : "Log measurement baseline",
-          reason:
-            "You shipped — connect GA4 or log a manual KPI before scaling Week 1 ops.",
-          primaryLabel: ga4 ? "Open settings" : "Log baseline",
-          primaryAction: ga4 ? "home" : "home",
-          secondaryLabel: "Continue to Week 1 prep",
-          secondaryAction: "home",
-        },
-      });
-    }
   };
 
   const recordExecutionMetricEvent = (
@@ -1519,9 +1507,15 @@ export const useApp = create<AppState>((set, get) => {
       next.error === "NO_PATCHES" ||
       extra?.error === "NO_PATCHES" ||
       extra?.error?.includes("NO_PATCHES");
-    if (next.stage === "failed" && noPatches) {
-      const target = get().project ? resolveFirstShipTarget(get().project!) : undefined;
-      patch.shipRecovery = buildShipRecovery("no_patches", target);
+    if (next.stage === "failed" && noPatches && get().project) {
+      const project = get().project!;
+      const thesis = get().channelThesis ?? get().marketingProfile?.channel_thesis;
+      const target = resolveFirstShipTarget(project);
+      patch.shipRecovery = buildShipRecoveryForThesis("no_patches", {
+        project,
+        thesis: thesis ?? undefined,
+        target,
+      });
     }
     set(patch);
   };
@@ -3297,6 +3291,7 @@ export const useApp = create<AppState>((set, get) => {
         project: snap.project,
         receipt,
         answerText,
+        thesis: snap.channelThesis ?? snap.marketingProfile?.channel_thesis,
       });
       if (!intent || isExecutionActive()) return;
       track("first_hour_auto_handoff");
@@ -5170,12 +5165,13 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     beginFirstHourWow: () => {
-      const { project, runtime } = get();
+      const { project, runtime, channelThesis, marketingProfile } = get();
       if (!project) return;
-      const target = resolveFirstShipTarget(project);
+      const thesis = channelThesis ?? marketingProfile?.channel_thesis;
+      const week0 = resolveWeek0FirstAction(project, thesis);
       clearFirstHourAutoHandoff();
       track("begin_first_hour_wow");
-      const scout = canRunAgent(runtime);
+      const scout = canRunAgent(runtime) && week0.useScoutFirst;
       set({
         phase: "workspace",
         route: "workspace",
@@ -5186,20 +5182,23 @@ export const useApp = create<AppState>((set, get) => {
       get().setActiveCanvas("run");
 
       if (scout) {
-        void get().sendMessage(target.scoutPrompt);
+        void get().sendMessage(week0.scoutPrompt);
         return;
       }
 
       const resolved = resolveIntent({
-        uiIntent: { kind: "start_edit_run", goal: target.editGoal },
-        message: target.editGoal,
+        uiIntent: { kind: "start_edit_run", goal: week0.runGoal },
+        message: week0.runGoal,
         plan: get().plan ? normalizePlan(get().plan) : null,
         planProgress: get().planProgress,
       });
       if (resolved) {
         get().executeIntent(resolved.intent, { skipConfirm: true });
       } else {
-        void get().startRun(target.editGoal);
+        void get().startRun(week0.runGoal, undefined, {
+          skills: week0.skills,
+          guaranteedShip: week0.mode !== "content_draft",
+        });
       }
     },
 
@@ -5211,14 +5210,17 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     beginQuickStartShip: (opts) => {
-      const { project } = get();
+      const { project, channelThesis, marketingProfile } = get();
       if (!project) return;
+      const thesis = channelThesis ?? marketingProfile?.channel_thesis;
+      const week0 = resolveWeek0FirstAction(project, thesis);
       const target = resolveFirstShipTarget(project);
-      const skipScout = opts?.skipScout ?? get().onboardingTrack !== "full_cmo";
+      const skipScout =
+        opts?.skipScout ?? (!week0.useScoutFirst || get().onboardingTrack !== "full_cmo");
 
       void (async () => {
         let snapshot = get().firstShipSnapshot;
-        if (!snapshot) {
+        if (!snapshot && week0.mode !== "content_draft") {
           try {
             const cwd =
               project.source.kind === "folder" ? project.source.path : project.localPath;
@@ -5231,6 +5233,9 @@ export const useApp = create<AppState>((set, get) => {
             snapshot = { capturedAt: Date.now(), heroPath: target.heroPath };
             set({ firstShipSnapshot: snapshot });
           }
+        } else if (!snapshot) {
+          snapshot = { capturedAt: Date.now(), heroPath: target.heroPath };
+          set({ firstShipSnapshot: snapshot });
         }
 
         recordExecutionMetricEvent("quick_start_begin");
@@ -5243,11 +5248,15 @@ export const useApp = create<AppState>((set, get) => {
           shipPipeline: { stage: "run", patchCount: 0, updatedAt: Date.now() },
         });
 
-        track("quick_start_ship_begin", { heroPath: target.heroPath });
+        track("quick_start_ship_begin", {
+          heroPath: target.heroPath,
+          thesisId: week0.thesisId,
+          mode: week0.mode,
+        });
 
         if (skipScout && canRunAgent(get().runtime)) {
           clearFirstHourAutoHandoff();
-          const goal = opts?.goalOverride ?? target.editGoal;
+          const goal = opts?.goalOverride ?? week0.runGoal;
           set({
             phase: "workspace",
             route: "workspace",
@@ -5267,8 +5276,8 @@ export const useApp = create<AppState>((set, get) => {
             get().executeIntent(resolved.intent, { skipConfirm: true });
           } else {
             void get().startRun(goal, undefined, {
-              skills: ["landing-page-conversion", "seo-content-engine"],
-              guaranteedShip: true,
+              skills: week0.skills,
+              guaranteedShip: week0.mode !== "content_draft",
             });
           }
           return;

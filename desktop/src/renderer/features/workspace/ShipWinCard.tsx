@@ -33,7 +33,15 @@ export function ShipWinCard({
         <Rocket size={16} className="mt-0.5 text-ok" />
         <div className="min-w-0 flex-1">
           <h3 className="text-body-sm font-semibold text-text">You shipped a real change</h3>
-          <p className="mt-1 text-mini text-text-2">{summary}</p>
+          <p className="mt-1 text-mini text-text-2">
+            {summary}
+            {commitSha && files.length > 0 && (
+              <>
+                {" "}
+                · <span className="font-mono">{files[0]}</span>
+              </>
+            )}
+          </p>
         </div>
         {commitSha && (
           <Badge tone="ok" data-testid="ship-win-commit">

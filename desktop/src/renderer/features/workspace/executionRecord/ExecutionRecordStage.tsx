@@ -5,6 +5,9 @@ import { ExecutionHistoryTimeline } from "./ExecutionHistoryTimeline";
 import { ExecutionRecordEmpty } from "./ExecutionRecordEmpty";
 import { LiveActivityStrip } from "./LiveActivityStrip";
 import { useActiveExecutionRecord, useExecutionHistory } from "./useExecutionRecord";
+import { ShipWinCard } from "@renderer/features/workspace/ShipWinCard";
+import { ShipRecoveryCard } from "@renderer/features/agent/ShipRecoveryCard";
+import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
 
 export function ExecutionRecordStage() {
   const record = useActiveExecutionRecord();
@@ -16,6 +19,11 @@ export function ExecutionRecordStage() {
   const historyExpanded = useApp((s) => s.executionHistoryExpanded);
   const toggleHistory = useApp((s) => s.toggleExecutionHistoryExpanded);
   const heroExpanded = useApp((s) => s.executionHeroExpanded);
+  const firstShipLedger = useApp((s) => s.firstShipLedger);
+  const firstShipAt = useApp((s) => s.firstShipAt);
+  const shipRecovery = useApp((s) => s.shipRecovery);
+  const openStrategicIntake = useApp((s) => s.openStrategicIntake);
+  const marketingProfile = useApp((s) => s.marketingProfile);
 
   const runActive =
     run?.status === "running" || run?.status === "planning" || run?.status === "created";
@@ -43,10 +51,40 @@ export function ExecutionRecordStage() {
         }`}
       >
         {preWeek1 ? (
-          <ExecutionRecordEmpty record={record} />
+          <>
+            <ExecutionRecordEmpty record={record} />
+            {shipRecovery && !runActive && (
+              <ShipRecoveryCard recovery={shipRecovery} />
+            )}
+            {firstShipAt && firstShipLedger && !runActive && (
+              <ShipWinCard
+                ledger={firstShipLedger}
+                compact
+                onContinueCmo={
+                  channelThesis && !isStrategicDecisionSealed(marketingProfile)
+                    ? openStrategicIntake
+                    : undefined
+                }
+              />
+            )}
+          </>
         ) : (
           <>
             <ExecutionRecordCard record={record} compact={heroCompact} />
+
+            {shipRecovery && !runActive && <ShipRecoveryCard recovery={shipRecovery} />}
+
+            {firstShipAt && firstShipLedger && !runActive && (
+              <ShipWinCard
+                ledger={firstShipLedger}
+                compact
+                onContinueCmo={
+                  channelThesis && !isStrategicDecisionSealed(marketingProfile)
+                    ? openStrategicIntake
+                    : undefined
+                }
+              />
+            )}
 
             <ExecutionDetailPanel
               record={record}
