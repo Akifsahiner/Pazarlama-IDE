@@ -11,6 +11,8 @@ import type { LaneBWorkspace } from "./cmoLaneB";
 import type { CmoOpsCadence, CmoOpsTask } from "./cmoOpsCadence";
 import { opsQueueBlocksLaneWork } from "./cmoOpsCadence";
 import type { HumanExecutionRef } from "./humanExecutionPlan";
+import type { HumanExecutionAsset } from "./marketingTaskContract";
+import { isMeasurableForReview } from "./marketingTaskContract";
 
 export type { HumanExecutionRef, HumanExportKind, HumanExecutionSource, HumanProofSurface } from "./humanExecutionPlan";
 
@@ -23,13 +25,15 @@ export function primaryUserOpsTaskId(cadence: CmoOpsCadence): string | undefined
   return humanTasksFromCadence(cadence)[0]?.id;
 }
 
-/** KPI/measure user task — prefer done_when with metric language. */
+/** KPI/measure user task — contract metric.measurable first. */
 export function measureUserOpsTaskId(cadence: CmoOpsCadence): string | undefined {
   const human = humanTasksFromCadence(cadence);
-  const measure = human.find((t) =>
+  const measure = human.find((t) => isMeasurableForReview(t));
+  if (measure) return measure.id;
+  const legacy = human.find((t) =>
     /\bkpi\b|\bmetric\b|snapshot|log|recorded|views|signups/i.test(t.done_when),
   );
-  return measure?.id ?? human.at(-1)?.id;
+  return legacy?.id ?? human.at(-1)?.id;
 }
 
 export function shouldBlockHumanWork(cadence: CmoOpsCadence): boolean {
@@ -72,11 +76,134 @@ function isMeasureLaneBItem(title: string, channel?: string): boolean {
 }
 
 function isMeasureOpsTask(task: CmoOpsTask): boolean {
+  if (task.metric?.measurable === true) return true;
+  if (task.metric?.measurable === false) return false;
   return (
     task.expected_proof_kind === "kpi" ||
     inferExpectedProofKind(task.done_when) === "kpi" ||
     /\bkpi\b|\bmetric\b|snapshot|log|recorded/i.test(task.done_when)
   );
+}
+
+export function freezeHumanExecutionAsset(input: {
+  task: CmoOpsTask;
+  ref: HumanExecutionRef;
+  thesis: ChannelThesis;
+  laneB?: LaneBWorkspace | null;
+  distributionOperator?: DistributionOperatorWorkspace | null;
+  influencerOperator?: InfluencerOperatorWorkspace | null;
+  delegateOperator?: DelegateOperatorWorkspace | null;
+}): HumanExecutionAsset {
+  const { task, ref } = input;
+  const copy_blocks: HumanExecutionAsset["copy_blocks"] = [];
+
+  if (ref.source === "distribution" && input.distributionOperator) {
+    const slot = input.distributionOperator.slots.find((s) => s.id === ref.item_id);
+    const hook = slot?.hook_id
+      ? input.distributionOperator.hooks.find((h) => h.id === slot.hook_id)
+      : undefined;
+    if (hook?.script_hint) {
+      copy_blocks.push({ id: "script", label: "Hook script", text: hook.script_hint });
+    }
+    copy_blocks.push({
+      id: "platform",
+      label: "Platform",
+      text: `${slot?.platform ?? "primary"} · Day ${slot?.day_index ?? 1}`,
+    });
+  }
+
+  if (ref.source === "influencer" && input.influencerOperator) {
+    const touch = input.influencerOperator.touches.find((t) => t.id === ref.item_id);
+    const pitch = touch
+      ? input.influencerOperator.pitches.find((p) => p.id === touch.pitch_id)
+      : undefined;
+    if (pitch?.script_scaffold) {
+      copy_blocks.push({ id: "pitch", label: pitch.label, text: pitch.script_scaffold });
+    }
+    if (touch?.target_name) {
+      copy_blocks.push({
+        id: "target",
+        label: "Target",
+        text: [touch.target_name, touch.target_handle].filter(Boolean).join(" · "),
+      });
+    }
+  }
+
+  if (ref.source === "lane_b" && input.laneB) {
+    const item = input.laneB.items.find((i) => i.id === ref.item_id);
+    if (item?.detail) {
+      copy_blocks.push({ id: "detail", label: item.title, text: item.detail });
+    }
+    if (item?.target_name) {
+      copy_blocks.push({
+        id: "outreach_target",
+        label: "Outreach target",
+        text: `${item.target_name}${item.target_handle ? ` (${item.target_handle})` : ""}`,
+      });
+    }
+    const laneDraft = input.thesis.lane_b[0];
+    if (copy_blocks.length === 0 && laneDraft) {
+      copy_blocks.push({ id: "lane_b_guide", label: "Lane B guide", text: laneDraft });
+    }
+  }
+
+  if (ref.source === "delegate" && input.delegateOperator) {
+    const rubric = input.delegateOperator.daily_rubrics.find((r) => r.id === ref.item_id);
+    const brief = input.delegateOperator.briefs[0];
+    const brief_md = brief
+      ? `# ${brief.title}\n\n${brief.what}\n\nWhy: ${brief.why}\n\n## Deliverables\n${brief.deliverables.map((d) => `- ${d}`).join("\n")}\n\n## Acceptance\n${brief.acceptance_criteria.map((a) => `- ${a}`).join("\n")}`
+      : undefined;
+    if (rubric?.checklist.length) {
+      copy_blocks.push({
+        id: "rubric",
+        label: `Day ${rubric.day_index} checklist`,
+        text: rubric.checklist.map((c) => `- ${c.label}`).join("\n"),
+      });
+    }
+    return {
+      copy_blocks: copy_blocks.length ? copy_blocks : [{ id: "delegate", label: "Delegate task", text: task.what }],
+      brief_md,
+      follow_up: task.if_failed,
+    };
+  }
+
+  if (copy_blocks.length === 0) {
+    copy_blocks.push({
+      id: "task",
+      label: "Your move",
+      text: `${task.what}\n\nDone when: ${task.done_when}${task.deliverable ? `\n\nDeliverable: ${task.deliverable}` : ""}`,
+    });
+  }
+
+  return {
+    copy_blocks,
+    utm_template: input.task.inputs?.find((i) => i.label.toLowerCase().includes("utm"))?.value,
+    follow_up: task.if_failed,
+  };
+}
+
+export function freezeHumanExecutionAssets(input: {
+  cadence: CmoOpsCadence;
+  thesis: ChannelThesis;
+  laneB?: LaneBWorkspace | null;
+  distributionOperator?: DistributionOperatorWorkspace | null;
+  influencerOperator?: InfluencerOperatorWorkspace | null;
+  delegateOperator?: DelegateOperatorWorkspace | null;
+}): CmoOpsCadence {
+  const tasks = input.cadence.tasks.map((task) => {
+    if (!task.human_execution_ref) return task;
+    const asset = freezeHumanExecutionAsset({
+      task,
+      ref: task.human_execution_ref,
+      thesis: input.thesis,
+      laneB: input.laneB,
+      distributionOperator: input.distributionOperator,
+      influencerOperator: input.influencerOperator,
+      delegateOperator: input.delegateOperator,
+    });
+    return { ...task, human_execution_asset: asset };
+  });
+  return { ...input.cadence, tasks };
 }
 
 export function resolveHumanExecutionRef(input: {
@@ -154,7 +281,7 @@ export function resolveHumanExecutionRef(input: {
       return {
         source: "lane_b",
         item_id: linked.id,
-        proof_surface: measure ? "ops_modal" : "lane_b_modal",
+        proof_surface: "lane_b_modal",
         export_kind:
           input.laneB.mode === "outreach_tracker" && !measure ? "outreach_csv" : undefined,
         label: linked.title,
@@ -169,7 +296,7 @@ export function resolveHumanExecutionRef(input: {
       return {
         source: "lane_b",
         item_id: unlinked.id,
-        proof_surface: measure ? "ops_modal" : "lane_b_modal",
+        proof_surface: "lane_b_modal",
         export_kind:
           input.laneB.mode === "outreach_tracker" && !measure ? "outreach_csv" : undefined,
         label: unlinked.title,
@@ -257,11 +384,22 @@ export function bindHumanExecutionForCadence(input: {
         };
       }
 
-      const kind = inferExpectedProofKind(task.done_when);
+      const kind = task.required_proof?.[0] ?? task.expected_proof_kind ?? inferExpectedProofKind(task.done_when);
+      const asset = freezeHumanExecutionAsset({
+        task,
+        ref,
+        thesis: input.thesis,
+        laneB,
+        distributionOperator,
+        influencerOperator,
+        delegateOperator: input.delegateOperator,
+      });
       return {
         ...task,
-        expected_proof_kind: task.expected_proof_kind ?? kind,
+        expected_proof_kind: kind,
+        required_proof: task.required_proof ?? (kind ? [kind] : undefined),
         human_execution_ref: ref,
+        human_execution_asset: asset,
       };
     }
     return task;

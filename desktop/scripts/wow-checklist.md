@@ -135,6 +135,17 @@ Run after Plan Studio / GTM brain / design-system changes.
 - [ ] **B2B empty pipeline → outbound** — sales persona scenarios pass
 - [ ] **Backstage dimensions** — GrowthMechanismPanel shows 11-row confidence strip
 
+## Task Contract Engine (Part 8 / P19)
+- [ ] **14-field contract** — deliverable, effort, inputs, execution_mode, metric, if_failed on every ops task
+- [ ] **CmoOpsBoard contract strip** — deliverable, effort badge, copy blocks with Copy button
+- [ ] **Human copy-paste ready** — `human_execution_asset.copy_blocks` frozen at bind; no backstage-only scripts
+- [ ] **Measurable week review** — checklist table; non-measurable tasks excluded from pivot math
+- [ ] **Proof modal** — required_proof chips + deliverable + measure date
+- [ ] **100% execution bind** — `cmoExecutionSurfaceCoverage.test.ts` 8-thesis matrix pass
+- [ ] **Eval corpus** — `eval:task-contract` incomplete rate ≤1%
+- [ ] **Server schema parity** — ops_cadence bind fields survive PATCH/GET
+- [ ] **Plan demoted** — Home primary = Week 1 ops; 30-day plan = outline reference
+
 ## CMO Founder-Fit + Strategic Options (P13)
 - [ ] **Exactly 7 questions** — one FounderFitWizard question per step, no long-form intake
 - [ ] **Founder-fit eligibility** — camera, risk, time, budget, and scale constraints change recommendation

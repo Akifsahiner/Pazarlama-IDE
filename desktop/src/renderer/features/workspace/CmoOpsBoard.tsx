@@ -16,11 +16,12 @@ import {
 } from "@shared/cmoOpsCadence";
 import { allOpsTasksTerminal } from "@shared/cmoProofLoop";
 import type { ChannelThesis } from "@shared/cmoIntake";
+import { taskContractEffortMinutes } from "@shared/marketingTaskContract";
 import { CmoPivotCard, DelegateVerdictCard, DistributionVerdictCard, InfluencerVerdictCard } from "@renderer/features/workspace/CmoPivotCard";
 import { Card } from "@renderer/components/ui/Card";
 import { Button } from "@renderer/components/ui/Button";
 import { Badge } from "@renderer/components/ui/Badge";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useApp } from "@renderer/state/store";
 import { resolveDelegateOperator } from "@shared/cmoDelegateOperator";
 import type { BrowserEvidenceProof } from "@shared/browserVerify";
@@ -225,6 +226,77 @@ function TaskActions({ task, cadence }: { task: CmoOpsTask; cadence: CmoOpsCaden
   return <span className="text-[10px] text-text-3">Blocked</span>;
 }
 
+function TaskContractDetails({ task }: { task: CmoOpsTask }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const effort =
+    task.estimated_effort_minutes ??
+    (task.execution_mode ? taskContractEffortMinutes(task.execution_mode) : undefined);
+
+  const copyText = async (id: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(id);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return (
+    <div className="mt-2 space-y-2 border-t border-line/60 pt-2" data-testid="ops-task-contract">
+      {task.deliverable && (
+        <p className="text-[10px] font-semibold text-text">
+          Deliverable: <span className="font-normal text-text-2">{task.deliverable}</span>
+        </p>
+      )}
+      <div className="flex flex-wrap gap-1.5">
+        {effort != null && <Badge tone="neutral">~{effort}m</Badge>}
+        {task.execution_mode && (
+          <Badge tone="neutral">{task.execution_mode.replace(/_/g, " ")}</Badge>
+        )}
+        {task.metric?.measurable && (
+          <Badge tone="accent">
+            KPI: {task.metric.name}
+            {task.metric.target != null ? ` ≥ ${task.metric.target}` : ""}
+          </Badge>
+        )}
+      </div>
+      {task.inputs && task.inputs.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {task.inputs.map((input) => (
+            <span
+              key={`${input.label}-${input.ref ?? input.value}`}
+              className="rounded-full border border-line bg-surface-2 px-2 py-0.5 text-[9px] text-text-3"
+            >
+              {input.label}
+              {input.ref ? `: ${input.ref}` : input.value ? `: ${input.value}` : ""}
+            </span>
+          ))}
+        </div>
+      )}
+      {task.human_execution_asset?.copy_blocks.map((block) => (
+        <div key={block.id} className="rounded border border-line bg-surface-2 p-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] font-semibold text-text-2">{block.label}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid={`ops-copy-${block.id}`}
+              onClick={() => void copyText(block.id, block.text)}
+            >
+              {copied === block.id ? "Copied" : "Copy"}
+            </Button>
+          </div>
+          <p className="mt-1 whitespace-pre-wrap text-[10px] text-text-3">{block.text}</p>
+        </div>
+      ))}
+      {task.if_failed && (
+        <p className="text-[10px] text-warn">If failed: {task.if_failed}</p>
+      )}
+    </div>
+  );
+}
+
 function OpsTaskRow({
   task,
   index,
@@ -259,6 +331,7 @@ function OpsTaskRow({
       <td className="min-w-[200px] px-3 py-2.5">
         <p className="text-body-sm font-medium text-text">{task.what}</p>
         <p className="mt-0.5 text-[10px] text-text-3">{task.why}</p>
+        <TaskContractDetails task={task} />
       </td>
       <td className="hidden px-3 py-2.5 text-[10px] text-text-3 lg:table-cell">
         {task.done_when}

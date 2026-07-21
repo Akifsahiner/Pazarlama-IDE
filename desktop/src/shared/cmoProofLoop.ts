@@ -25,6 +25,7 @@ import {
   type RevenueProfile,
 } from "./cmoRevenuePlane";
 import type { ManualKpi, MarketingProfile } from "./types";
+import { isMeasurableForReview } from "./marketingTaskContract";
 
 export interface OpsKpiGate {
   presetId: string;
@@ -131,12 +132,24 @@ const GA4_PRESET_MAP: Record<string, OpsKpiGate["ga4MetricName"]> = {
   signup_rate_pct: "conversions",
 };
 
-/** Resolve the KPI gate for an ops task from done_when + thesis context. */
+/** Resolve the KPI gate for an ops task — contract metric first, then text inference. */
 export function resolveOpsKpiGate(
-  task: Pick<CmoOpsTask, "what" | "done_when" | "owner">,
+  task: Pick<CmoOpsTask, "what" | "done_when" | "owner" | "metric">,
   thesisId?: ChannelThesisId,
 ): OpsKpiGate | null {
   if (!needsOpsProof(task.owner)) return null;
+  if (task.metric?.measurable === false) return null;
+  if (task.metric?.measurable === true) {
+    return {
+      presetId: task.metric.id,
+      label: task.metric.name,
+      name: task.metric.name,
+      unit: task.metric.unit,
+      defaultTarget: task.metric.target,
+      ga4MetricName: task.metric.ga4_metric_name,
+    };
+  }
+
   const blob = `${task.what} ${task.done_when}`.toLowerCase();
 
   let presetId = inferKpiPresetFromText(blob);
@@ -254,6 +267,24 @@ export function doneUserOpsTasks(cadence: CmoOpsCadence): CmoOpsTask[] {
   return cadence.tasks.filter((t) => needsOpsProof(t.owner) && t.status === "done");
 }
 
+export function measurableUserOpsTasks(cadence: CmoOpsCadence): CmoOpsTask[] {
+  return cadence.tasks.filter((t) => needsOpsProof(t.owner) && isMeasurableForReview(t));
+}
+
+export function weekReviewMeasurableStatus(cadence: CmoOpsCadence): Array<{
+  task: CmoOpsTask;
+  logged: boolean;
+  target?: number;
+  value?: number;
+}> {
+  return measurableUserOpsTasks(cadence).map((task) => ({
+    task,
+    logged: task.proof?.kpi_value != null,
+    target: task.metric?.target ?? task.proof?.kpi_target,
+    value: task.proof?.kpi_value,
+  }));
+}
+
 /** Assess Week 1 outcomes from logged KPIs + task proofs. */
 export function evaluateWeek1Metrics(
   cadence: CmoOpsCadence,
@@ -266,7 +297,8 @@ export function evaluateWeek1Metrics(
   revenueProfile?: RevenueProfile | null,
 ): Week1MetricAssessment {
   const userDone = doneUserOpsTasks(cadence);
-  const proofsWithKpi = userDone.filter((t) => t.proof?.kpi_value != null);
+  const measurableDone = userDone.filter((t) => isMeasurableForReview(t));
+  const proofsWithKpi = measurableDone.filter((t) => t.proof?.kpi_value != null);
   const loggedCount = proofsWithKpi.length;
 
   if (userDone.length === 0) {
@@ -284,7 +316,7 @@ export function evaluateWeek1Metrics(
   let primaryValue: number | undefined;
   let primaryTarget: number | undefined;
 
-  const lastUser = userDone[userDone.length - 1];
+  const lastUser = measurableDone[measurableDone.length - 1] ?? userDone[userDone.length - 1];
   if (lastUser?.proof?.kpi_id) {
     primaryKpiId = lastUser.proof.kpi_id;
     primaryValue = lastUser.proof.kpi_value;
@@ -583,19 +615,20 @@ export function canCompleteWeekReview(
   }
 
   const done = userTasks.filter((t) => t.status === "done");
-  const missingKpi = done.filter((t) => t.proof?.kpi_value == null);
+  const measurableDone = done.filter((t) => isMeasurableForReview(t));
+  const missingKpi = measurableDone.filter((t) => t.proof?.kpi_value == null);
   if (missingKpi.length > 0) {
     return {
       ok: false,
       errors: [
-        `${missingKpi.length} completed user task(s) lack logged KPI — reopen proof or skip honestly.`,
+        `${missingKpi.length} measurable task(s) lack logged KPI — reopen proof or skip honestly.`,
       ],
     };
   }
 
   const assessment = evaluateWeek1Metrics(cadence, profile, thesis);
-  if (assessment.doneUserTasks > 0 && assessment.loggedCount === 0) {
-    return { ok: false, errors: ["Log at least one KPI before closing Week 1 review."] };
+  if (measurableDone.length > 0 && assessment.loggedCount === 0) {
+    return { ok: false, errors: ["Log at least one measurable KPI before closing Week 1 review."] };
   }
 
   return { ok: true, errors: [] };
