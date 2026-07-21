@@ -111,6 +111,30 @@ Run after Plan Studio / GTM brain / design-system changes.
 - [ ] **Home / Workspace parity** — same model, operator gates, and backstage order
 - [ ] **Honest why** — linked task or operator rationale; deterministic fallback, no LLM invention
 
+## Execution Record Center (Part 0)
+- [ ] **Record always center** — Workspace opens to `execution-record-stage`, not empty canvas
+- [ ] **Bottleneck sentence** — single line `Darboğaz X → sıradaki hareket Y` above the card
+- [ ] **Seven fields** — Amaç, Deney, Durum, Yapılan, Sonuç, Öğrenilen, Sonraki on the hero card
+- [ ] **Honest empty KPI** — "Henüz ölçülmedi" / "Ölçüm bekleniyor"; no fabricated rows
+- [ ] **Primary CTA on card** — Record footer dispatches command-surface action; no duplicate GrowthCommandSurface strip
+- [ ] **Detail panel** — Diff / Browser / Kanıt tabs embed run/browser/proof views
+- [ ] **Chat command role** — Agent panel subtitle + composer steer copy; lifecycle rail not in chat
+- [ ] **Turn receipt chip** — "Record güncellendi · Yapılan → diff" links to detail tab
+- [ ] **History timeline** — closed ops tasks in experiment language (not Runs archive wording)
+- [ ] **Backstage overlay** — war room opens on demand from Record footer; default collapsed
+- [ ] **Golden path** — reveal → run → apply updates Yapılan + diff tab; next task on Record
+
+## Thesis Quality Engine (Part 7 / P18)
+- [ ] **11-dimension report** — product class through evidence confidence on `thesis_quality_report`
+- [ ] **Joint mechanism×thesis** — primary pair from ranked evidence, not SEO/landing default
+- [ ] **Neden şimdi?** — StrategicDecisionCard shows product-specific bullets with evidence
+- [ ] **Neden diğerleri değil?** — collapsible rejected-thesis table with reasons
+- [ ] **Success + kill/pivot** — KPI strip on recommended option
+- [ ] **Eval corpus** — `eval:thesis-quality` ≥100 scenarios, wrong channel ≤3%
+- [ ] **Cluely → viral not SEO** — corpus + unit tests pass
+- [ ] **B2B empty pipeline → outbound** — sales persona scenarios pass
+- [ ] **Backstage dimensions** — GrowthMechanismPanel shows 11-row confidence strip
+
 ## CMO Founder-Fit + Strategic Options (P13)
 - [ ] **Exactly 7 questions** — one FounderFitWizard question per step, no long-form intake
 - [ ] **Founder-fit eligibility** — camera, risk, time, budget, and scale constraints change recommendation

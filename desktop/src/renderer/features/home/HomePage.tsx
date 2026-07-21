@@ -47,7 +47,8 @@ import { CmoStrategicIntakeFlow } from "@renderer/features/onboarding/CmoStrateg
 import { BudgetSetupCard } from "@renderer/features/onboarding/BudgetSetupCard";
 import { ProductActivationCard } from "@renderer/features/onboarding/ProductActivationCard";
 import { RevenueSetupCard } from "@renderer/features/onboarding/RevenueSetupCard";
-import { GrowthCommandSurface } from "@renderer/features/workspace/GrowthCommandSurface";
+import { ExecutionRecordCard } from "@renderer/features/workspace/executionRecord/ExecutionRecordCard";
+import { useActiveExecutionRecord } from "@renderer/features/workspace/executionRecord/useExecutionRecord";
 import { CmoBackstage } from "@renderer/features/workspace/CmoBackstage";
 import { isDistributionOperatorGate } from "@shared/cmoDistributionOperator";
 import { isInfluencerOperatorGate } from "@shared/cmoInfluencerOperator";
@@ -136,6 +137,7 @@ export function HomePage() {
   const firstShipLedger = useApp((s) => s.firstShipLedger);
   const onboardingTrack = useApp((s) => s.onboardingTrack);
   const openStrategicIntake = useApp((s) => s.openStrategicIntake);
+  const executionRecord = useActiveExecutionRecord();
 
   const baselineReady = assessMeasurementBaseline(marketingProfile, project).ready;
   const week1Ready = Boolean(
@@ -378,20 +380,14 @@ export function HomePage() {
       )}
 
       {commandSurfaceActive && growthControlPlane && opsCadence && (
-        <GrowthCommandSurface
-          plane={growthControlPlane}
-          cadence={opsCadence}
-          laneBWorkspace={laneBWorkspace}
-          laneDWorkspace={laneDWorkspace}
-          distributionOperator={distOperatorActive ? distributionOperator : null}
-          influencerOperator={infOperatorActive ? influencerOperator : null}
-          delegateOperator={delegateOperatorActive ? delegateWorkspace : null}
-          continuous={cmoContinuous}
-          campaignSession={campaignSession}
-          growthMemory={growthMemory}
-          monetizationWorkspace={monetizationWorkspace}
-          revenueProfile={revenueProfile}
-        />
+        <div className="space-y-3">
+          <ExecutionRecordCard record={executionRecord} />
+          <div className="flex justify-end">
+            <Button variant="subtle" size="sm" onClick={() => navigate("workspace")}>
+              Workspace&apos;te aç <ArrowRight size={14} className="ml-1" />
+            </Button>
+          </div>
+        </div>
       )}
 
       {commandSurfaceActive && warRoomExpanded && growthControlPlane && opsCadence && (
@@ -445,6 +441,7 @@ export function HomePage() {
               thesis={channelThesis!}
               narrative={marketingProfile?.growth_narrative}
               strategicDecision={marketingProfile?.strategic_decision}
+              thesisQualityReport={marketingProfile?.thesis_quality_report}
               onStartWeek1={week1Ready ? () => beginCmoWeek1() : undefined}
               onFullPlan={() => beginFirstHour()}
               week1BlockedReason={

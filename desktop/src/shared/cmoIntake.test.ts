@@ -33,10 +33,11 @@ describe("buildCmoIntake", () => {
     assert.equal(thesis.primary_bottleneck, "awareness");
     assert.match(thesis.headline, /short-form/i);
     assert.ok(thesis.deprioritize.some((d) => /SEO/i.test(d)));
-    assert.equal(thesis.week1_priorities.length, 3);
+    assert.equal(thesis.week1_priorities.length, 4);
     assert.ok(thesis.week1_priorities.every((p) => p.id));
     assert.equal(thesis.week1_priorities[0]?.owner, "system");
     assert.equal(thesis.week1_priorities[2]?.owner, "user");
+    assert.equal(thesis.week1_priorities[3]?.owner, "user");
   });
 
   it("B2B devtools prelaunch → founder_social", () => {

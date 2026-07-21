@@ -1,48 +1,60 @@
-import { History, PanelRightClose, Sparkles } from "lucide-react";
+import {
+  ChevronDown,
+  History,
+  Maximize2,
+  PanelRightClose,
+  Sparkles,
+} from "lucide-react";
 import { useApp } from "@renderer/state/store";
-import { WORK_SURFACE_META, normalizeToWorkSurface } from "@shared/workSurfaces";
 import { IconButton } from "@renderer/components/ui/IconButton";
 import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
-import { CampaignTimeline } from "./CampaignTimeline";
-import { useStageContext } from "@renderer/features/workspace/stage/useStageContext";
 import { ShipRecoveryCard } from "./ShipRecoveryCard";
 import { ShipWinCard } from "@renderer/features/workspace/ShipWinCard";
 import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
 
-function conversationSubtitle(
-  surface: ReturnType<typeof normalizeToWorkSurface>,
-  mode: string,
-): string {
-  if (surface) return WORK_SURFACE_META[surface].description;
-  if (mode === "run") return "Direct the agent while it edits or validates your project.";
-  if (mode === "browser") return "Steer research tasks and approve browser actions.";
-  return "Steer strategy, budgets, tone, and approvals — the work happens in the stage.";
+export type AgentThreadLayout = "sidebar" | "bottom";
+
+export interface AgentThreadProps {
+  layout?: AgentThreadLayout;
+  onCollapse?: () => void;
+  onFocusArtifact?: () => void;
 }
 
-export function AgentThread() {
+export function AgentThread({
+  layout = "sidebar",
+  onCollapse,
+  onFocusArtifact,
+}: AgentThreadProps = {}) {
   const toggleFocusMode = useApp((s) => s.toggleFocusMode);
   const toggleHistory = useApp((s) => s.toggleHistory);
   const historyOpen = useApp((s) => s.historyOpen);
-  const canvas = useApp((s) => s.canvas);
-  const surface = normalizeToWorkSurface(canvas.mode);
   const shipRecovery = useApp((s) => s.shipRecovery);
   const firstShipLedger = useApp((s) => s.firstShipLedger);
   const openStrategicIntake = useApp((s) => s.openStrategicIntake);
   const channelThesis = useApp((s) => s.channelThesis);
   const marketingProfile = useApp((s) => s.marketingProfile);
 
-  const { stageLabel } = useStageContext();
+  const isBottom = layout === "bottom";
+  const subtitle = isBottom
+    ? "Komut ver — sonuçlar yukarıdaki Record ve çalışma alanında görünür."
+    : "Komut ver — sonuçlar soldaki Record ve çalışma alanında görünür.";
 
   return (
-    <aside className="flex h-full w-full flex-col border-l border-line bg-surface">
-      <div className="border-b border-line px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-label font-medium text-text">
-            <Sparkles size={14} className="text-accent" />
-            Conversation
+    <aside
+      className={`flex h-full w-full flex-col bg-surface ${
+        isBottom ? "border-t border-line/80" : "border-l border-line"
+      }`}
+      data-testid="agent-thread"
+      data-layout={layout}
+    >
+      <div className="shrink-0 border-b border-line/60 px-4 py-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2 text-label font-medium text-text">
+            <Sparkles size={14} className="shrink-0 text-accent" />
+            <span>Komut</span>
           </div>
-          <div className="flex items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-0.5">
             <IconButton
               label="Session history (Ctrl+H)"
               size="sm"
@@ -51,32 +63,39 @@ export function AgentThread() {
             >
               <History size={14} />
             </IconButton>
-            <IconButton
-              label="Focus mode — hide this panel"
-              size="sm"
-              onClick={() => toggleFocusMode(true)}
-            >
-              <PanelRightClose size={14} />
-            </IconButton>
+            {isBottom && onFocusArtifact && (
+              <IconButton
+                label="Çalışma alanına odaklan"
+                size="sm"
+                onClick={onFocusArtifact}
+              >
+                <Maximize2 size={14} />
+              </IconButton>
+            )}
+            {isBottom && onCollapse ? (
+              <IconButton label="Komutu küçült (⌘J)" size="sm" onClick={onCollapse}>
+                <ChevronDown size={14} />
+              </IconButton>
+            ) : (
+              <IconButton
+                label="Focus mode — hide this panel"
+                size="sm"
+                onClick={() => toggleFocusMode(true)}
+              >
+                <PanelRightClose size={14} />
+              </IconButton>
+            )}
           </div>
         </div>
-        <p className="mt-1 line-clamp-2 text-micro leading-relaxed text-text-3">
-          {conversationSubtitle(surface, canvas.mode)}
-        </p>
-        {stageLabel && (
-          <p className="mt-1.5 truncate text-[10px] uppercase tracking-wide text-text-3" title={stageLabel}>
-            Stage · {stageLabel}
-          </p>
-        )}
+        <p className="mt-1 line-clamp-2 text-micro leading-relaxed text-text-3">{subtitle}</p>
       </div>
-      <CampaignTimeline />
       {shipRecovery && (
-        <div className="border-b border-line px-3 py-2">
+        <div className="shrink-0 border-b border-line px-3 py-2">
           <ShipRecoveryCard recovery={shipRecovery} />
         </div>
       )}
       {firstShipLedger && (
-        <div className="border-b border-line px-3 py-2">
+        <div className="shrink-0 border-b border-line px-3 py-2">
           <ShipWinCard
             ledger={firstShipLedger}
             compact

@@ -46,18 +46,20 @@ function decision(overrides: Partial<FounderFitProfile> = {}, readme?: string) {
   const founderFit = fit(overrides);
   const baseline = buildCmoIntake({ project: p, persona: "marketing", draft: true });
   const narrative = synthesizeGrowthNarrative({ project: p, founderFit });
+  const { decision: result, qualityReport } = buildStrategicDecision({
+    project: p,
+    founderFit,
+    narrative,
+    baselineThesis: baseline,
+    now: "2026-07-15T00:00:00.000Z",
+  });
   return {
     p,
     founderFit,
     baseline,
     narrative,
-    result: buildStrategicDecision({
-      project: p,
-      founderFit,
-      narrative,
-      baselineThesis: baseline,
-      now: "2026-07-15T00:00:00.000Z",
-    }),
+    result,
+    qualityReport,
   };
 }
 
@@ -172,7 +174,7 @@ describe("strategic options", () => {
     const founderFit = fit();
     const baseline = buildCmoIntake({ project: p, persona: "marketing", draft: true });
     const narrative = synthesizeGrowthNarrative({ project: p, founderFit });
-    const result = buildStrategicDecision({
+    const { decision: result } = buildStrategicDecision({
       project: p,
       founderFit,
       narrative,
