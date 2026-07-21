@@ -144,7 +144,7 @@ const MARKERS = [
   ["src/shared/executionRecord.ts", "buildBottleneckSentence", "Part 0 bottleneck sentence"],
   ["src/shared/executionRecord.ts", "buildActiveExecutionRecord", "Part 0 record view-model"],
   ["src/renderer/features/workspace/executionRecord/ExecutionRecordStage.tsx", "execution-record-stage", "Part 0 workspace center"],
-  ["src/renderer/features/workspace/executionRecord/BottleneckSentence.tsx", "bottleneck-sentence", "Part 0 bottleneck UI"],
+  ["src/renderer/features/workspace/executionRecord/MorningBriefHero.tsx", "morning-brief-footer", "Faz 3 morning brief footer chips"],
   ["src/renderer/features/workspace/executionRecord/ExecutionRecordCard.tsx", "execution-record-card", "Part 0 accountability card"],
   ["src/renderer/app/Workspace.tsx", "ExecutionRecordStage", "Part 0 workspace shell"],
   ["src/shared/types.ts", "growth_memory", "P11 growth memory profile schema"],

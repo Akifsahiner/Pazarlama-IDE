@@ -206,6 +206,7 @@ export async function bootstrapCmoIntakeAndStartWeek1(page: Page) {
   await sealStrategicDecision(page);
   await completePreWeek1Setup(page);
   await page.getByTestId("cmo-start-week1").click();
-  await expect(page.getByTestId("growth-command-surface")).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId("growth-command-surface")).toContainText(/Bugün|Today/i);
+  await expect(page.getByTestId("execution-record-card")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("morning-brief-grid")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("morning-brief-grid")).toContainText(/Today/i);
 }

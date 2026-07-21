@@ -105,7 +105,7 @@ Run after Plan Studio / GTM brain / design-system changes.
 ## CMO Command Surface (P12)
 - [ ] **Four fields visible** — Darboğaz / Bugün / Neden / Done when without opening a panel
 - [ ] **One daily CTA** — dispatches the active ops, P8, P9, or P10 proof flow
-- [ ] **Backstage collapsed** — Ops + Lane A/B/C + Memory + Cycle hidden until "Open backstage"
+- [ ] **Backstage collapsed** — Ops + Lane A/B/C + Memory + Cycle hidden until "War room — full week plan"
 - [ ] **Governance banner** — at most one review / measuring / pivot / replan state
 - [ ] **NextActionBar de-dupe** — CMO-owned actions hidden; apply and approval blockers remain visible
 - [ ] **Home / Workspace parity** — same model, operator gates, and backstage order
@@ -116,7 +116,7 @@ Run after Plan Studio / GTM brain / design-system changes.
 - [ ] **Bottleneck sentence** — single line `Darboğaz X → sıradaki hareket Y` above the card
 - [ ] **Seven fields** — Amaç, Deney, Durum, Yapılan, Sonuç, Öğrenilen, Sonraki on the hero card
 - [ ] **Honest empty KPI** — "Henüz ölçülmedi" / "Ölçüm bekleniyor"; no fabricated rows
-- [ ] **Primary CTA on card** — Record footer dispatches command-surface action; no duplicate GrowthCommandSurface strip
+- [ ] **Primary CTA on card** — Record hero dispatches command-surface action; no duplicate strip
 - [ ] **Detail panel** — Diff / Browser / Kanıt tabs embed run/browser/proof views
 - [ ] **Chat command role** — Agent panel subtitle + composer steer copy; lifecycle rail not in chat
 - [ ] **Turn receipt chip** — "Record güncellendi · Yapılan → diff" links to detail tab
@@ -134,6 +134,7 @@ Run after Plan Studio / GTM brain / design-system changes.
 - [ ] **War room rename** — "War room — full week plan" (not Backstage)
 - [ ] **Day 1 auto-expand** — war room opens once when Week 1 begins
 - [ ] **Governance guard** — week review / pivot / product loop blocks ops dispatch until resolved
+- [ ] **Footer chips** — pending ops / prepared / product P0 / operator / mechanism in `morning-brief-footer`
 - [ ] **E2E @morning-brief** — record grid + CTA visible within 10s of card mount
 
 ## CMO Founder-Fit + Strategic Options (P13)

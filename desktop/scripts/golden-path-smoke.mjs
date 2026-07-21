@@ -186,7 +186,7 @@ const exportChecks = [
   { file: "src/shared/executionRecord.ts", needle: "buildActiveExecutionRecord" },
   { file: "src/renderer/features/workspace/executionRecord/ExecutionRecordStage.tsx", needle: "execution-record-stage" },
   { file: "src/renderer/features/workspace/executionRecord/ExecutionRecordCard.tsx", needle: "execution-record-card" },
-  { file: "src/renderer/features/workspace/executionRecord/BottleneckSentence.tsx", needle: "bottleneck-sentence" },
+  { file: "src/renderer/features/workspace/executionRecord/MorningBriefHero.tsx", needle: "morning-brief-footer" },
   { file: "src/renderer/app/Workspace.tsx", needle: "ExecutionRecordStage" },
   { file: "src/renderer/features/workspace/CmoBackstage.tsx", needle: "cmo-backstage" },
   { file: "src/shared/cmoCommandSurface.ts", needle: "resolveTodayWhy" },

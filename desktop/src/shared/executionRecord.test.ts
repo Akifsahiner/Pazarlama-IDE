@@ -119,6 +119,9 @@ describe("executionRecord", () => {
     assert.equal(record.lifecycle, "running");
     assert.match(record.bottleneckSentence, /Bottleneck/);
     assert.ok(record.next.label.length > 0);
+    assert.ok(record.morningBrief);
+    assert.equal(record.morningBrief!.today, record.experiment.split(" — ")[0]);
+    assert.ok(record.morningBrief!.footer.pendingOps >= 0);
   });
 
   it("formatExecutionResults shows honest missing KPI", () => {

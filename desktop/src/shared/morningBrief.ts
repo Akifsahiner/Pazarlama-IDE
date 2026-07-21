@@ -38,6 +38,14 @@ export interface MorningBriefNextUp {
   taskId: string;
 }
 
+export interface MorningBriefFooter {
+  pendingOps: number;
+  pendingLaneB: number;
+  pendingLaneD: number;
+  mechanismAntiPattern?: string;
+  operatorSummary?: string;
+}
+
 export interface MorningBriefView {
   dayIndex: number;
   weekIndex: number;
@@ -50,6 +58,7 @@ export interface MorningBriefView {
   nextUp?: MorningBriefNextUp;
   effort: MorningBriefEffort;
   focusTasks: CmoOpsTask[];
+  footer: MorningBriefFooter;
   governance?: CommandSurfaceGovernance;
   primaryAction: CommandSurfaceAction;
   queuedHint?: MorningBriefQueuedHint;
@@ -211,6 +220,13 @@ export function buildMorningBriefView(input: BuildMorningBriefInput): MorningBri
     nextUp: resolveNextUp(focusTasks),
     effort,
     focusTasks,
+    footer: {
+      pendingOps: model.pendingOps,
+      pendingLaneB: model.pendingLaneB,
+      pendingLaneD: model.pendingLaneD,
+      mechanismAntiPattern: model.mechanismAntiPattern,
+      operatorSummary: model.operatorSummary,
+    },
     governance,
     primaryAction,
     queuedHint: resolveQueuedHint(input.cadence),

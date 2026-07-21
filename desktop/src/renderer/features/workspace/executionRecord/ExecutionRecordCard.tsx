@@ -2,6 +2,7 @@ import { ChevronDown, ChevronUp, Play } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import type { ExecutionRecordView } from "@shared/executionRecord";
+import { canDispatchOpsTask } from "@shared/morningBrief";
 import { Button } from "@renderer/components/ui/Button";
 import { cardReveal, spring } from "@renderer/design/animations";
 import { ExecutionRecordProgress, ExecutionRecordStatusPill } from "./ExecutionRecordStatus";
@@ -58,12 +59,13 @@ export function ExecutionRecordCard({
   const runActive =
     run?.status === "running" || run?.status === "planning" || run?.status === "created";
   const primary = record.next.action.kind !== "none" ? record.next.action : null;
+  const dispatchAllowed = primary ? canDispatchOpsTask(record.governance, primary) : false;
   const [detailsOpen, setDetailsOpen] = useState(false);
   const brief = record.morningBrief;
   const realResults = record.results.filter((r) => r.id !== "results-empty");
 
   const handlePrimary = () => {
-    if (!primary) return;
+    if (!primary || !dispatchAllowed) return;
     dispatch(primary, record.governance);
   };
 
@@ -91,6 +93,7 @@ export function ExecutionRecordCard({
                   brief={brief}
                   primaryAction={primary}
                   onPrimaryAction={handlePrimary}
+                  dispatchAllowed={dispatchAllowed}
                   compact
                 />
               ) : (
@@ -107,6 +110,7 @@ export function ExecutionRecordCard({
                 size="sm"
                 className="hidden shrink-0 sm:inline-flex"
                 data-testid={primary.testId}
+                disabled={!dispatchAllowed}
                 onClick={handlePrimary}
               >
                 <Play size={13} className="mr-1" />
@@ -178,6 +182,7 @@ export function ExecutionRecordCard({
               brief={brief}
               primaryAction={primary}
               onPrimaryAction={handlePrimary}
+              dispatchAllowed={dispatchAllowed}
             />
           </div>
         ) : (

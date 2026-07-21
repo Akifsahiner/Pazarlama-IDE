@@ -4572,6 +4572,7 @@ export const useApp = create<AppState>((set, get) => {
           });
         }
         get().refreshConnectorFeed();
+        get().checkMorningDayUnlock();
       } catch {
         hydrateCampaignSessionLocal(projectId);
         hydrateOpsCadenceLocal(projectId);
@@ -4591,6 +4592,7 @@ export const useApp = create<AppState>((set, get) => {
         hydrateInfluencerOperatorLocal(projectId);
         recomputeGrowthPlane();
         ensureChannelThesisAfterProfileLoad();
+        get().checkMorningDayUnlock();
         /* offline / persistence off — UI just shows defaults */
       }
     },

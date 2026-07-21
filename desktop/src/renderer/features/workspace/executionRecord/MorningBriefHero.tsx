@@ -3,6 +3,7 @@ import { LayoutList, Play } from "lucide-react";
 import type { MorningBriefView } from "@shared/morningBrief";
 import type { CommandSurfaceAction } from "@shared/cmoCommandSurface";
 import { Button } from "@renderer/components/ui/Button";
+import { Badge } from "@renderer/components/ui/Badge";
 import { CommandSurfaceField } from "@renderer/features/workspace/CommandSurfaceField";
 import { CommandSurfaceGovernanceBanner } from "@renderer/features/workspace/CommandSurfaceGovernanceBanner";
 import { useApp } from "@renderer/state/store";
@@ -11,11 +12,14 @@ export function MorningBriefHero({
   brief,
   primaryAction,
   onPrimaryAction,
+  dispatchAllowed = true,
   compact = false,
 }: {
   brief: MorningBriefView;
   primaryAction: Exclude<CommandSurfaceAction, { kind: "none" }> | null;
   onPrimaryAction: (action: CommandSurfaceAction) => void;
+  /** False when governance blocks ops dispatch — button stays visible but disabled. */
+  dispatchAllowed?: boolean;
   compact?: boolean;
 }) {
   const id = useId();
@@ -59,12 +63,32 @@ export function MorningBriefHero({
         </p>
       )}
 
+      <div className="flex flex-wrap items-center gap-1.5" data-testid="morning-brief-footer">
+        <Badge tone="neutral">{brief.footer.pendingOps} ops</Badge>
+        {brief.footer.pendingLaneB > 0 && (
+          <Badge tone="neutral">{brief.footer.pendingLaneB} prepared</Badge>
+        )}
+        {brief.footer.pendingLaneD > 0 && (
+          <Badge tone="warn">{brief.footer.pendingLaneD} product P0</Badge>
+        )}
+        {brief.footer.operatorSummary && (
+          <Badge tone="accent">{brief.footer.operatorSummary}</Badge>
+        )}
+        {brief.mechanismLabel && (
+          <span title={brief.footer.mechanismAntiPattern}>
+            <Badge tone="accent">{brief.mechanismLabel}</Badge>
+          </span>
+        )}
+      </div>
+
       {primaryAction && (
         <Button
           variant="primary"
           size="md"
           className="w-full justify-center px-6 py-2.5 text-body-sm sm:w-auto sm:min-w-[220px]"
           data-testid={primaryAction.testId}
+          disabled={!dispatchAllowed}
+          aria-disabled={!dispatchAllowed}
           onClick={() => onPrimaryAction(primaryAction)}
         >
           <Play size={16} className="mr-2" />

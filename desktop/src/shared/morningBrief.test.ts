@@ -4,6 +4,7 @@ import type { GrowthControlPlane } from "./cmoGrowthPlane";
 import type { CmoOpsCadence } from "./cmoOpsCadence";
 import {
   buildMorningBriefView,
+  canDispatchOpsTask,
   estimateFocusEffortBudget,
   morningBriefDayKey,
   resolveQueuedHint,
@@ -185,6 +186,30 @@ describe("morningBrief", () => {
     assert.equal(
       shouldShowDayUnlockToast(key, "proj-1", cadence(), new Date("2026-07-21T12:00:00Z")),
       false,
+    );
+  });
+
+  it("includes footer chips from command surface model", () => {
+    const view = buildMorningBriefView({ plane: plane(), cadence: cadence() });
+    assert.ok(view);
+    assert.equal(typeof view!.footer.pendingOps, "number");
+    assert.ok(view!.footer.pendingOps >= 0);
+  });
+
+  it("canDispatchOpsTask blocks ops during measuring governance", () => {
+    assert.equal(
+      canDispatchOpsTask(
+        { kind: "measuring", title: "Measuring", reason: "Wait", primaryLabel: "Wait" },
+        { kind: "run_system", taskId: "t1", label: "Start", testId: "x" },
+      ),
+      false,
+    );
+    assert.equal(
+      canDispatchOpsTask(
+        { kind: "measuring", title: "Measuring", reason: "Wait", primaryLabel: "Wait" },
+        { kind: "week_review", label: "Review", testId: "command-surface-week-review" },
+      ),
+      true,
     );
   });
 });
