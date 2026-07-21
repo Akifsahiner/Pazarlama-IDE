@@ -295,13 +295,11 @@ import {
   getLaneAItemForOpsTask,
   hydrateLaneAWorkspaceFromJson,
   markLaneAItemInProgress,
-  resolveLaneARunPlan,
   type LaneARunPlan,
   type LaneAWorkspace,
 } from "@shared/cmoLaneA";
 import {
   bindExecutionPlansForCadence,
-  executionPlanToLaneARunPlan,
 } from "@shared/cmoExecutionBind";
 import {
   bindHumanExecutionForCadence,
@@ -311,6 +309,24 @@ import {
 import { canCompleteHumanProof } from "@shared/humanProofProgress";
 import { outreachTrackerToCsv } from "@shared/cmoOutreachExport";
 import { assertCadenceContractComplete } from "@shared/marketingTaskContract";
+import {
+  ensureExecutionKernel,
+  EXECUTION_KERNEL_LS,
+  kernelCancel,
+  kernelCompleteFromOpsProof,
+  kernelPause,
+  kernelRetry,
+  kernelResume,
+  kernelTransitionForApply,
+  planKernelDispatch,
+  syncKernelAndCadence,
+} from "@shared/executionKernelBridge";
+import {
+  hydrateExecutionKernelFromJson,
+  replayTaskTimeline,
+  type ExecutionKernelState,
+  type ExecutionProvenanceSource,
+} from "@shared/executionKernel";
 import {
   buildProductActivationProfile,
   canResumeMarketing,
@@ -742,6 +758,8 @@ interface AppState {
   channelThesis?: ChannelThesis;
   /** P1 — Week 1 ops cadence (daily table + user accountability). */
   opsCadence?: CmoOpsCadence;
+  /** Part 10 — unified execution kernel (lifecycle SoT). */
+  executionKernel?: ExecutionKernelState;
   pendingOpsProofTaskId?: string;
   pendingWeekReviewOpen?: boolean;
   /** P3 — Lane B workspace (posting / outreach / runbook). */
@@ -960,6 +978,13 @@ interface AppState {
   openOpsProofModal: (taskId: string) => void;
   dismissOpsProofModal: () => void;
   persistOpsCadence: (cadence: CmoOpsCadence) => void;
+  /** Part 10 — execution kernel control plane. */
+  dispatchExecutionTask: (taskId: string, source?: ExecutionProvenanceSource) => string | null;
+  retryExecutionTask: (taskId: string) => string | null;
+  pauseExecutionTask: (taskId: string) => void;
+  resumeExecutionTask: (taskId: string) => void;
+  cancelExecutionTask: (taskId: string) => void;
+  replayExecutionTask: (taskId: string) => ReturnType<typeof replayTaskTimeline>;
   completeOpsTask: (
     taskId: string,
     proof: import("@shared/cmoOpsCadence").OpsProofInput,
@@ -1310,6 +1335,7 @@ export const useApp = create<AppState>((set, get) => {
 
   const CAMPAIGN_SESSION_LS = "campaign_session.v1";
   const OPS_CADENCE_LS = "ops_cadence.v1";
+  const EXECUTION_KERNEL_LS_KEY = EXECUTION_KERNEL_LS;
   const LANE_B_LS = "lane_b_workspace.v1";
   const LANE_A_LS = "lane_a_workspace.v1";
   const GROWTH_PLANE_LS = "growth_control_plane.v1";
@@ -1631,6 +1657,77 @@ export const useApp = create<AppState>((set, get) => {
     void get().updateMarketingProfile({ ops_cadence: cadence });
   };
 
+  const persistExecutionKernelLocal = (projectId: string, kernel: ExecutionKernelState) => {
+    try {
+      localStorage.setItem(`${EXECUTION_KERNEL_LS_KEY}.${projectId}`, JSON.stringify(kernel));
+    } catch {
+      /* quota */
+    }
+  };
+
+  const hydrateExecutionKernelLocal = (projectId: string) => {
+    try {
+      const raw = localStorage.getItem(`${EXECUTION_KERNEL_LS_KEY}.${projectId}`);
+      if (!raw) return;
+      const kernel = hydrateExecutionKernelFromJson(JSON.parse(raw));
+      if (!kernel) return;
+      const profile = get().marketingProfile ?? emptyMarketingProfile();
+      if (!profile.execution_kernel) {
+        set({
+          executionKernel: kernel,
+          marketingProfile: { ...profile, execution_kernel: kernel },
+        });
+      } else if (!get().executionKernel) {
+        set({ executionKernel: profile.execution_kernel });
+      }
+    } catch {
+      /* corrupt */
+    }
+  };
+
+  const syncExecutionKernelState = (kernel: ExecutionKernelState, cadence?: CmoOpsCadence) => {
+    const pid = get().activeProjectId;
+    const baseCadence = cadence ?? get().opsCadence;
+    if (!baseCadence) {
+      set({ executionKernel: kernel });
+      return;
+    }
+    const synced = syncKernelAndCadence({ kernel, cadence: baseCadence });
+    if (pid) {
+      persistExecutionKernelLocal(pid, synced.kernel);
+      persistOpsCadenceLocal(pid, synced.cadence);
+    }
+    const profile = get().marketingProfile ?? emptyMarketingProfile();
+    set({
+      executionKernel: synced.kernel,
+      opsCadence: synced.cadence,
+      marketingProfile: {
+        ...profile,
+        execution_kernel: synced.kernel,
+        ops_cadence: synced.cadence,
+      },
+    });
+    void get().updateMarketingProfile({
+      execution_kernel: synced.kernel,
+      ops_cadence: synced.cadence,
+    });
+    if (import.meta.env.DEV) {
+      const drift = synced.cadence.tasks.length !== Object.keys(synced.kernel.instances).length;
+      if (drift) {
+        console.warn("[execution-kernel] instance/cadence task count mismatch");
+      }
+    }
+  };
+
+  const bootstrapKernelForCadence = (cadence: CmoOpsCadence): ExecutionKernelState => {
+    const pid = get().activeProjectId ?? "local";
+    return ensureExecutionKernel({
+      cadence,
+      projectId: pid,
+      existing: get().executionKernel ?? get().marketingProfile?.execution_kernel,
+    });
+  };
+
   const finalizeVerifyAfterApplyRun = async (input: {
     runId: string;
     report?: { validations?: Array<{ label: string; passed: boolean; detail?: string }>; evidence?: import("@shared/types").Finding[] };
@@ -1804,7 +1901,10 @@ export const useApp = create<AppState>((set, get) => {
         result.missingRefs.join(", "),
       );
     }
-    syncOpsCadenceState(result.cadence);
+    syncExecutionKernelState(
+      bootstrapKernelForCadence(result.cadence),
+      result.cadence,
+    );
     if (result.laneB) syncLaneBState(result.laneB);
     if (result.distributionOperator) syncDistributionOperatorState(result.distributionOperator);
     if (result.influencerOperator) syncInfluencerOperatorState(result.influencerOperator);
@@ -1843,8 +1943,40 @@ export const useApp = create<AppState>((set, get) => {
     if (missingPlans.length > 0 && import.meta.env.DEV) {
       console.warn("[cmo] system tasks missing execution plan:", missingPlans.join(", "));
     }
-    syncOpsCadenceState(cadence);
-    return cadence;
+    const kernel = bootstrapKernelForCadence(cadence);
+    syncExecutionKernelState(kernel, cadence);
+    return get().opsCadence ?? cadence;
+  };
+
+  const executeKernelPayload = (
+    payload: import("@shared/executionKernelBridge").ExecutionDispatchPayload,
+  ) => {
+    switch (payload.kind) {
+      case "lane_run":
+        get().startLaneARun(payload.plan);
+        break;
+      case "browser_research":
+        get().runBrowserTask(payload.goal);
+        break;
+      case "human_handoff":
+        openHumanExecutionProof(payload.ref);
+        break;
+      case "export":
+        get().focusBackstageAnchor("lane-b-panel-wrap");
+        break;
+      case "measurement":
+        void get().syncGa4Metrics();
+        get().openOpsProofModal(payload.taskId);
+        break;
+      case "week_review":
+        get().openWeekReviewModal();
+        break;
+      case "product_request":
+        get().focusBackstageAnchor("lane-d-panel-wrap");
+        break;
+      default:
+        break;
+    }
   };
 
   const tryCompleteLinkedOpsFromHumanProof = (
@@ -1946,7 +2078,19 @@ export const useApp = create<AppState>((set, get) => {
       summaryNote: opts.summary?.trim() || "Browser research complete",
     });
     if (next === cadence) return;
-    syncOpsCadenceState(next);
+    const kernel = get().executionKernel;
+    if (kernel && before.id) {
+      syncExecutionKernelState(
+        kernelCompleteFromOpsProof({
+          kernel,
+          taskId: before.id,
+          proof: { note: opts.summary?.trim() || "Browser research complete" },
+        }),
+        next,
+      );
+    } else {
+      syncOpsCadenceState(next);
+    }
     const laneA = get().laneAWorkspace;
     if (laneA && before.id) {
       syncLaneAState(
@@ -1996,10 +2140,34 @@ export const useApp = create<AppState>((set, get) => {
     if (!cadence) return;
     const before = cadence.tasks.find((t) => t.status === "in_progress" && t.owner === "system");
     if (before?.execution_plan?.mode === "browser_research") return;
-    if (before?.expected_proof_kind === "browser_evidence") return;
+    const browserEvidenceRequired = before?.expected_proof_kind === "browser_evidence";
+    if (browserEvidenceRequired) {
+      const kernel = get().executionKernel;
+      if (kernel && before?.id) {
+        syncExecutionKernelState(
+          kernelTransitionForApply({
+            kernel,
+            taskId: before.id,
+            browserEvidenceRequired: true,
+          }),
+          cadence,
+        );
+      }
+      return;
+    }
     const next = tryAutoCompleteSystemTask(cadence, opts);
     if (next === cadence) return;
-    syncOpsCadenceState(next);
+    const kernel = get().executionKernel;
+    if (kernel && before?.id) {
+      const nextKernel = kernelTransitionForApply({
+        kernel,
+        taskId: before.id,
+        browserEvidenceRequired: false,
+      });
+      syncExecutionKernelState(nextKernel, next);
+    } else {
+      syncOpsCadenceState(next);
+    }
     if (before?.id) {
       const laneA = get().laneAWorkspace;
       if (laneA) {
@@ -4494,6 +4662,7 @@ export const useApp = create<AppState>((set, get) => {
         if (!res.ok) {
           hydrateCampaignSessionLocal(projectId);
           hydrateOpsCadenceLocal(projectId);
+          hydrateExecutionKernelLocal(projectId);
           hydrateLaneBLocal(projectId);
           hydrateLaneALocal(projectId);
           hydrateContinuousLocal(projectId);
@@ -4563,6 +4732,7 @@ export const useApp = create<AppState>((set, get) => {
           persistOpsCadenceLocal(projectId, merged.ops_cadence);
         } else {
           hydrateOpsCadenceLocal(projectId);
+          hydrateExecutionKernelLocal(projectId);
         }
         if (merged.lane_b_workspace) {
           persistLaneBLocal(projectId, merged.lane_b_workspace);
@@ -4649,6 +4819,7 @@ export const useApp = create<AppState>((set, get) => {
       } catch {
         hydrateCampaignSessionLocal(projectId);
         hydrateOpsCadenceLocal(projectId);
+        hydrateExecutionKernelLocal(projectId);
         hydrateLaneBLocal(projectId);
         hydrateLaneALocal(projectId);
         hydrateContinuousLocal(projectId);
@@ -6361,8 +6532,19 @@ export const useApp = create<AppState>((set, get) => {
         get().advanceCampaignPhase({ type: "log_kpi" });
       }
 
-      syncOpsCadenceState(finalCadence);
-      notifyOpsProgress(finalCadence, task.what);
+      const kernel = get().executionKernel;
+      if (kernel) {
+        const nextKernel = kernelCompleteFromOpsProof({
+          kernel,
+          taskId,
+          proof: fullProof,
+          measurable: task.metric?.measurable,
+        });
+        syncExecutionKernelState(nextKernel, finalCadence);
+      } else {
+        syncOpsCadenceState(finalCadence);
+      }
+      notifyOpsProgress(get().opsCadence ?? finalCadence, task.what);
       recomputeGrowthPlane();
       track("ops_task_done", { task_id: taskId, owner: task.owner, kpi: fullProof.kpi_id });
       return null;
@@ -6387,47 +6569,77 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     executeOpsSystemTask: (taskId) => {
+      const err = get().dispatchExecutionTask(taskId, "ops_board");
+      if (err) {
+        appendEvent({ role: "system", kind: "error", text: err });
+      }
+    },
+
+    dispatchExecutionTask: (taskId, source = "ops_board") => {
       const cadence = get().opsCadence;
-      if (!cadence) return;
+      if (!cadence) return "No active ops cadence.";
       const task = cadence.tasks.find((t) => t.id === taskId);
-      if (!task || task.owner !== "system") return;
+      if (!task) return "Task not found.";
+      if (task.owner === "system" && task.status === "done") return null;
 
-      const thesis = get().channelThesis ?? get().marketingProfile?.channel_thesis;
-      const project = get().project;
-      if (!thesis || !project) {
-        appendEvent({
-          role: "system",
-          kind: "error",
-          text: "Cannot start ops task — project or thesis missing.",
-        });
-        return;
-      }
+      const kernel =
+        get().executionKernel ??
+        bootstrapKernelForCadence(cadence);
+      const plan = planKernelDispatch({
+        kernel,
+        cadence,
+        taskId,
+        source,
+        thesis: get().channelThesis ?? get().marketingProfile?.channel_thesis,
+        project: get().project,
+        laneAWorkspace: get().laneAWorkspace,
+      });
+      if ("error" in plan) return plan.error;
+      syncExecutionKernelState(plan.kernel, cadence);
+      if (!plan.noop) executeKernelPayload(plan.payload);
+      return null;
+    },
 
-      let plan: LaneARunPlan | null = null;
-      if (task.execution_plan) {
-        plan = executionPlanToLaneARunPlan(taskId, task.execution_plan);
-      } else {
-        const laneA = get().laneAWorkspace;
-        const laneItem = laneA ? getLaneAItemForOpsTask(laneA, taskId) : undefined;
-        plan = resolveLaneARunPlan({
-          task,
-          thesis,
-          project,
-          laneAItemId: laneItem?.id,
-        });
-        if (import.meta.env.DEV) {
-          console.warn("[cmo] executeOpsSystemTask without bound execution_plan:", taskId);
-        }
+    retryExecutionTask: (taskId) => {
+      const cadence = get().opsCadence;
+      const kernel = get().executionKernel;
+      if (!cadence || !kernel) return "No execution kernel.";
+      try {
+        const next = kernelRetry(kernel, taskId);
+        syncExecutionKernelState(next, cadence);
+        return get().dispatchExecutionTask(taskId, "ops_board");
+      } catch (e) {
+        return e instanceof Error ? e.message : "Retry failed.";
       }
-      if (!plan) {
-        appendEvent({
-          role: "system",
-          kind: "error",
-          text: `No execution plan for: ${task.what}`,
-        });
-        return;
-      }
-      get().startLaneARun(plan);
+    },
+
+    pauseExecutionTask: (taskId) => {
+      const cadence = get().opsCadence;
+      const kernel = get().executionKernel;
+      if (!cadence || !kernel) return;
+      syncExecutionKernelState(kernelPause(kernel, taskId), cadence);
+    },
+
+    resumeExecutionTask: (taskId) => {
+      const cadence = get().opsCadence;
+      const kernel = get().executionKernel;
+      if (!cadence || !kernel) return;
+      const next = kernelResume(kernel, taskId);
+      syncExecutionKernelState(next, cadence);
+      void get().dispatchExecutionTask(taskId, "ops_board");
+    },
+
+    cancelExecutionTask: (taskId) => {
+      const cadence = get().opsCadence;
+      const kernel = get().executionKernel;
+      if (!cadence || !kernel) return;
+      syncExecutionKernelState(kernelCancel(kernel, taskId), cadence);
+    },
+
+    replayExecutionTask: (taskId) => {
+      const kernel = get().executionKernel;
+      if (!kernel) return [];
+      return replayTaskTimeline(kernel, taskId);
     },
 
     startOpsSystemTask: (taskId) => {
@@ -7696,6 +7908,7 @@ export const useApp = create<AppState>((set, get) => {
         void get().loadMarketingProfile(project.id);
         hydrateCampaignSessionLocal(project.id);
         hydrateOpsCadenceLocal(project.id);
+        hydrateExecutionKernelLocal(project.id);
         hydrateLaneBLocal(project.id);
         hydrateLaneALocal(project.id);
         hydrateContinuousLocal(project.id);

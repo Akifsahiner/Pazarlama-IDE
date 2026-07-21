@@ -621,3 +621,20 @@ export function resolveCommandSurfaceAction(
 
   return { kind: "none", reason: "No actionable move" };
 }
+
+/** Part 10 — kernel-aware next ready task for command surface priority. */
+export function getNextExecutionAction(input: {
+  executionKernel?: import("./executionKernel").ExecutionKernelState | null;
+  cadence?: import("./cmoOpsCadence").CmoOpsCadence | null;
+}): { taskId: string; execution_mode: string } | null {
+  const { executionKernel, cadence } = input;
+  if (!executionKernel || !cadence) return null;
+  const ordered = [...cadence.tasks].sort((a, b) => a.priority_index - b.priority_index);
+  for (const task of ordered) {
+    const inst = executionKernel.instances[task.id];
+    if (inst?.status === "ready") {
+      return { taskId: task.id, execution_mode: inst.execution_mode };
+    }
+  }
+  return null;
+}

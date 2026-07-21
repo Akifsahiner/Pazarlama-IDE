@@ -1,7 +1,8 @@
 /**
  * Part 0 — Execution Record view-model: composes P0–P17 slices into one accountability card.
  */
-import type { CampaignSession } from "./types";
+import type { ExecutionKernelState } from "./executionKernel";
+import { executionTaskStatusToRecordLifecycle } from "./executionKernel";
 import type { ChannelThesis } from "./cmoIntake";
 import type { CmoContinuousState, CmoCycleRecord } from "./cmoContinuous";
 import type { CmoOpsCadence, CmoOpsProof, CmoOpsTask } from "./cmoOpsCadence";
@@ -22,7 +23,7 @@ import {
   type ShipReceipt,
 } from "./shipReceipt";
 import { computeRunSummary, runChangedFiles } from "./runs";
-import type { RunEvent, RunStatus } from "./types";
+import type { RunEvent, RunStatus, CampaignSession } from "./types";
 import {
   evaluateDayPulse,
   resolveHonestEmptyKpiCopy,
@@ -126,6 +127,7 @@ export interface BuildActiveExecutionRecordInput extends Omit<BuildCommandSurfac
   approvalFileCount?: number;
   marketingProfile?: import("./types").MarketingProfile | null;
   project?: import("./types").ProjectProfile | null;
+  executionKernel?: ExecutionKernelState | null;
 }
 
 export interface BuildExecutionHistoryInput extends BuildActiveExecutionRecordInput {
@@ -214,8 +216,19 @@ function resolveLifecycle(input: {
   pendingVerify?: boolean;
   shipReceipt?: ShipReceipt | null;
   governanceKind?: string;
+  executionKernel?: ExecutionKernelState | null;
 }): ExecutionRecordLifecycle {
-  const { cadence, task, activeRun, hasPendingApply, channelThesis, pendingVerify, shipReceipt, governanceKind } = input;
+  const {
+    cadence,
+    task,
+    activeRun,
+    hasPendingApply,
+    channelThesis,
+    pendingVerify,
+    shipReceipt,
+    governanceKind,
+    executionKernel,
+  } = input;
 
   if (!cadence) return channelThesis ? "intake" : "intake";
 
@@ -223,6 +236,23 @@ function resolveLifecycle(input: {
 
   if (pendingVerify || shipReceipt?.verifyStatus === "running") return "verifying";
   if (activeRun?.kind === "browse" && isRunActive(activeRun) && pendingVerify) return "verifying";
+
+  if (executionKernel && task) {
+    const inst = executionKernel.instances[task.id];
+    if (inst) {
+      const mapped = executionTaskStatusToRecordLifecycle(inst.status);
+      if (mapped !== "queued" || inst.status === "proposed" || inst.status === "ready") {
+        if (inst.status === "ready" || inst.status === "proposed") return "queued";
+        if (
+          (task.owner === "user" || task.owner === "delegate") &&
+          (inst.status === "running" || inst.status === "applied")
+        ) {
+          return "awaiting_proof";
+        }
+        return mapped;
+      }
+    }
+  }
 
   if (activeRun?.pendingApproval) return "awaiting_approval";
   if (isRunActive(activeRun)) return "running";
@@ -491,6 +521,7 @@ export function buildActiveExecutionRecord(
     pendingVerify: input.pendingVerify,
     shipReceipt: input.shipReceipt,
     governanceKind: model?.governance?.kind,
+    executionKernel: input.executionKernel,
   });
 
   const nextAction = commandInput

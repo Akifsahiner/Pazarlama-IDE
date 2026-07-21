@@ -2,6 +2,8 @@
  * P1 — CMO operating cadence: daily focus tasks + user accountability.
  * See CMO_OPS_SPEC.md and PRODUCT_NORTH_STAR.md §11 P1.
  */
+import { isTaskGraphReady } from "./executionGraph";
+import type { ExecutionKernelState } from "./executionKernel";
 import type { ChannelThesis, ChannelThesisId, CmoTaskOwner, CmoWeek1Priority } from "./cmoIntake";
 import { capWeek1Priorities, capWeekPriorities } from "./cmoExecutionBind";
 import type { ExpectedProofKind, OpsExecutionPlan } from "./opsExecutionPlan";
@@ -184,8 +186,24 @@ function sortedTasks(tasks: CmoOpsTask[]): CmoOpsTask[] {
   return [...tasks].sort((a, b) => a.priority_index - b.priority_index);
 }
 
-/** Whether all tasks before `task` are done or skipped. */
-export function isOpsTaskUnlocked(cadence: CmoOpsCadence, task: CmoOpsTask): boolean {
+/** Whether task dependencies are satisfied (Part 10 graph + legacy sequential fallback). */
+export function isOpsTaskUnlocked(
+  cadence: CmoOpsCadence,
+  task: CmoOpsTask,
+  kernel?: ExecutionKernelState | null,
+): boolean {
+  const dependsOn = task.depends_on ?? [];
+  if (kernel && dependsOn.length > 0) {
+    const instances = kernel.instances;
+    return isTaskGraphReady(instances, dependsOn);
+  }
+  if (dependsOn.length > 0) {
+    const byId = new Map(cadence.tasks.map((t) => [t.id, t]));
+    return dependsOn.every((depId) => {
+      const dep = byId.get(depId);
+      return dep?.status === "done" || dep?.status === "skipped";
+    });
+  }
   const ordered = sortedTasks(cadence.tasks);
   const idx = ordered.findIndex((t) => t.id === task.id);
   if (idx <= 0) return true;

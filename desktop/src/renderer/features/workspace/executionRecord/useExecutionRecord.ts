@@ -55,6 +55,9 @@ function useExecutionRecordInput(): BuildActiveExecutionRecordInput {
     [delegateRaw, channelThesis],
   );
 
+  const executionKernel = useApp(
+    (s) => s.executionKernel ?? s.marketingProfile?.execution_kernel,
+  );
   const distOperatorActive =
     !!distributionOperator &&
     isDistributionOperatorGate({
@@ -115,11 +118,15 @@ function useExecutionRecordInput(): BuildActiveExecutionRecordInput {
       firstShipAt,
       wedgePhase,
       narrativeOneLiner: marketingProfile?.growth_narrative?.one_liner,
+<<<<<<< HEAD
       shipReceipt: lastShipReceipt,
       pendingVerify,
       approvalFileCount,
       marketingProfile,
       project,
+=======
+      executionKernel,
+>>>>>>> 1af0fd0 (feat(Part 10): Unified execution kernel and task graph)
     }),
     [
       growthControlPlane,
@@ -141,9 +148,13 @@ function useExecutionRecordInput(): BuildActiveExecutionRecordInput {
       firstShipAt,
       wedgePhase,
       marketingProfile?.growth_narrative?.one_liner,
+<<<<<<< HEAD
       lastShipReceipt,
       marketingProfile,
       project,
+=======
+      executionKernel,
+>>>>>>> 1af0fd0 (feat(Part 10): Unified execution kernel and task graph)
     ],
   );
 }
