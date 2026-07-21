@@ -11,11 +11,14 @@ import {
   buildEngineScanSignals,
   buildMechanismRationale,
   defaultPublicPresencePolicy,
-  mapMechanismToThesis,
-  pickAttackMechanism,
-  pickSafeMechanism,
   type MechanismEvalContext,
 } from "./cmoGrowthEngine";
+import {
+  evaluateThesisQuality,
+  pickAttackPairFromReport,
+  pickSafePairFromReport,
+  type ThesisQualityReport,
+} from "./cmoThesisQualityEngine";
 import type { GrowthMechanismId } from "./cmoGrowthMechanismKnowledge";
 import { getMechanismRecord } from "./cmoGrowthMechanismKnowledge";
 import type {
@@ -132,6 +135,8 @@ function makeOption(input: {
   narrative: GrowthNarrative;
   profile?: MarketingProfile | null;
   signals: FounderFitSignals;
+  quality_evidence?: string[];
+  why_not_summary?: string;
 }): StrategicOption {
   const eligibility = scoreThesisEligibility(input.thesisId, input.fit, input.signals);
   const mechanismBlocked = input.mechanismBlockers.length > 0 && input.mechanismScore === 0;
@@ -168,6 +173,8 @@ function makeOption(input: {
     mechanism_summary: record.hidden_system_chain[0],
     mechanism_rationale: mech.rationale,
     mechanism_anti_pattern: mech.anti_pattern,
+    quality_evidence: input.quality_evidence,
+    why_not_summary: input.why_not_summary,
   };
   return { ...option, ...buildContract(option, input.fit, input.narrative) };
 }
@@ -207,14 +214,25 @@ export function buildStrategicDecision(input: {
   founderFit: FounderFitProfile;
   narrative: GrowthNarrative;
   baselineThesis: ChannelThesis;
+  qualityReport?: ThesisQualityReport;
   now?: string;
-}): StrategicDecision {
+}): { decision: StrategicDecision; qualityReport: ThesisQualityReport } {
   const signals = {
     ...detectSignals(input.project, input.profile),
     baseline_thesis_id: input.baselineThesis.id,
   };
   const presence =
     input.profile?.public_presence_policy ?? defaultPublicPresencePolicy(input.founderFit);
+  const qualityReport =
+    input.qualityReport ??
+    evaluateThesisQuality({
+      project: input.project,
+      profile: input.profile,
+      founder_fit: input.founderFit,
+      presence: presence as import("./cmoGrowthEngine").PublicPresencePolicy,
+      activation: input.profile?.product_activation,
+      now: input.now,
+    });
   const mechanismCtx: MechanismEvalContext = {
     project: input.project,
     profile: input.profile,
@@ -225,14 +243,21 @@ export function buildStrategicDecision(input: {
   };
   const assessment = assessGrowthMechanisms(mechanismCtx);
   const ranked = assessment.ranked;
-  const safeMechanism = pickSafeMechanism(ranked);
-  const balancedMechanism = assessment.primary ?? ranked[0]?.engine_id ?? "intent_to_product";
-  const attackMechanism = pickAttackMechanism(ranked);
-  const safeThesis = mapMechanismToThesis(safeMechanism, mechanismCtx);
-  const balancedThesis = mapMechanismToThesis(balancedMechanism, mechanismCtx);
-  const attackThesis = mapMechanismToThesis(attackMechanism, mechanismCtx);
+  const safePair = pickSafePairFromReport(qualityReport);
+  const balancedPair = qualityReport.ranked_pairs[0] ?? safePair;
+  const attackPair = pickAttackPairFromReport(qualityReport);
+  const safeMechanism = safePair.mechanism_id;
+  const balancedMechanism = balancedPair.mechanism_id;
+  const attackMechanism = attackPair.mechanism_id;
+  const safeThesis = safePair.thesis_id;
+  const balancedThesis = balancedPair.thesis_id;
+  const attackThesis = attackPair.thesis_id;
   const rowFor = (id: GrowthMechanismId) =>
     ranked.find((r) => r.engine_id === id) ?? { score: 0, blockers: [] as string[] };
+  const whyNotSummary = qualityReport.why_not_others
+    .slice(0, 2)
+    .map((w) => w.reason)
+    .join(" · ");
   let options: StrategicDecision["options"] = [
     makeOption({
       id: "A",
@@ -246,6 +271,8 @@ export function buildStrategicDecision(input: {
       narrative: input.narrative,
       profile: input.profile,
       signals,
+      quality_evidence: qualityReport.why_now.slice(0, 2),
+      why_not_summary: whyNotSummary,
     }),
     makeOption({
       id: "B",
@@ -259,6 +286,8 @@ export function buildStrategicDecision(input: {
       narrative: input.narrative,
       profile: input.profile,
       signals,
+      quality_evidence: qualityReport.why_now,
+      why_not_summary: whyNotSummary,
     }),
     makeOption({
       id: "C",
@@ -272,6 +301,8 @@ export function buildStrategicDecision(input: {
       narrative: input.narrative,
       profile: input.profile,
       signals,
+      quality_evidence: qualityReport.why_now.slice(0, 2),
+      why_not_summary: whyNotSummary,
     }),
   ];
   if (input.baselineThesis.verdict === "not_ready") {
@@ -283,13 +314,16 @@ export function buildStrategicDecision(input: {
   }
   const recommendation = recommendOption(options, input.founderFit, signals, ranked);
   const selected = options.find((option) => option.id === recommendation.id)!;
-  return {
+  const decision: StrategicDecision = {
     options,
     recommended_id: recommendation.id,
-    recommendation_rationale: recommendation.rationale,
+    recommendation_rationale: qualityReport.why_now.slice(0, 3).length
+      ? qualityReport.why_now.slice(0, 3)
+      : recommendation.rationale,
     decision_question: `Execute Option ${selected.id} — ${selected.title}?`,
     generated_at: input.now ?? new Date().toISOString(),
   };
+  return { decision, qualityReport };
 }
 
 export function sealStrategicDecision(

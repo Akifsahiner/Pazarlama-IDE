@@ -211,6 +211,7 @@ import {
 } from "@renderer/state/quickStartWedgeHelpers";
 import { buildCmoIntake, buildFinalChannelThesis } from "@shared/cmoIntake";
 import type { ChannelThesis } from "@shared/cmoIntake";
+import { evaluateThesisQuality } from "@shared/cmoThesisQualityEngine";
 import { validateFounderFit } from "@shared/cmoFounderFit";
 import { synthesizeGrowthNarrative } from "@shared/cmoGrowthNarrative";
 import {
@@ -5228,15 +5229,33 @@ export const useApp = create<AppState>((set, get) => {
         project,
         persona: settings.persona,
         profile,
+        founder_fit: profile.founder_fit,
         draft: true,
       });
+      const thesisQualityReport = profile.founder_fit
+        ? evaluateThesisQuality({
+            project,
+            persona: settings.persona,
+            profile,
+            founder_fit: profile.founder_fit,
+            presence: profile.public_presence_policy,
+            activation: profile.product_activation,
+          })
+        : profile.thesis_quality_report;
       track("cmo_intake", { thesis_id: thesis.id, verdict: thesis.verdict });
       set({
         channelThesis: thesis,
-        marketingProfile: { ...profile, channel_thesis: thesis },
+        marketingProfile: {
+          ...profile,
+          channel_thesis: thesis,
+          ...(thesisQualityReport ? { thesis_quality_report: thesisQualityReport } : {}),
+        },
       });
       if (!isStrategicDecisionSealed(profile) && !profile.ops_cadence) {
-        void get().updateMarketingProfile({ channel_thesis: thesis });
+        void get().updateMarketingProfile({
+          channel_thesis: thesis,
+          ...(thesisQualityReport ? { thesis_quality_report: thesisQualityReport } : {}),
+        });
       }
       recomputeGrowthPlane();
       return thesis;
@@ -5337,7 +5356,7 @@ export const useApp = create<AppState>((set, get) => {
           founderFit,
           presence,
         });
-      const decision = buildStrategicDecision({
+      const { decision, qualityReport } = buildStrategicDecision({
         project,
         profile: { ...marketingProfile, public_presence_policy: presence },
         founderFit,
@@ -5352,6 +5371,7 @@ export const useApp = create<AppState>((set, get) => {
         growth_mechanism_profile: growthMechanismProfile,
         growth_narrative: narrative,
         strategic_decision: decision,
+        thesis_quality_report: qualityReport,
       };
       set({ marketingProfile: next, strategicIntakeOpen: true });
       const projectId = get().activeProjectId ?? project.id;
@@ -5362,6 +5382,7 @@ export const useApp = create<AppState>((set, get) => {
         growth_mechanism_profile: growthMechanismProfile,
         growth_narrative: narrative,
         strategic_decision: decision,
+        thesis_quality_report: qualityReport,
       });
       track("strategic_intake_generated", {
         baseline_thesis_id: baseline.id,

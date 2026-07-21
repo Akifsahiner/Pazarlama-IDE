@@ -892,6 +892,8 @@ const strategicOptionSchema = z.object({
   mechanism_summary: z.string().optional(),
   mechanism_rationale: z.array(z.string()).optional(),
   mechanism_anti_pattern: z.string().optional(),
+  quality_evidence: z.array(z.string()).optional(),
+  why_not_summary: z.string().optional(),
 });
 
 const budgetBucketIdSchema = z.enum([
@@ -1332,6 +1334,8 @@ export const marketingProfileSchema = z.object({
   /** P17 — public presence policy + growth mechanism assessment. */
   public_presence_policy: z.record(z.string(), z.unknown()).optional(),
   growth_mechanism_profile: z.record(z.string(), z.unknown()).optional(),
+  /** P18 — thesis quality engine report (Part 7). */
+  thesis_quality_report: z.record(z.string(), z.unknown()).optional(),
   /** P14 — deterministic budget allocation and action-cost ledger. */
   budget_plan: budgetPlanSchema.optional(),
   /** P15 — measured activation/TTFV intake and Lane D product loop. */

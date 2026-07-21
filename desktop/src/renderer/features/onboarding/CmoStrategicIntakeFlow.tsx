@@ -50,6 +50,7 @@ export function CmoStrategicIntakeFlow() {
     <StrategicDecisionCard
       narrative={narrative}
       decision={decision}
+      qualityReport={profile.thesis_quality_report}
       onSelect={selectStrategicOption}
       onConfirm={confirm}
     />

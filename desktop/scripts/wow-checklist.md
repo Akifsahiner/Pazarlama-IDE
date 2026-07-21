@@ -133,7 +133,7 @@ Run after Plan Studio / GTM brain / design-system changes.
 - [ ] **Day unlock toast** — first open each calendar day: `Day N unlocked — [today]`
 - [ ] **War room rename** — "War room — full week plan" (not Backstage)
 - [ ] **Day 1 auto-expand** — war room opens once when Week 1 begins
-- [ ] **Governance guard** — week review / pivot / product loop blocks ops dispatch until resolved
+- [ ] **Governance guard** — product loop blocks ops dispatch until resolved; replan when KPI ready
 - [ ] **Footer chips** — pending ops / prepared / product P0 / operator / mechanism in `morning-brief-footer`
 - [ ] **E2E @morning-brief** — record grid + CTA visible within 10s of card mount
 
@@ -147,6 +147,17 @@ Run after Plan Studio / GTM brain / design-system changes.
 - [ ] **Proof tab receipt** — `proof-detail-view` shows commit, before/after, browser checks
 - [ ] **Eval ship-receipt-matrix** — 8 thesis × apply → receipt, 0 fail
 - [ ] **E2E @ship-receipt** — record + detail panel visible after Week 1 start
+
+## Thesis Quality Engine (Part 7 / P18)
+- [ ] **11-dimension report** — product class through evidence confidence on `thesis_quality_report`
+- [ ] **Joint mechanism×thesis** — primary pair from ranked evidence, not SEO/landing default
+- [ ] **Neden şimdi?** — StrategicDecisionCard shows product-specific bullets with evidence
+- [ ] **Neden diğerleri değil?** — collapsible rejected-thesis table with reasons
+- [ ] **Success + kill/pivot** — KPI strip on recommended option
+- [ ] **Eval corpus** — `eval:thesis-quality` ≥100 scenarios, wrong channel ≤3%
+- [ ] **Cluely → viral not SEO** — corpus + unit tests pass
+- [ ] **B2B empty pipeline → outbound** — sales persona scenarios pass
+- [ ] **Backstage dimensions** — GrowthMechanismPanel shows 11-row confidence strip
 
 ## CMO Founder-Fit + Strategic Options (P13)
 - [ ] **Exactly 7 questions** — one FounderFitWizard question per step, no long-form intake

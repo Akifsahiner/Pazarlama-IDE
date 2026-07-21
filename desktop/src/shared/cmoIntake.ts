@@ -9,6 +9,7 @@ import {
   type GtmBottleneck,
 } from "./bottleneck";
 import { applyMechanismToChannelThesis } from "./cmoGrowthEngine";
+import { evaluateThesisQuality } from "./cmoThesisQualityEngine";
 import { capWeek1Priorities } from "./cmoExecutionBind";
 import type { GrowthMechanismId } from "./cmoGrowthMechanismKnowledge";
 import type {
@@ -692,8 +693,23 @@ export function buildCmoIntake(input: CmoIntakeInput): ChannelThesis {
   const { verdict, reason } = computeVerdict(input.project, signals);
   const primary_bottleneck = inferBottleneck(signals, input.persona);
   const weekIndex = Math.max(1, input.context?.cycle_index ?? 1);
-  const id =
-    input.context?.force_thesis_id ?? pickThesisId(input, signals, primary_bottleneck);
+  const founderFit = input.founder_fit ?? input.profile?.founder_fit;
+  let id = input.context?.force_thesis_id;
+  if (!id) {
+    if (founderFit) {
+      const report = evaluateThesisQuality({
+        project: input.project,
+        persona: input.persona,
+        profile: input.profile,
+        founder_fit: founderFit,
+        presence: input.profile?.public_presence_policy as import("./cmoGrowthEngine").PublicPresencePolicy | undefined,
+        activation: input.profile?.product_activation,
+      });
+      id = report.primary_thesis_id;
+    } else {
+      id = pickThesisId(input, signals, primary_bottleneck);
+    }
+  }
   const template = THESIS_TEMPLATES[id];
   const playbooks = BOTTLENECK_PLAYBOOKS[primary_bottleneck] ?? ["landing-conversion"];
 

@@ -456,7 +456,8 @@ export function HomePage() {
               sealed={true}
               narrative={marketingProfile?.growth_narrative}
               strategicDecision={marketingProfile?.strategic_decision}
-              onStartWeek1={() => beginCmoWeek1()}
+              thesisQualityReport={marketingProfile?.thesis_quality_report}
+              onStartWeek1={week1Ready ? () => beginCmoWeek1() : undefined}
               onFullPlan={() => beginFirstHour()}
             />
           )

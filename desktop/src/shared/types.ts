@@ -317,6 +317,9 @@ export interface StrategicOption {
   mechanism_summary?: string;
   mechanism_rationale?: string[];
   mechanism_anti_pattern?: string;
+  /** P18 — evidence-backed quality rationale for this option. */
+  quality_evidence?: string[];
+  why_not_summary?: string;
 }
 
 export interface StrategicDecision {
@@ -411,6 +414,8 @@ export interface MarketingProfile {
   growth_mechanism_profile?: import("./cmoGrowthEngine").GrowthMechanismProfile;
   /** P17 — who may represent the brand publicly. */
   public_presence_policy?: import("./cmoGrowthEngine").PublicPresencePolicy;
+  /** P18 — thesis quality engine report (Part 7). */
+  thesis_quality_report?: import("./cmoThesisQualityEngine").ThesisQualityReport;
   /** Profile v2 — local scan-derived site map (optional). */
   site_structure?: {
     routes: string[];

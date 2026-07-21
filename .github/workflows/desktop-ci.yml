@@ -63,6 +63,7 @@ jobs:
       - run: npm run eval:skill-quality
       - run: npm run eval:p0-plan-smoke
       - run: npm run eval:devflow-plan-smoke
+      - run: npm run eval:thesis-quality
 
   gtm-eval:
     runs-on: ubuntu-latest

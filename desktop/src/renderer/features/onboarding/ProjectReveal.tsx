@@ -437,6 +437,7 @@ export function ProjectReveal() {
                   sealed={isStrategicDecisionSealed(marketingProfile)}
                   narrative={marketingProfile?.growth_narrative}
                   strategicDecision={marketingProfile?.strategic_decision}
+                  thesisQualityReport={marketingProfile?.thesis_quality_report}
                 />
               )}
             </motion.div>
