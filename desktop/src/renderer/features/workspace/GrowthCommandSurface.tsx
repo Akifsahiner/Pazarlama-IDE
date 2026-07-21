@@ -114,6 +114,7 @@ export function GrowthCommandSurface({
   const firstShipAt = useApp((s) => s.firstShipAt);
   const wedgePhase = useApp((s) => s.wedgePhase);
   const run = useApp((s) => s.run);
+  const executionKernel = useApp((s) => s.executionKernel ?? s.marketingProfile?.execution_kernel);
   const beginQuickStartShip = useApp((s) => s.beginQuickStartShip);
   const promptApplyFirstChange = useApp((s) => s.promptApplyFirstChange);
   const openWeekReviewModal = useApp((s) => s.openWeekReviewModal);
@@ -134,6 +135,7 @@ export function GrowthCommandSurface({
     campaignPhase: campaignSession?.phase,
     growthMemory,
     narrativeOneLiner,
+    executionKernel,
   };
   const model = buildCommandSurfaceModel(modelInput);
   if (!model) return null;

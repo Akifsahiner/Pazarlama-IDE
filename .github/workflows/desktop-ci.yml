@@ -38,6 +38,7 @@ jobs:
       - run: npm run build
       - run: npm run typecheck
       - run: npm run test:shared
+      - run: npm run test:execution-kernel-bypass
       - run: node scripts/trust-copy-regression.mjs
       - run: node scripts/golden-path-smoke.mjs
       - run: node scripts/verify-fixture-smoke.mjs

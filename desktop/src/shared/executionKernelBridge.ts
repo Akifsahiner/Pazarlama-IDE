@@ -1,10 +1,12 @@
 /**
  * Part 10 — Bridge between execution kernel and ops cadence / store runtime.
  */
+import { isTaskGraphReady } from "./executionGraph";
 import {
   isOpsTaskUnlocked,
   type CmoOpsCadence,
-  type CmoOpsTask,
+  type CmoOpsProof,
+  type OpsProofInput,
 } from "./cmoOpsCadence";
 import {
   bootstrapExecutionKernel,
@@ -12,18 +14,21 @@ import {
   completeExecutionTask,
   dispatchExecutionTask,
   failExecutionTask,
+  findActiveOpsTaskId,
+  findOpsTaskIdForHumanRef,
+  findVerifyingOpsTaskId,
   pauseExecutionTask,
   projectKernelToOpsCadence,
   resumeExecutionTask,
   retryExecutionTask,
   transitionExecutionStatus,
+  weekReviewGovernanceId,
   type ExecutionKernelState,
   type ExecutionProvenance,
   type ExecutionProvenanceSource,
 } from "./executionKernel";
 import {
   resolveDispatchPayload,
-  resolveHandlerKind,
   type ExecutionDispatchPayload,
 } from "./executionHandlers";
 import type { LaneARunPlan } from "./cmoLaneA";
@@ -31,7 +36,6 @@ import { executionPlanToLaneARunPlan } from "./cmoExecutionBind";
 import { resolveLaneARunPlan, getLaneAItemForOpsTask } from "./cmoLaneA";
 import type { ChannelThesis } from "./cmoIntake";
 import type { ProjectProfile } from "./types";
-import type { CmoOpsProof, OpsProofInput } from "./cmoOpsCadence";
 
 export const EXECUTION_KERNEL_LS = "execution_kernel.v1";
 
@@ -79,7 +83,25 @@ export function planKernelDispatch(input: {
   project?: ProjectProfile | null;
   laneAWorkspace?: import("./cmoLaneA").LaneAWorkspace | null;
 }): KernelDispatchPlan | { error: string } {
+  const inst = input.kernel.instances[input.taskId];
   const task = input.cadence.tasks.find((t) => t.id === input.taskId);
+
+  if (!task && inst?.scope === "governance" && inst.execution_mode === "week_review") {
+    if (!isTaskGraphReady(input.kernel.instances, inst.depends_on)) {
+      return { error: "Week review blocked — complete pending tasks first." };
+    }
+    const { kernel, noop } = dispatchExecutionTask(
+      input.kernel,
+      input.taskId,
+      provenanceFrom(input.source),
+    );
+    return {
+      kernel,
+      payload: { kind: "week_review", cadenceId: input.cadence.id },
+      noop,
+    };
+  }
+
   if (!task) return { error: "Task not found." };
   if (!isOpsTaskUnlocked(input.cadence, task, input.kernel)) {
     return { error: "Task blocked by dependencies." };
@@ -216,9 +238,63 @@ export function kernelFail(
   return failExecutionTask(kernel, taskId, error, provenanceFrom("auto_chain"));
 }
 
-export function handlerKindForTask(task: CmoOpsTask): string {
-  const mode = task.execution_mode ?? "repo_edit";
-  return resolveHandlerKind(mode);
+export function hydrateKernelFromProfile(input: {
+  cadence: CmoOpsCadence;
+  projectId: string;
+  stored?: ExecutionKernelState | null;
+}): ExecutionKernelState {
+  if (input.stored?.instances && Object.keys(input.stored.instances).length > 0) {
+    return bootstrapExecutionKernel({
+      cadence: input.cadence,
+      projectId: input.projectId,
+      existing: input.stored,
+    });
+  }
+  return bootstrapExecutionKernel({
+    cadence: input.cadence,
+    projectId: input.projectId,
+  });
 }
 
+export function completeWeekReviewGovernance(
+  kernel: ExecutionKernelState,
+  cadence: CmoOpsCadence,
+  summary: string,
+): ExecutionKernelState {
+  const govId = weekReviewGovernanceId(cadence.id);
+  const inst = kernel.instances[govId];
+  if (!inst) return kernel;
+  return completeExecutionTask(
+    kernel,
+    govId,
+    {
+      toStatus: "completed",
+      proof: { note: summary, completed_at: new Date().toISOString() },
+    },
+    provenanceFrom("week_review"),
+  );
+}
+
+export function completeVerifyingOpsTask(
+  kernel: ExecutionKernelState,
+  proof: CmoOpsProof,
+): ExecutionKernelState {
+  const taskId = findVerifyingOpsTaskId(kernel);
+  if (!taskId) return kernel;
+  return completeExecutionTask(
+    kernel,
+    taskId,
+    { proof, toStatus: "completed" },
+    provenanceFrom("auto_chain"),
+  );
+}
+
+export function findLinkedOpsTaskForRubric(
+  cadence: CmoOpsCadence,
+  rubricId: string,
+): string | undefined {
+  return findOpsTaskIdForHumanRef(cadence, { source: "delegate", item_id: rubricId });
+}
+
+export { findActiveOpsTaskId, findVerifyingOpsTaskId, weekReviewGovernanceId };
 export type { ExecutionDispatchPayload, LaneARunPlan };

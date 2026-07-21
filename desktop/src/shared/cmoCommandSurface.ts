@@ -88,6 +88,7 @@ export interface CommandSurfaceGovernanceInput {
   growthMemory?: GrowthMemoryState | null;
   laneDWorkspace?: LaneDWorkspace | null;
   monetizationWorkspace?: MonetizationWorkspace | null;
+  executionKernel?: import("./executionKernel").ExecutionKernelState | null;
   now?: number;
 }
 
@@ -480,6 +481,22 @@ export function resolveCommandSurfaceAction(
       label: "Submit delegate rubric",
       testId: "command-surface-delegate-rubric",
     };
+  }
+
+  const kernelReady = getNextExecutionAction({
+    executionKernel: input.executionKernel,
+    cadence: input.cadence,
+  });
+  if (kernelReady && input.cadence) {
+    const kTask = input.cadence.tasks.find((t) => t.id === kernelReady.taskId);
+    if (kTask?.owner === "system") {
+      return {
+        kind: "run_system",
+        taskId: kernelReady.taskId,
+        label: "Start in IDE",
+        testId: "command-surface-start-move",
+      };
+    }
   }
 
   const today = input.plane.today;

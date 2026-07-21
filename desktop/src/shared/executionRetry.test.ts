@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildCmoIntake } from "./cmoIntake";
 import type { ProjectProfile } from "./types";
-import { bootstrapExecutionKernel, retryExecutionTask } from "./executionKernel";
+import { bootstrapExecutionKernel, retryExecutionTask, weekReviewGovernanceId } from "./executionKernel";
 import { createOpsCadenceFromThesis } from "./cmoOpsCadence";
 
 function baseProject(): ProjectProfile {
@@ -41,7 +41,8 @@ describe("executionRetry", () => {
       at: new Date().toISOString(),
     });
     assert.equal(cadence.tasks.length, taskCountBefore);
-    assert.equal(Object.keys(kernel.instances).length, taskCountBefore);
+    assert.equal(Object.keys(kernel.instances).length, taskCountBefore + 1);
+    assert.ok(kernel.instances[weekReviewGovernanceId(cadence.id)]);
     const taskAfter = cadence.tasks.find((t) => t.id === humanTask.id);
     assert.deepEqual(taskAfter?.human_execution_asset, assetBefore);
   });
