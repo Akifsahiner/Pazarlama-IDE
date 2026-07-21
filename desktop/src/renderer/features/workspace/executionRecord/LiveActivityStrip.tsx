@@ -2,43 +2,31 @@ import { Radio } from "lucide-react";
 import { useMemo } from "react";
 import { useApp } from "@renderer/state/store";
 
+/** Inline run telemetry — one line, not a second panel. */
 export function LiveActivityStrip() {
   const feedItems = useApp((s) => s.feedItems);
   const run = useApp((s) => s.run);
-  const openFeedItem = useApp((s) => s.openFeedItem);
 
   const active =
-    run?.status === "running" ||
-    run?.status === "planning" ||
-    run?.status === "created";
+    run?.status === "running" || run?.status === "planning" || run?.status === "created";
 
-  const recent = useMemo(() => feedItems.slice(-4).reverse(), [feedItems]);
+  const latest = useMemo(() => feedItems.slice(-2).reverse(), [feedItems]);
 
-  if (!active && recent.length === 0) return null;
+  if (!active) return null;
 
   return (
     <div
-      className="mx-auto flex w-full max-w-3xl items-center gap-2 rounded-[var(--radius-md)] border border-line/60 bg-elevated/50 px-3 py-2"
+      className="mx-auto flex w-full max-w-4xl items-center gap-2 px-1 py-1 text-micro text-text-3"
       data-testid="live-activity-strip"
     >
-      <Radio size={12} className={`shrink-0 ${active ? "animate-pulse text-accent" : "text-text-3"}`} />
-      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
-        {active && run && (
-          <span className="shrink-0 text-micro font-medium text-accent">
-            Canlı · {run.intent ?? run.goal.slice(0, 60)}
-          </span>
-        )}
-        {recent.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => openFeedItem(item.id)}
-            className="shrink-0 truncate text-micro text-text-3 hover:text-text"
-          >
-            {item.title}
-          </button>
-        ))}
-      </div>
+      <Radio size={11} className="shrink-0 animate-pulse text-accent" />
+      <span className="shrink-0 font-medium text-accent">{run?.intent ?? "Çalışıyor"}</span>
+      {latest.length > 0 && (
+        <>
+          <span className="text-text-3">·</span>
+          <span className="truncate">{latest.map((i) => i.title).join(" · ")}</span>
+        </>
+      )}
     </div>
   );
 }

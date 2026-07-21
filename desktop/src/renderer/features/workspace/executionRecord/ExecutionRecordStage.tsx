@@ -1,6 +1,4 @@
-import { useState } from "react";
 import { useApp } from "@renderer/state/store";
-import { BottleneckSentence } from "./BottleneckSentence";
 import { ExecutionRecordCard } from "./ExecutionRecordCard";
 import { ExecutionDetailPanel } from "./ExecutionDetailPanel";
 import { ExecutionHistoryTimeline } from "./ExecutionHistoryTimeline";
@@ -14,9 +12,12 @@ export function ExecutionRecordStage() {
   const project = useApp((s) => s.project);
   const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
   const channelThesis = useApp((s) => s.channelThesis);
-  const [detailExpanded, setDetailExpanded] = useState(true);
+  const run = useApp((s) => s.run);
   const historyExpanded = useApp((s) => s.executionHistoryExpanded);
   const toggleHistory = useApp((s) => s.toggleExecutionHistoryExpanded);
+
+  const runActive =
+    run?.status === "running" || run?.status === "planning" || run?.status === "created";
 
   if (!project) {
     return (
@@ -33,22 +34,20 @@ export function ExecutionRecordStage() {
       className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-bg"
       data-testid="execution-record-stage"
     >
-      <div className="shrink-0 border-b border-line/60 bg-surface/30">
-        <BottleneckSentence sentence={record.bottleneckSentence} />
-      </div>
-
-      <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 py-5">
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5 px-4 py-6 md:px-6">
         {preWeek1 ? (
           <ExecutionRecordEmpty record={record} />
         ) : (
           <>
+            {/* 1. Accountability hero — what & why & CTA */}
             <ExecutionRecordCard record={record} />
-            <ExecutionDetailPanel
-              defaultHint={record.detailHint}
-              expanded={detailExpanded}
-              onToggleExpanded={() => setDetailExpanded((v) => !v)}
-            />
-            <LiveActivityStrip />
+
+            {/* 2. Artifact workspace — Claude-style center when executing */}
+            <ExecutionDetailPanel record={record} defaultHint={record.detailHint} />
+
+            {runActive && <LiveActivityStrip />}
+
+            {/* 3. History — collapsed by default, same language */}
             <ExecutionHistoryTimeline
               entries={history}
               expanded={historyExpanded}

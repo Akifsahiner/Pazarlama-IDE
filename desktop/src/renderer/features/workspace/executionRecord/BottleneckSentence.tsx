@@ -1,9 +1,13 @@
+import { parseBottleneckSentence } from "./executionRecordUi";
+
+/** Slim context strip — supports standalone use (Home) without duplicating hero. */
 export function BottleneckSentence({ sentence }: { sentence: string }) {
-  const arrowIdx = sentence.indexOf("→");
-  if (arrowIdx < 0) {
+  const parsed = parseBottleneckSentence(sentence);
+
+  if (!parsed.constraint) {
     return (
       <p
-        className="shrink-0 px-4 py-3 text-center text-[15px] font-medium leading-snug text-text md:text-[17px]"
+        className="px-4 py-2 text-center text-mini text-text-3"
         data-testid="bottleneck-sentence"
       >
         {sentence}
@@ -11,17 +15,19 @@ export function BottleneckSentence({ sentence }: { sentence: string }) {
     );
   }
 
-  const before = sentence.slice(0, arrowIdx).trim();
-  const after = sentence.slice(arrowIdx + 1).trim();
-
   return (
     <p
-      className="shrink-0 px-4 py-3 text-center text-[15px] leading-snug md:text-[17px]"
+      className="px-4 py-2 text-center text-mini leading-relaxed"
       data-testid="bottleneck-sentence"
     >
-      <span className="font-medium text-text">{before}</span>
-      <span className="mx-2 text-text-3">→</span>
-      <span className="font-semibold text-accent">{after}</span>
+      <span className="text-text-3">Darboğaz </span>
+      <span className="text-text-2">{parsed.constraint}</span>
+      {parsed.move && (
+        <>
+          <span className="mx-1.5 text-text-3">→</span>
+          <span className="font-medium text-accent">{parsed.move}</span>
+        </>
+      )}
     </p>
   );
 }

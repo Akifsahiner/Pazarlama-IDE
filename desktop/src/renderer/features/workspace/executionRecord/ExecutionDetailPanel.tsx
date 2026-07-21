@@ -1,4 +1,3 @@
-import { ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect } from "react";
 import type { ExecutionRecordDetailTab } from "@shared/executionRecord";
 import { normalizeToWorkSurface } from "@shared/workSurfaces";
@@ -10,6 +9,9 @@ import { BrowserCanvas } from "../canvas/BrowserCanvas";
 import { WorkSurfaceShell } from "../canvas/WorkSurfaceShell";
 import { WorkSurfaceBody } from "../canvas/work/WorkSurfaceBody";
 import { ProofDetailView } from "./ProofDetailView";
+import { useCommandSurfaceDispatch } from "./useCommandSurfaceDispatch";
+import type { ExecutionRecordView } from "@shared/executionRecord";
+import { Radio } from "lucide-react";
 
 const TAB_OPTIONS: { value: ExecutionRecordDetailTab; label: string }[] = [
   { value: "diff", label: "Diff" },
@@ -18,82 +20,101 @@ const TAB_OPTIONS: { value: ExecutionRecordDetailTab; label: string }[] = [
 ];
 
 export function ExecutionDetailPanel({
+  record,
   defaultHint,
-  expanded,
-  onToggleExpanded,
 }: {
+  record: ExecutionRecordView;
   defaultHint: ExecutionRecordDetailTab;
-  expanded: boolean;
-  onToggleExpanded: () => void;
 }) {
   const tab = useApp((s) => s.executionRecordDetailTab);
   const setTab = useApp((s) => s.setExecutionRecordDetailTab);
   const run = useApp((s) => s.run);
   const canvasMode = useApp((s) => s.canvas.mode);
   const surface = normalizeToWorkSurface(canvasMode);
+  const dispatch = useCommandSurfaceDispatch();
+
+  const runActive =
+    run?.status === "running" || run?.status === "planning" || run?.status === "created";
+  const hasRun = Boolean(run?.runId);
+  const primary = record.next.action.kind !== "none" ? record.next.action : null;
 
   useEffect(() => {
     if (tab === "record") setTab(defaultHint);
   }, [defaultHint, setTab, tab]);
 
+  useEffect(() => {
+    if (runActive) setTab(run?.kind === "browse" ? "browser" : "diff");
+  }, [runActive, run?.kind, setTab]);
+
   const activeTab = tab === "record" ? defaultHint : tab;
-  const hasRun = Boolean(run?.runId);
   const showWorkSurface = Boolean(surface);
 
   return (
     <div
-      className="mx-auto w-full max-w-3xl overflow-hidden rounded-[var(--radius-lg)] border border-line bg-surface/60"
+      className={`mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius-xl)] border bg-surface/80 shadow-[var(--shadow-1)] ${
+        runActive ? "border-accent/35 ring-1 ring-accent/10" : "border-line"
+      }`}
       data-testid="execution-detail-panel"
     >
-      <div className="flex items-center justify-between gap-2 border-b border-line/60 px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line/60 px-4 py-2.5">
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-text-3">
+            Çalışma alanı
+          </span>
+          {runActive && (
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-accent">
+              <Radio size={11} className="animate-pulse" />
+              Canlı
+            </span>
+          )}
+        </div>
         <Segmented
           value={activeTab}
           onChange={(v) => setTab(v as ExecutionRecordDetailTab)}
           options={TAB_OPTIONS}
         />
-        <button
-          type="button"
-          onClick={onToggleExpanded}
-          className="flex items-center gap-1 text-micro text-accent hover:underline"
-        >
-          {expanded ? (
-            <>
-              Daralt <ChevronUp size={12} />
-            </>
-          ) : (
-            <>
-              Genişlet <ChevronDown size={12} />
-            </>
-          )}
-        </button>
       </div>
 
-      {expanded && (
-        <div className="relative max-h-[min(420px,45vh)] min-h-[180px] overflow-hidden">
-          <ShipPipelineBar />
-          {showWorkSurface && surface ? (
-            <WorkSurfaceShell active={surface}>
-              <WorkSurfaceBody surface={surface} />
-            </WorkSurfaceShell>
-          ) : activeTab === "diff" ? (
-            hasRun ? (
-              <div className="h-full min-h-[180px] overflow-y-auto">
-                <RunCanvas />
-              </div>
-            ) : (
-              <div className="flex h-[180px] items-center justify-center p-4 text-center text-body-sm text-text-3">
-                Henüz diff yok — sistem run başlat veya chat&apos;ten yönlendir.
-              </div>
-            )
-          ) : activeTab === "browser" ? (
-            <div className="h-full min-h-[180px] overflow-y-auto">
-              <BrowserCanvas />
+      <div
+        className={`relative overflow-hidden ${
+          runActive ? "min-h-[min(520px,52vh)]" : "min-h-[min(360px,40vh)]"
+        }`}
+      >
+        <ShipPipelineBar />
+        {showWorkSurface && surface ? (
+          <WorkSurfaceShell active={surface}>
+            <WorkSurfaceBody surface={surface} />
+          </WorkSurfaceShell>
+        ) : activeTab === "diff" ? (
+          hasRun ? (
+            <div className="h-full overflow-y-auto">
+              <RunCanvas />
             </div>
           ) : (
-            <ProofDetailView />
-          )}
-        </div>
-      )}
+            <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-4 p-8 text-center">
+              <p className="max-w-sm text-body-sm text-text-2">
+                Diff burada — run başlayınca patch ve apply bu alanda görünür.
+              </p>
+              {primary && (
+                <button
+                  type="button"
+                  className="btn-accent rounded-[var(--radius-md)] px-4 py-2 text-body-sm font-medium"
+                  data-testid="detail-empty-cta"
+                  onClick={() => dispatch(primary)}
+                >
+                  {primary.label}
+                </button>
+              )}
+            </div>
+          )
+        ) : activeTab === "browser" ? (
+          <div className="h-full overflow-y-auto">
+            <BrowserCanvas />
+          </div>
+        ) : (
+          <ProofDetailView />
+        )}
+      </div>
     </div>
   );
 }

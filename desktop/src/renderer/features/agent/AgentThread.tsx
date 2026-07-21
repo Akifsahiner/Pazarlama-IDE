@@ -44,7 +44,7 @@ export function AgentThread() {
           </div>
         </div>
         <p className="mt-1 line-clamp-2 text-micro leading-relaxed text-text-3">
-          Bu execution&apos;ı yönlendir — güncellemeler Execution Record&apos;a yazılır.
+          Komut ver — sonuçlar soldaki Record ve çalışma alanında görünür.
         </p>
       </div>
       {shipRecovery && (

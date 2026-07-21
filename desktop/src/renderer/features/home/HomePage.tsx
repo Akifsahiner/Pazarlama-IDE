@@ -47,7 +47,6 @@ import { CmoStrategicIntakeFlow } from "@renderer/features/onboarding/CmoStrateg
 import { BudgetSetupCard } from "@renderer/features/onboarding/BudgetSetupCard";
 import { ProductActivationCard } from "@renderer/features/onboarding/ProductActivationCard";
 import { RevenueSetupCard } from "@renderer/features/onboarding/RevenueSetupCard";
-import { BottleneckSentence } from "@renderer/features/workspace/executionRecord/BottleneckSentence";
 import { ExecutionRecordCard } from "@renderer/features/workspace/executionRecord/ExecutionRecordCard";
 import { useActiveExecutionRecord } from "@renderer/features/workspace/executionRecord/useExecutionRecord";
 import { CmoBackstage } from "@renderer/features/workspace/CmoBackstage";
@@ -382,7 +381,6 @@ export function HomePage() {
 
       {commandSurfaceActive && growthControlPlane && opsCadence && (
         <div className="space-y-3">
-          <BottleneckSentence sentence={executionRecord.bottleneckSentence} />
           <ExecutionRecordCard record={executionRecord} />
           <div className="flex justify-end">
             <Button variant="subtle" size="sm" onClick={() => navigate("workspace")}>
