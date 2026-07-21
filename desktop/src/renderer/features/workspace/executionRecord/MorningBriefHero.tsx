@@ -27,6 +27,12 @@ export function MorningBriefHero({
   const warRoomExpanded = useApp((s) => s.warRoomExpanded);
   const focusWarRoomAnchor = useApp((s) => s.focusWarRoomAnchor);
 
+  const productLoop = brief.governance?.kind === "product_loop";
+  const pauseHeadline =
+    productLoop && brief.governance
+      ? `Marketing paused — ${brief.bottleneck}`
+      : null;
+
   if (compact) {
     return (
       <div data-testid="morning-brief-hero" data-compact="true">
@@ -38,6 +44,14 @@ export function MorningBriefHero({
 
   return (
     <div className="space-y-4" data-testid="morning-brief-hero">
+      {pauseHeadline && (
+        <div
+          className="rounded-[var(--radius-md)] border border-warn/40 bg-warn/8 px-3 py-2 text-body-sm font-medium text-warn"
+          data-testid="product-loop-pause-banner"
+        >
+          {pauseHeadline}
+        </div>
+      )}
       <p className="text-mini font-medium text-text-2">{brief.headerLine}</p>
 
       <div className="grid gap-2 sm:grid-cols-2" data-testid="morning-brief-grid">
@@ -56,7 +70,7 @@ export function MorningBriefHero({
         <CommandSurfaceGovernanceBanner governance={brief.governance} />
       )}
 
-      {brief.nextUp && (
+      {brief.nextUp && !productLoop && (
         <p className="text-mini text-text-2">
           <span className="font-semibold uppercase tracking-wide text-text-3">Next · </span>
           {brief.nextUp.label}
@@ -71,10 +85,10 @@ export function MorningBriefHero({
         {brief.footer.pendingLaneD > 0 && (
           <Badge tone="warn">{brief.footer.pendingLaneD} product P0</Badge>
         )}
-        {brief.footer.operatorSummary && (
+        {brief.footer.operatorSummary && !productLoop && (
           <Badge tone="accent">{brief.footer.operatorSummary}</Badge>
         )}
-        {brief.mechanismLabel && (
+        {brief.mechanismLabel && !productLoop && (
           <span title={brief.footer.mechanismAntiPattern}>
             <Badge tone="accent">{brief.mechanismLabel}</Badge>
           </span>

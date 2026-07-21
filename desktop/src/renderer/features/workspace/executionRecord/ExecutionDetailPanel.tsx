@@ -1,6 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import type { ExecutionRecordDetailTab } from "@shared/executionRecord";
 import { normalizeToWorkSurface } from "@shared/workSurfaces";
+import { buildDoneWhenChecklist } from "@shared/doneWhenChecklist";
+import { getNowTask } from "@shared/cmoOpsCadence";
 import { Segmented } from "@renderer/components/ui/Segmented";
 import { useApp } from "@renderer/state/store";
 import { ShipPipelineBar } from "../ShipPipelineBar";
@@ -9,6 +11,7 @@ import { BrowserCanvas } from "../canvas/BrowserCanvas";
 import { WorkSurfaceShell } from "../canvas/WorkSurfaceShell";
 import { WorkSurfaceBody } from "../canvas/work/WorkSurfaceBody";
 import { ProofDetailView } from "./ProofDetailView";
+import { DoneWhenChecklistHeader } from "./DoneWhenChecklistHeader";
 import type { ExecutionRecordView } from "@shared/executionRecord";
 import { Radio } from "lucide-react";
 
@@ -25,7 +28,6 @@ export function ExecutionDetailPanel({
 }: {
   record: ExecutionRecordView;
   defaultHint: ExecutionRecordDetailTab;
-  /** When true, panel grows to fill remaining vertical space (run / focus mode). */
   fill?: boolean;
 }) {
   const tab = useApp((s) => s.executionRecordDetailTab);
@@ -33,11 +35,27 @@ export function ExecutionDetailPanel({
   const run = useApp((s) => s.run);
   const canvasMode = useApp((s) => s.canvas.mode);
   const surface = normalizeToWorkSurface(canvasMode);
+  const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
+  const channelThesis = useApp((s) => s.channelThesis ?? s.marketingProfile?.channel_thesis);
+  const lastShipReceipt = useApp((s) => s.lastShipReceipt);
+  const shipPipeline = useApp((s) => s.shipPipeline);
 
   const runActive =
     run?.status === "running" || run?.status === "planning" || run?.status === "created";
   const hasRun = Boolean(run?.runId);
   const hasPrimaryAction = record.next.action.kind !== "none";
+  const nowTask = opsCadence ? getNowTask(opsCadence) : null;
+
+  const checklistItems = useMemo(
+    () =>
+      buildDoneWhenChecklist(nowTask, channelThesis, {
+        shipReceipt: lastShipReceipt,
+        shipPipelineStage: shipPipeline?.stage,
+        hasPendingApply: record.lifecycle === "awaiting_approval",
+        qualityFindings: lastShipReceipt?.qualityWarnings,
+      }),
+    [nowTask, channelThesis, lastShipReceipt, shipPipeline?.stage, record.lifecycle],
+  );
 
   useEffect(() => {
     if (tab === "record") setTab(defaultHint);
@@ -88,7 +106,11 @@ export function ExecutionDetailPanel({
           </WorkSurfaceShell>
         ) : activeTab === "diff" ? (
           hasRun ? (
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+              <DoneWhenChecklistHeader
+                doneWhen={nowTask?.done_when}
+                items={checklistItems}
+              />
               <RunCanvas />
             </div>
           ) : (
@@ -109,7 +131,11 @@ export function ExecutionDetailPanel({
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <ProofDetailView />
+            <ProofDetailView
+              receipt={lastShipReceipt}
+              taskLabel={nowTask?.what}
+              doneWhen={nowTask?.done_when}
+            />
           </div>
         )}
       </div>

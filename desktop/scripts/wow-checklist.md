@@ -137,6 +137,17 @@ Run after Plan Studio / GTM brain / design-system changes.
 - [ ] **Footer chips** — pending ops / prepared / product P0 / operator / mechanism in `morning-brief-footer`
 - [ ] **E2E @morning-brief** — record grid + CTA visible within 10s of card mount
 
+## Faz 4 — Profesyonel Ship (Lane A Excellence)
+- [ ] **Ship receipt SSOT** — Apply → `lastShipReceipt` populates Record chips (commit, files, lines, live URL)
+- [ ] **Done-when checklist** — `done-when-checklist` on Diff tab with apply/verify status
+- [ ] **Browser verify gate** — system tasks with live/URL done_when blocked until verify passes
+- [ ] **Approval clarity** — `approval-hero-line` + pipeline `approval` stage
+- [ ] **Quality lint** — CTA warn, SEO block on landing_conversion, tracking warn
+- [ ] **P15 pause hero** — `product-loop-pause-banner` on Record when marketing paused
+- [ ] **Proof tab receipt** — `proof-detail-view` shows commit, before/after, browser checks
+- [ ] **Eval ship-receipt-matrix** — 8 thesis × apply → receipt, 0 fail
+- [ ] **E2E @ship-receipt** — record + detail panel visible after Week 1 start
+
 ## CMO Founder-Fit + Strategic Options (P13)
 - [ ] **Exactly 7 questions** — one FounderFitWizard question per step, no long-form intake
 - [ ] **Founder-fit eligibility** — camera, risk, time, budget, and scale constraints change recommendation

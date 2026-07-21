@@ -48,6 +48,26 @@ export function verifyPassed(
   return verifyPassRate(result) >= minRate;
 }
 
+const LIVE_URL_RE = /\b(url|live|https|link|published|posted)\b/i;
+
+/** SSOT: live/URL keywords in done_when require browser verify before complete. */
+export function doneWhenRequiresBrowserVerify(
+  doneWhen: string,
+  task?: Pick<CmoOpsTask, "expected_proof_kind" | "owner"> | null,
+): boolean {
+  if (task?.expected_proof_kind === "browser_evidence") return true;
+  if (task?.owner !== "system") return false;
+  return LIVE_URL_RE.test(doneWhen);
+}
+
+export function inferExpectedProofKindFromDoneWhen(
+  doneWhen: string,
+): import("./opsExecutionPlan").ExpectedProofKind | undefined {
+  if (LIVE_URL_RE.test(doneWhen)) return "live_url";
+  if (/\bkpi\b|\bmetric\b|\bsignup\b|\bconversion\b|\bview\b/i.test(doneWhen)) return "kpi";
+  return undefined;
+}
+
 const DEFAULT_CHECKLIST = ["Hero CTA visible", "Page title updated"];
 
 export function buildVerifyChecklistFromTask(
@@ -59,7 +79,8 @@ export function buildVerifyChecklistFromTask(
     if (/cta|button|hero/i.test(task.done_when)) items.push("Hero CTA visible");
     if (/title|headline|meta/i.test(task.done_when)) items.push("Page title updated");
     if (/track|analytics|gtag|pixel/i.test(task.done_when)) items.push("Tracking snippet present");
-    if (/live url|https/i.test(task.done_when)) items.push("Primary page loads without error");
+    if (/live|url|https|link|published/i.test(task.done_when))
+      items.push("Primary page loads without error");
   }
   if (thesis?.id === "landing_conversion" && !items.some((i) => /cta/i.test(i))) {
     items.push("Hero CTA visible");

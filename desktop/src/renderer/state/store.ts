@@ -202,10 +202,12 @@ import {
   loadFirstShipLedger,
   loadOnboardingTrack,
   loadSessionOutcomesLocal,
+  loadShipReceipt,
   persistExecutionMetricsLocal,
   persistFirstShipLedgerLocal,
   persistOnboardingTrack,
   persistSessionOutcomesLocal,
+  persistShipReceiptLocal,
 } from "@renderer/state/quickStartWedgeHelpers";
 import { buildCmoIntake, buildFinalChannelThesis } from "@shared/cmoIntake";
 import type { ChannelThesis } from "@shared/cmoIntake";
@@ -229,16 +231,19 @@ import {
   type CmoOpsCadence,
 } from "@shared/cmoOpsCadence";
 import {
-  buildVerifyChecklistFromTask,
   buildVerifyFixGoal,
-  mergeReportToVerifyResult,
-  toBrowserEvidenceProof,
-  verifyPassed,
 } from "@shared/browserVerify";
 import {
   assessMeasurementBaseline,
 } from "@shared/measurementBaseline";
 import { resolveLaunchReadinessSteps } from "@shared/launchReadiness";
+import {
+  buildShipReceiptFromApply,
+  markShipReceiptVerifyRunning,
+  markShipReceiptVerifySkipped,
+} from "@shared/shipReceipt";
+import { finalizeVerifyRun, planVerifyAfterApply } from "@shared/executionKernelBridge";
+import { runShipQualityLint } from "@shared/shipQualityLint";
 import {
   buildMorningBriefView,
   morningBriefDayKey,
@@ -715,6 +720,8 @@ interface AppState {
   wedgePhase?: WedgePhase;
   firstShipSnapshot?: FirstShipSnapshot;
   firstShipLedger?: FirstShipLedger;
+  /** Faz 4 — last apply ship receipt SSOT for Record chips + Proof tab. */
+  lastShipReceipt?: import("@shared/shipReceipt").ShipReceipt;
   shipPipeline?: ShipPipelineState;
   shipRecovery?: ShipRecoveryAction;
   executionMetrics?: ExecutionMetricsRollup;
@@ -1506,6 +1513,11 @@ export const useApp = create<AppState>((set, get) => {
     if (next.stage === "failed" && noPatches) {
       const target = get().project ? resolveFirstShipTarget(get().project!) : undefined;
       patch.shipRecovery = buildShipRecovery("no_patches", target);
+    } else if (
+      next.stage === "failed" &&
+      (next.error === "VERIFY_FAILED" || extra?.error?.includes("VERIFY_FAILED"))
+    ) {
+      patch.shipRecovery = buildShipRecovery("verify_failed");
     }
     set(patch);
   };
@@ -1591,8 +1603,7 @@ export const useApp = create<AppState>((set, get) => {
     pendingVerifyAfterApply = null;
     if (!ctx) return;
 
-    const { browser, opsCadence, activeProjectId } = get();
-    const findings = browser.findings;
+    const { browser, opsCadence, activeProjectId, lastShipReceipt, channelThesis } = get();
     const frame = browser.frameHistory.find((f) => f.pngBase64) ?? browser.frameHistory.at(-1);
     let screenshotPath: string | undefined;
     if (frame?.pngBase64 && activeProjectId) {
@@ -1608,20 +1619,30 @@ export const useApp = create<AppState>((set, get) => {
       }
     }
 
-    const verifyResult = mergeReportToVerifyResult({
-      url: ctx.url,
-      runId: input.runId,
-      report: input.report,
-      findings,
-    });
-    const evidence = toBrowserEvidenceProof(verifyResult, screenshotPath);
-    const passed = !input.failed && verifyPassed(verifyResult, 1);
+    const baseReceipt =
+      lastShipReceipt ??
+      buildShipReceiptFromApply({
+        runId: input.runId,
+        filesApplied: [],
+        previewUrl: ctx.url,
+      });
 
-    if (passed) {
-      bumpShipPipeline("verify.completed");
-    } else {
-      bumpShipPipeline("verify.failed", { error: input.summary ?? "VERIFY_FAILED" });
-      const failing = verifyResult.validations.filter((v) => !v.passed);
+    const finalized = finalizeVerifyRun({
+      receipt: baseReceipt,
+      runId: input.runId,
+      url: ctx.url,
+      report: input.report,
+      failed: input.failed,
+      summary: input.summary,
+      screenshotPath,
+      thesisId: channelThesis?.id ?? opsCadence?.thesis_id,
+      afterSnapshot: baseReceipt.after,
+    });
+
+    bumpShipPipeline(finalized.pipelineEvent, { error: finalized.pipelineError });
+
+    if (!finalized.passed) {
+      const failing = finalized.evidence.validations.filter((v) => !v.passed);
       set({
         workspaceHandoff: {
           eyebrow: "Verify failed",
@@ -1638,6 +1659,7 @@ export const useApp = create<AppState>((set, get) => {
             },
           },
         },
+        shipRecovery: finalized.recovery,
       });
       get().appendFeedItem({
         id: `verify-fix-${Date.now()}`,
@@ -1647,16 +1669,21 @@ export const useApp = create<AppState>((set, get) => {
         title: "Fix and re-verify",
         summary:
           input.summary ??
-          `Browser verify failed — ${verifyResult.validations.filter((v) => !v.passed).map((v) => v.label).join(", ") || "checklist incomplete"}`,
+          `Browser verify failed — ${failing.map((v) => v.label).join(", ") || "checklist incomplete"}`,
         status: "waiting",
         canvasTarget: { mode: "run", payload: { verifyFix: "1" } },
       });
     }
 
-    if (opsCadence) {
+    if (activeProjectId) {
+      persistShipReceiptLocal(activeProjectId, finalized.receipt);
+    }
+    set({ lastShipReceipt: finalized.receipt });
+
+    if (opsCadence && !finalized.blockAutoComplete) {
       const { cadence: nextCadence, closed } = attachBrowserEvidenceToSystemTask(
         opsCadence,
-        evidence,
+        finalized.evidence,
         { minPassRate: 1 },
       );
       syncOpsCadenceState(nextCadence);
@@ -1673,19 +1700,35 @@ export const useApp = create<AppState>((set, get) => {
             syncLaneAState(
               completeLaneAItemOnApply(laneA, inProgress.id, {
                 run_id: input.runId,
-                browser_evidence: evidence,
+                browser_evidence: finalized.evidence,
               }),
             );
           }
         }
         notifyOpsProgress(nextCadence);
       }
+    } else if (opsCadence && finalized.evidence) {
+      const target = getNowTask(opsCadence);
+      if (target && target.status !== "done") {
+        const tasks = opsCadence.tasks.map((t) =>
+          t.id === target.id
+            ? {
+                ...t,
+                proof: {
+                  ...(t.proof ?? { completed_at: new Date().toISOString() }),
+                  browser_evidence: finalized.evidence,
+                },
+              }
+            : t,
+        );
+        syncOpsCadenceState({ ...opsCadence, tasks });
+      }
     }
 
     appendEvent({
       role: "system",
       kind: "status",
-      text: passed
+      text: finalized.passed
         ? `✓ Browser verify passed for ${ctx.url}`
         : `Browser verify needs a fix — ${input.summary ?? "checklist failed"}`,
     });
@@ -6205,7 +6248,11 @@ export const useApp = create<AppState>((set, get) => {
     skipOpsTask: (taskId, reason) => {
       const cadence = get().opsCadence;
       if (!cadence) return;
-      const next = skipOpsTaskCore(cadence, taskId, reason);
+      const { cadence: next, error } = skipOpsTaskCore(cadence, taskId, reason);
+      if (error) {
+        appendEvent({ role: "system", kind: "error", text: error });
+        return;
+      }
       syncOpsCadenceState(next);
       appendEvent({
         role: "system",
@@ -7319,6 +7366,7 @@ export const useApp = create<AppState>((set, get) => {
           firstHourActive: !loadFirstShipAt(project.id),
           onboardingTrack: loadOnboardingTrack(project.id),
           firstShipLedger: loadFirstShipLedger(project.id),
+          lastShipReceipt: loadShipReceipt(project.id),
           executionMetrics: loadExecutionMetrics(project.id) ?? {
             projectId: project.id,
             projectOpenedAt: Date.now(),
@@ -8824,6 +8872,7 @@ export const useApp = create<AppState>((set, get) => {
           runId: run.runId,
           patchCount: result.applied.length,
         });
+        bumpShipPipeline("approval.granted");
         bumpShipPipeline("apply.completed");
 
         const snapshot = get().firstShipSnapshot;
@@ -8866,6 +8915,31 @@ export const useApp = create<AppState>((set, get) => {
           persistFirstShipLedgerLocal(pid, ledger);
           set({ firstShipLedger: ledger });
         }
+
+        const qualityFindings = runShipQualityLint({
+          after: afterMeta,
+          thesisId: get().channelThesis?.id ?? get().marketingProfile?.channel_thesis?.id,
+        });
+        const shipReceipt = {
+          ...buildShipReceiptFromApply({
+            runId: run.runId,
+            commitSha,
+            branch: result.branch,
+            filesApplied: result.applied,
+            linesAdded: patchStats.linesAdded,
+            linesRemoved: patchStats.linesRemoved,
+            previewUrl,
+            before: snapshot ?? undefined,
+            after: afterMeta,
+            events: run.events,
+            ledger,
+          }),
+          qualityWarnings: qualityFindings,
+        };
+        if (pid) {
+          persistShipReceiptLocal(pid, shipReceipt);
+        }
+        set({ lastShipReceipt: shipReceipt, executionRecordDetailTab: "proof" });
 
         autoCompleteOpsOnApply({
           runId: run.runId,
@@ -8914,7 +8988,6 @@ export const useApp = create<AppState>((set, get) => {
           const activeOps = cadenceBefore?.tasks.find(
             (t) => t.status === "in_progress" && t.owner === "system",
           );
-          const verifyChecklist = buildVerifyChecklistFromTask(activeOps, thesisBefore);
           set({
             run: null,
             replayRun: null,
@@ -8945,8 +9018,22 @@ export const useApp = create<AppState>((set, get) => {
             feedItemId: gateId,
           });
           if (previewUrl && get().capabilityMatrix.canBrowse) {
-            scheduleVerifyAfterApply(previewUrl, verifyChecklist);
+            const plan = planVerifyAfterApply({
+              previewUrl,
+              canBrowse: true,
+              task: activeOps,
+              thesis: thesisBefore,
+            });
+            if (plan?.shouldSchedule) {
+              const runningReceipt = markShipReceiptVerifyRunning(shipReceipt);
+              if (pid) persistShipReceiptLocal(pid, runningReceipt);
+              set({ lastShipReceipt: runningReceipt });
+              scheduleVerifyAfterApply(previewUrl, plan.checklist);
+            }
           } else if (!get().capabilityMatrix.canBrowse) {
+            const skipped = markShipReceiptVerifySkipped(shipReceipt);
+            if (pid) persistShipReceiptLocal(pid, skipped);
+            set({ lastShipReceipt: skipped });
             set({
               workspaceHandoff: {
                 eyebrow: "Verify live",

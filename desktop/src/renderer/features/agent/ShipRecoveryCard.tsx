@@ -6,6 +6,10 @@ import { useApp } from "@renderer/state/store";
 
 export function ShipRecoveryCard({ recovery }: { recovery: ShipRecoveryAction }) {
   const retryQuickStartShip = useApp((s) => s.retryQuickStartShip);
+  const lastShipReceipt = useApp((s) => s.lastShipReceipt);
+  const startVerifyAfterApply = useApp((s) => s.startVerifyAfterApply);
+
+  const isVerifyFailed = recovery.kind === "verify_failed";
 
   return (
     <Card className="border-warn/30 bg-warn-soft/10 p-4" data-testid="ship-recovery-card">
@@ -18,9 +22,13 @@ export function ShipRecoveryCard({ recovery }: { recovery: ShipRecoveryAction })
           variant="secondary"
           iconLeft={<RefreshCw size={13} />}
           data-testid="ship-recovery-retry"
-          onClick={() => retryQuickStartShip(recovery.retryGoal)}
+          onClick={() =>
+            isVerifyFailed && lastShipReceipt?.previewUrl
+              ? void startVerifyAfterApply(lastShipReceipt.previewUrl, [])
+              : retryQuickStartShip(recovery.retryGoal)
+          }
         >
-          Retry with narrower goal
+          {isVerifyFailed ? "Re-run verify" : "Retry with narrower goal"}
         </Button>
       )}
     </Card>

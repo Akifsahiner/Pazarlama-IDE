@@ -3,7 +3,12 @@
  */
 import type { FirstShipTarget } from "./firstHourWow";
 
-export type ShipRecoveryKind = "no_patches" | "run_timeout" | "apply_failed" | "preview_failed";
+export type ShipRecoveryKind =
+  | "no_patches"
+  | "run_timeout"
+  | "apply_failed"
+  | "preview_failed"
+  | "verify_failed";
 
 export interface ShipRecoveryAction {
   kind: ShipRecoveryKind;
@@ -44,6 +49,13 @@ export function buildShipRecovery(
         kind,
         title: "Preview server did not start",
         detail: "Your changes may still be applied — open the edited file or retry preview.",
+      };
+    case "verify_failed":
+      return {
+        kind,
+        title: "Browser verify failed",
+        detail: "Fix the failing checklist items and re-run verify before marking ship complete.",
+        retryGoal: "Fix browser verify failures on the landing page — hero CTA, title, and tracking.",
       };
     default:
       return { kind, title: "Something went wrong", detail: "Retry the ship pipeline." };

@@ -217,7 +217,7 @@ export function buildMorningBriefView(input: BuildMorningBriefInput): MorningBri
     today: model.today,
     why: model.why,
     doneWhen: model.doneWhen,
-    nextUp: resolveNextUp(focusTasks),
+    nextUp: governance?.kind === "product_loop" ? undefined : resolveNextUp(focusTasks),
     effort,
     focusTasks,
     footer: {

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { countApplyPendingGates } from "@shared/feed";
+import { runChangedFiles } from "@shared/runs";
 import {
   buildActiveExecutionRecord,
   buildExecutionHistory,
@@ -44,6 +45,7 @@ function useExecutionRecordInput(): BuildActiveExecutionRecordInput {
   const run = useApp((s) => s.run);
   const feedItems = useApp((s) => s.feedItems);
   const shipPipeline = useApp((s) => s.shipPipeline);
+  const lastShipReceipt = useApp((s) => s.lastShipReceipt);
   const firstShipAt = useApp((s) => s.firstShipAt);
   const wedgePhase = useApp((s) => s.wedgePhase);
 
@@ -80,7 +82,17 @@ function useExecutionRecordInput(): BuildActiveExecutionRecordInput {
     : null;
 
   const hasPendingApply =
-    countApplyPendingGates(feedItems) > 0 || shipPipeline?.stage === "apply";
+    countApplyPendingGates(feedItems) > 0 ||
+    shipPipeline?.stage === "apply" ||
+    shipPipeline?.stage === "approval";
+
+  const approvalFileCount = run
+    ? runChangedFiles(run.events).length
+    : shipPipeline?.patchCount;
+
+  const pendingVerify =
+    Boolean(lastShipReceipt?.verifyStatus === "running") ||
+    shipPipeline?.stage === "verify";
 
   return useMemo(
     () => ({
@@ -102,6 +114,9 @@ function useExecutionRecordInput(): BuildActiveExecutionRecordInput {
       firstShipAt,
       wedgePhase,
       narrativeOneLiner: marketingProfile?.growth_narrative?.one_liner,
+      shipReceipt: lastShipReceipt,
+      pendingVerify,
+      approvalFileCount,
     }),
     [
       growthControlPlane,
@@ -123,6 +138,7 @@ function useExecutionRecordInput(): BuildActiveExecutionRecordInput {
       firstShipAt,
       wedgePhase,
       marketingProfile?.growth_narrative?.one_liner,
+      lastShipReceipt,
     ],
   );
 }

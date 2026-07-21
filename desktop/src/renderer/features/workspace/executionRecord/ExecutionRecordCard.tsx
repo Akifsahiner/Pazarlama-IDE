@@ -150,6 +150,14 @@ export function ExecutionRecordCard({
             <OurContractStrip profile={marketingProfile} />
           </div>
         )}
+        {record.approvalHeroLine && (
+          <p
+            className="mb-3 rounded-[var(--radius-md)] border border-warn/30 bg-warn/8 px-3 py-2 text-body-sm text-warn"
+            data-testid="approval-hero-line"
+          >
+            {record.approvalHeroLine}
+          </p>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <ExecutionRecordStatusPill
             lifecycle={record.lifecycle}

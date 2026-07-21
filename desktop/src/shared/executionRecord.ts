@@ -16,6 +16,11 @@ import {
   type CommandSurfaceGovernance,
 } from "./cmoCommandSurface";
 import { buildMorningBriefView, type MorningBriefView } from "./morningBrief";
+import {
+  shipReceiptToDoneItems,
+  shipReceiptToResultChips,
+  type ShipReceipt,
+} from "./shipReceipt";
 import { computeRunSummary, runChangedFiles } from "./runs";
 import type { RunEvent, RunStatus } from "./types";
 
@@ -23,6 +28,7 @@ export type ExecutionRecordLifecycle =
   | "intake"
   | "queued"
   | "running"
+  | "verifying"
   | "awaiting_approval"
   | "awaiting_proof"
   | "applied"
@@ -60,6 +66,8 @@ export interface ExecutionRecordView {
   growthStatePlaceholder?: string;
   governance?: CommandSurfaceGovernance;
   morningBrief?: MorningBriefView;
+  approvalHeroLine?: string;
+  productLoopPaused?: boolean;
 }
 
 export interface ExecutionHistoryEntry {
@@ -96,6 +104,9 @@ export interface BuildActiveExecutionRecordInput extends Omit<BuildCommandSurfac
   firstShipAt?: number | null;
   wedgePhase?: string | null;
   narrativeOneLiner?: string;
+  shipReceipt?: ShipReceipt | null;
+  pendingVerify?: boolean;
+  approvalFileCount?: number;
 }
 
 export interface BuildExecutionHistoryInput extends BuildActiveExecutionRecordInput {
@@ -106,6 +117,7 @@ const LIFECYCLE_LABELS: Record<ExecutionRecordLifecycle, string> = {
   intake: "Setup",
   queued: "Queued",
   running: "Running",
+  verifying: "Verifying live page",
   awaiting_approval: "Awaiting approval",
   awaiting_proof: "Awaiting proof",
   applied: "Applied",
@@ -117,6 +129,7 @@ const LIFECYCLE_LABELS: Record<ExecutionRecordLifecycle, string> = {
 const LIFECYCLE_RAIL: ExecutionRecordLifecycle[] = [
   "queued",
   "running",
+  "verifying",
   "awaiting_approval",
   "applied",
   "measured",
@@ -179,10 +192,18 @@ function resolveLifecycle(input: {
   activeRun?: ActiveRunSnapshot | null;
   hasPendingApply?: boolean;
   channelThesis?: ChannelThesis | null;
+  pendingVerify?: boolean;
+  shipReceipt?: ShipReceipt | null;
+  governanceKind?: string;
 }): ExecutionRecordLifecycle {
-  const { cadence, task, activeRun, hasPendingApply, channelThesis } = input;
+  const { cadence, task, activeRun, hasPendingApply, channelThesis, pendingVerify, shipReceipt, governanceKind } = input;
 
   if (!cadence) return channelThesis ? "intake" : "intake";
+
+  if (governanceKind === "product_loop") return "running";
+
+  if (pendingVerify || shipReceipt?.verifyStatus === "running") return "verifying";
+  if (activeRun?.kind === "browse" && isRunActive(activeRun) && pendingVerify) return "verifying";
 
   if (activeRun?.pendingApproval) return "awaiting_approval";
   if (isRunActive(activeRun)) return "running";
@@ -271,14 +292,16 @@ function formatDoneFromRun(run: ActiveRunSnapshot): ExecutionDoneItem[] {
 export function formatExecutionDone(input: {
   task?: CmoOpsTask | null;
   activeRun?: ActiveRunSnapshot | null;
+  shipReceipt?: ShipReceipt | null;
 }): ExecutionDoneItem[] {
-  const items: ExecutionDoneItem[] = [];
+  const receiptItems = shipReceiptToDoneItems(input.shipReceipt);
+  const items: ExecutionDoneItem[] = [...receiptItems];
   if (input.activeRun && isRunActive(input.activeRun)) {
     items.push(...formatDoneFromRun(input.activeRun));
   }
   if (input.task?.proof) {
     items.push(...formatDoneFromProof(input.task.proof, input.task));
-  } else if (input.task && input.task.status !== "pending") {
+  } else if (input.task && input.task.status !== "pending" && receiptItems.length === 0) {
     items.push({ id: `${input.task.id}-what`, label: input.task.what });
   }
   return items;
@@ -289,7 +312,11 @@ export function formatExecutionResults(input: {
   taskStatus?: CmoOpsTask["status"];
   taskOwner?: CmoOpsTask["owner"];
   activeRun?: ActiveRunSnapshot | null;
+  shipReceipt?: ShipReceipt | null;
 }): ExecutionResultChip[] {
+  const receiptChips = shipReceiptToResultChips(input.shipReceipt);
+  if (receiptChips.length > 0) return receiptChips;
+
   const chips: ExecutionResultChip[] = [];
   const proof = input.proof;
 
@@ -419,6 +446,9 @@ export function buildActiveExecutionRecord(
     activeRun: input.activeRun,
     hasPendingApply: input.hasPendingApply,
     channelThesis: input.channelThesis,
+    pendingVerify: input.pendingVerify,
+    shipReceipt: input.shipReceipt,
+    governanceKind: model?.governance?.kind,
   });
 
   const nextAction = commandInput
@@ -464,9 +494,18 @@ export function buildActiveExecutionRecord(
     : undefined;
 
   const lifecycleLabel =
-    lifecycle === "queued" && morningBrief?.queuedHint
-      ? morningBrief.queuedHint.message
-      : buildLifecycleProgressLabel(lifecycle);
+    model?.governance?.kind === "product_loop"
+      ? `Marketing paused — ${input.laneDWorkspace?.paused_reason ?? model.bottleneck}`
+      : lifecycle === "awaiting_approval" && input.approvalFileCount
+        ? `Awaiting approval — ${input.approvalFileCount} file(s) to review → Apply to ship`
+        : lifecycle === "queued" && morningBrief?.queuedHint
+          ? morningBrief.queuedHint.message
+          : buildLifecycleProgressLabel(lifecycle);
+
+  const approvalHeroLine =
+    lifecycle === "awaiting_approval" && input.approvalFileCount
+      ? `Awaiting approval — ${input.approvalFileCount} file(s) to review → Apply to ship`
+      : undefined;
 
   return {
     id: recordId,
@@ -474,12 +513,17 @@ export function buildActiveExecutionRecord(
     experiment,
     lifecycle,
     lifecycleLabel,
-    done: formatExecutionDone({ task, activeRun: input.activeRun }),
+    done: formatExecutionDone({
+      task,
+      activeRun: input.activeRun,
+      shipReceipt: input.shipReceipt,
+    }),
     results: formatExecutionResults({
       proof: task?.proof,
       taskStatus: task?.status,
       taskOwner: task?.owner,
       activeRun: input.activeRun,
+      shipReceipt: input.shipReceipt,
     }),
     learned: resolveLearned({
       task,
@@ -495,6 +539,8 @@ export function buildActiveExecutionRecord(
     growthStatePlaceholder: input.plane?.binding.headline,
     governance: model?.governance,
     morningBrief,
+    approvalHeroLine,
+    productLoopPaused: model?.governance?.kind === "product_loop",
   };
 }
 
