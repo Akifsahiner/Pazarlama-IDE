@@ -30,11 +30,19 @@ export function WorkspaceCommandDock() {
 
   const runActive = isRunActive(run);
   const wasRunActive = useRef(false);
+  const autoCollapsedForRun = useRef(false);
 
   useEffect(() => {
     if (runActive && !wasRunActive.current) {
       setCommandDockCollapsed(true);
       setExecutionHeroExpanded(false);
+      autoCollapsedForRun.current = true;
+    } else if (!runActive && wasRunActive.current) {
+      setExecutionHeroExpanded(true);
+      if (autoCollapsedForRun.current) {
+        setCommandDockCollapsed(false);
+        autoCollapsedForRun.current = false;
+      }
     }
     wasRunActive.current = runActive;
   }, [runActive, setCommandDockCollapsed, setExecutionHeroExpanded]);
@@ -59,6 +67,9 @@ export function WorkspaceCommandDock() {
           >
             <ChevronUp size={13} className="text-accent" />
             Komutu genişlet
+            <kbd className="ml-1 hidden rounded border border-line/80 bg-surface px-1 py-px text-[9px] font-medium text-text-3 sm:inline">
+              ⌘J
+            </kbd>
             {agentStreaming && (
               <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
             )}

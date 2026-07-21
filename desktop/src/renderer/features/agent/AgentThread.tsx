@@ -73,7 +73,7 @@ export function AgentThread({
               </IconButton>
             )}
             {isBottom && onCollapse ? (
-              <IconButton label="Komutu küçült" size="sm" onClick={onCollapse}>
+              <IconButton label="Komutu küçült (⌘J)" size="sm" onClick={onCollapse}>
                 <ChevronDown size={14} />
               </IconButton>
             ) : (

@@ -25,12 +25,25 @@ export function App() {
   const toggleHistory = useApp((s) => s.toggleHistory);
   const historyOpen = useApp((s) => s.historyOpen);
   const createNewSession = useApp((s) => s.createNewSession);
+  const focusMode = useApp((s) => s.focusMode);
+  const toggleFocusMode = useApp((s) => s.toggleFocusMode);
+  const toggleCommandDockCollapsed = useApp((s) => s.toggleCommandDockCollapsed);
+  const setCommandDockCollapsed = useApp((s) => s.setCommandDockCollapsed);
 
   useEffect(() => {
     void init();
   }, [init]);
 
   useEffect(() => {
+    const focusComposer = () => {
+      requestAnimationFrame(() => {
+        (
+          document.getElementById("agent-composer-dock") ??
+          document.getElementById("agent-composer")
+        )?.focus();
+      });
+    };
+
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
       const key = e.key.toLowerCase();
@@ -39,7 +52,23 @@ export function App() {
         togglePalette(true);
       } else if (key === "l") {
         e.preventDefault();
-        document.getElementById("agent-composer")?.focus();
+        if (phase === "workspace" && focusMode) {
+          toggleFocusMode(false);
+          setCommandDockCollapsed(false);
+        } else if (phase === "workspace" && useApp.getState().commandDockCollapsed) {
+          setCommandDockCollapsed(false);
+        }
+        focusComposer();
+      } else if (key === "j") {
+        if (phase !== "workspace") return;
+        e.preventDefault();
+        if (focusMode) {
+          toggleFocusMode(false);
+          setCommandDockCollapsed(false);
+          focusComposer();
+        } else {
+          toggleCommandDockCollapsed();
+        }
       } else if (key === "b") {
         e.preventDefault();
         toggleSidebar();
@@ -58,7 +87,19 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [togglePalette, navigate, toggleSidebar, toggleHistory, historyOpen, createNewSession]);
+  }, [
+    togglePalette,
+    navigate,
+    toggleSidebar,
+    toggleHistory,
+    historyOpen,
+    createNewSession,
+    phase,
+    focusMode,
+    toggleFocusMode,
+    toggleCommandDockCollapsed,
+    setCommandDockCollapsed,
+  ]);
 
   return (
     <MotionConfig reducedMotion={reducedMotion ? "always" : "user"}>
