@@ -527,6 +527,7 @@ export function buildActiveExecutionRecord(
   const nextAction = commandInput
     ? resolveCommandSurfaceAction({
         ...commandInput,
+        executionKernel: input.executionKernel,
         hasActiveRun: Boolean(
           input.activeRun?.runId &&
             (input.activeRun.status === "completed" || isRunActive(input.activeRun)),

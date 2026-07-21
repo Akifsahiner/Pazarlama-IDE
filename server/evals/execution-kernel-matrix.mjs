@@ -10,6 +10,7 @@ import {
   completeExecutionTask,
   retryExecutionTask,
   hydrateExecutionKernelFromJson,
+  weekReviewGovernanceId,
 } from "../../desktop/src/shared/executionKernel.ts";
 import { allRegisteredModes, resolveHandlerKind } from "../../desktop/src/shared/executionHandlers.ts";
 
@@ -76,11 +77,18 @@ for (const thesisId of THESIS_IDS) {
   });
   const cadence = createOpsCadenceFromThesis(thesis);
   const taskCount = cadence.tasks.length;
+  const govId = weekReviewGovernanceId(cadence.id);
+  const expectedInstances = taskCount + 1;
   let kernel = bootstrapExecutionKernel({ cadence, projectId: "eval-p" });
 
-  if (Object.keys(kernel.instances).length !== taskCount) {
+  if (Object.keys(kernel.instances).length !== expectedInstances) {
     incomplete += 1;
-    fail(`${thesisId} bootstrap`, `instances ${Object.keys(kernel.instances).length} != tasks ${taskCount}`);
+    fail(
+      `${thesisId} bootstrap`,
+      `instances ${Object.keys(kernel.instances).length} != tasks ${taskCount} + governance`,
+    );
+  } else if (!kernel.instances[govId]) {
+    fail(`${thesisId} bootstrap`, "missing week_review governance instance");
   } else ok();
 
   const systemTask = cadence.tasks.find((t) => t.owner === "system");
@@ -123,7 +131,7 @@ for (const thesisId of THESIS_IDS) {
         source: "ops_board",
         at: new Date().toISOString(),
       });
-      if (Object.keys(kernel.instances).length !== taskCount) {
+      if (Object.keys(kernel.instances).length !== expectedInstances) {
         fail(`${thesisId} retry dup`, "instance count changed");
       } else ok();
       const assetAfter = JSON.stringify(humanTask.human_execution_asset);

@@ -37,6 +37,7 @@ export function ExecutionDetailPanel({
   const tab = useApp((s) => s.executionRecordDetailTab);
   const setTab = useApp((s) => s.setExecutionRecordDetailTab);
   const run = useApp((s) => s.run);
+  const replayExecutionTask = useApp((s) => s.replayExecutionTask);
   const canvasMode = useApp((s) => s.canvas.mode);
   const surface = normalizeToWorkSurface(canvasMode);
   const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
@@ -90,6 +91,7 @@ export function ExecutionDetailPanel({
 
   const activeTab = tab === "record" ? defaultHint : tab;
   const showWorkSurface = Boolean(surface);
+  const kernelTimeline = replayExecutionTask(record.id);
 
   return (
     <div
@@ -170,6 +172,22 @@ export function ExecutionDetailPanel({
           </div>
         )}
       </div>
+      {kernelTimeline.length > 0 && (
+        <div
+          className="border-t border-line/60 px-4 py-2 text-[11px] text-text-3"
+          data-testid="execution-kernel-replay"
+        >
+          <span className="font-semibold uppercase tracking-wider text-text-2">Kernel timeline</span>
+          <ul className="mt-1 space-y-0.5">
+            {kernelTimeline.slice(-6).map((entry, i) => (
+              <li key={`${entry.at}-${i}`}>
+                {entry.title}
+                {entry.detail ? ` — ${entry.detail}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

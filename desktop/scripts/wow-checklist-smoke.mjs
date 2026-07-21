@@ -183,6 +183,7 @@ const MARKERS = [
   ["src/shared/executionGraph.ts", "isTaskGraphReady", "Part 10 dependency graph"],
   ["src/shared/executionKernelBridge.ts", "planKernelDispatch", "Part 10 store bridge"],
   ["src/shared/cmoCommandSurface.ts", "getNextExecutionAction", "Part 10 command surface kernel"],
+  ["src/renderer/features/workspace/executionRecord/ExecutionDetailPanel.tsx", "execution-kernel-replay", "Part 10 kernel replay strip"],
   ["src/renderer/state/store.ts", "dispatchExecutionTask", "Part 10 store dispatch wrapper"],
   ["../CMO_EXECUTION_KERNEL_SPEC.md", "Unified lifecycle", "Part 10 spec"],
   ["src/shared/types.ts", "growth_memory", "P11 growth memory profile schema"],

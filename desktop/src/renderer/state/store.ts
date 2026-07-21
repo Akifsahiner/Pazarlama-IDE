@@ -317,16 +317,27 @@ import {
   kernelPause,
   kernelRetry,
   kernelResume,
+  kernelSetRunId,
+  kernelTransitionAwaitingApproval,
   kernelTransitionForApply,
   planKernelDispatch,
   syncKernelAndCadence,
+  completeVerifyingOpsTask,
+  completeWeekReviewGovernance,
+  findActiveOpsTaskId,
+  findLinkedOpsTaskForRubric,
+  hydrateKernelFromProfile,
+  weekReviewGovernanceId,
 } from "@shared/executionKernelBridge";
 import {
+  assertKernelOpsSync,
+  getActiveExecutionInstance,
   hydrateExecutionKernelFromJson,
   replayTaskTimeline,
   type ExecutionKernelState,
   type ExecutionProvenanceSource,
 } from "@shared/executionKernel";
+import { buildTaskRunEvent } from "@shared/executionKernelRunEvents";
 import {
   buildProductActivationProfile,
   canResumeMarketing,
@@ -1688,6 +1699,7 @@ export const useApp = create<AppState>((set, get) => {
   const syncExecutionKernelState = (kernel: ExecutionKernelState, cadence?: CmoOpsCadence) => {
     const pid = get().activeProjectId;
     const baseCadence = cadence ?? get().opsCadence;
+    const prevEventCount = get().executionKernel?.events.length ?? 0;
     if (!baseCadence) {
       set({ executionKernel: kernel });
       return;
@@ -1711,10 +1723,11 @@ export const useApp = create<AppState>((set, get) => {
       execution_kernel: synced.kernel,
       ops_cadence: synced.cadence,
     });
+    foldLatestKernelEventIntoRun(synced.kernel, prevEventCount);
     if (import.meta.env.DEV) {
-      const drift = synced.cadence.tasks.length !== Object.keys(synced.kernel.instances).length;
-      if (drift) {
-        console.warn("[execution-kernel] instance/cadence task count mismatch");
+      const syncErrors = assertKernelOpsSync(synced.kernel, synced.cadence);
+      if (syncErrors.length > 0) {
+        console.warn("[execution-kernel] ops sync drift:", syncErrors.join("; "));
       }
     }
   };
@@ -1821,7 +1834,20 @@ export const useApp = create<AppState>((set, get) => {
         finalized.evidence,
         { minPassRate: 1 },
       );
-      syncOpsCadenceState(nextCadence);
+      const kernel = get().executionKernel;
+      if (kernel && passed) {
+        syncExecutionKernelState(
+          completeVerifyingOpsTask(kernel, {
+            ...evidence,
+            completed_at: new Date().toISOString(),
+          }),
+          nextCadence,
+        );
+      } else if (kernel) {
+        syncExecutionKernelState(kernel, nextCadence);
+      } else {
+        syncOpsCadenceState(nextCadence);
+      }
       if (closed) {
         const laneA = get().laneAWorkspace;
         if (laneA) {
@@ -2982,14 +3008,36 @@ export const useApp = create<AppState>((set, get) => {
     get().thread.some((e) => e.kind === "approval" && e.approvalId === approvalId);
 
   const isExecutionActive = () => {
-    const { run, browser } = get();
+    const { run, browser, executionKernel } = get();
     return !canDrainExecutionQueue({
       runStatus: run?.status,
       browserRunning: browser.running,
+      kernelActive: Boolean(getActiveExecutionInstance(executionKernel)),
     });
   };
 
-  /** Defer queue drain until run/browser flags have settled (auto-advance). */
+  const foldLatestKernelEventIntoRun = (
+    kernel: ExecutionKernelState,
+    prevEventCount: number,
+  ) => {
+    if (kernel.events.length <= prevEventCount) return;
+    const latest = kernel.events[kernel.events.length - 1]!;
+    const instance = kernel.instances[latest.task_id];
+    if (!instance) return;
+    const run = get().run;
+    if (!run?.runId) return;
+    if (instance.run_id && instance.run_id !== run.runId) return;
+    const seq = (run.lastSeq ?? 0) + 1;
+    const evt = buildTaskRunEvent({
+      kernelEvent: latest,
+      instance,
+      runId: run.runId,
+      seq,
+    });
+    set((s) => (s.run ? { run: applyRunEvent(s.run, evt).run } : {}));
+  };
+
+  /** Defer queue drain until run/browser/kernel flags have settled (auto-advance). */
   const drainExecutionQueueWhenIdle = () => {
     queueMicrotask(() => {
       const snap = get();
@@ -2997,6 +3045,7 @@ export const useApp = create<AppState>((set, get) => {
         !canDrainExecutionQueue({
           runStatus: snap.run?.status,
           browserRunning: snap.browser.running,
+          kernelActive: Boolean(getActiveExecutionInstance(snap.executionKernel)),
         })
       ) {
         return;
@@ -3728,6 +3777,15 @@ export const useApp = create<AppState>((set, get) => {
           approvalId: p.approvalId,
           summary: p.intent ?? event.summary ?? event.title,
         });
+      }
+      const cadence = get().opsCadence;
+      const kernel = get().executionKernel;
+      const activeOpsId = findActiveOpsTaskId(kernel);
+      if (cadence && kernel && activeOpsId) {
+        syncExecutionKernelState(
+          kernelTransitionAwaitingApproval(kernel, activeOpsId),
+          cadence,
+        );
       }
     } else if (
       event.type === "tool.started" ||
@@ -4701,6 +4759,14 @@ export const useApp = create<AppState>((set, get) => {
           marketingProfile: merged,
           channelThesis: merged.channel_thesis,
           opsCadence: merged.ops_cadence,
+          executionKernel:
+            merged.ops_cadence && merged.execution_kernel
+              ? hydrateKernelFromProfile({
+                  cadence: merged.ops_cadence,
+                  projectId,
+                  stored: merged.execution_kernel,
+                })
+              : merged.execution_kernel,
           laneAWorkspace: merged.lane_a_workspace,
           laneBWorkspace: merged.lane_b_workspace,
           cmoContinuous: merged.cmo_continuous,
@@ -4730,6 +4796,13 @@ export const useApp = create<AppState>((set, get) => {
         }
         if (merged.ops_cadence) {
           persistOpsCadenceLocal(projectId, merged.ops_cadence);
+          const kernel = hydrateKernelFromProfile({
+            cadence: merged.ops_cadence,
+            projectId,
+            stored: merged.execution_kernel ?? get().executionKernel,
+          });
+          persistExecutionKernelLocal(projectId, kernel);
+          set({ executionKernel: kernel });
         } else {
           hydrateOpsCadenceLocal(projectId);
           hydrateExecutionKernelLocal(projectId);
@@ -6553,18 +6626,28 @@ export const useApp = create<AppState>((set, get) => {
     skipOpsTask: (taskId, reason) => {
       const cadence = get().opsCadence;
       if (!cadence) return;
+<<<<<<< HEAD
       const { cadence: next, error } = skipOpsTaskCore(cadence, taskId, reason);
       if (error) {
         appendEvent({ role: "system", kind: "error", text: error });
         return;
       }
       syncOpsCadenceState(next);
+=======
+      const next = skipOpsTaskCore(cadence, taskId, reason);
+      const kernel = get().executionKernel;
+      if (kernel) {
+        syncExecutionKernelState(kernelCancel(kernel, taskId), next);
+      } else {
+        syncOpsCadenceState(next);
+      }
+>>>>>>> 81e7827 (fix(Part 10): Harden execution kernel — lifecycle wiring, RunEvents, CI gates)
       appendEvent({
         role: "system",
         kind: "status",
         text: `Skipped ops task — ${cadence.tasks.find((t) => t.id === taskId)?.what ?? taskId}`,
       });
-      notifyOpsProgress(next);
+      notifyOpsProgress(get().opsCadence ?? cadence);
       recomputeGrowthPlane();
     },
 
@@ -6579,8 +6662,11 @@ export const useApp = create<AppState>((set, get) => {
       const cadence = get().opsCadence;
       if (!cadence) return "No active ops cadence.";
       const task = cadence.tasks.find((t) => t.id === taskId);
-      if (!task) return "Task not found.";
-      if (task.owner === "system" && task.status === "done") return null;
+      const kernelInst = (get().executionKernel ?? bootstrapKernelForCadence(cadence)).instances[
+        taskId
+      ];
+      if (!task && kernelInst?.scope !== "governance") return "Task not found.";
+      if (task?.owner === "system" && task.status === "done") return null;
 
       const kernel =
         get().executionKernel ??
@@ -6752,8 +6838,14 @@ export const useApp = create<AppState>((set, get) => {
               get().growthMemory ?? profile?.growth_memory,
             )
           : null;
+<<<<<<< HEAD
       const next = completeWeekReview(cadence, effectiveSummary, pivot);
       syncOpsCadenceState(next);
+=======
+      const next = completeWeekReview(cadence, summary, pivot);
+      const kernel = get().executionKernel ?? bootstrapKernelForCadence(cadence);
+      syncExecutionKernelState(completeWeekReviewGovernance(kernel, next, summary), next);
+>>>>>>> 81e7827 (fix(Part 10): Harden execution kernel — lifecycle wiring, RunEvents, CI gates)
       set({ week1FocusMode: false });
       get().advanceCampaignPhase({ type: "log_kpi" });
 
@@ -6910,7 +7002,14 @@ export const useApp = create<AppState>((set, get) => {
       return null;
     },
 
-    openWeekReviewModal: () => set({ pendingWeekReviewOpen: true }),
+    openWeekReviewModal: () => {
+      const cadence = get().opsCadence;
+      if (cadence) {
+        const govId = weekReviewGovernanceId(cadence.id);
+        void get().dispatchExecutionTask(govId, "week_review");
+      }
+      set({ pendingWeekReviewOpen: true });
+    },
     dismissWeekReviewModal: () => set({ pendingWeekReviewOpen: false }),
 
     dismissPivotSuggestion: () => {
@@ -7583,6 +7682,16 @@ export const useApp = create<AppState>((set, get) => {
       const { workspace: next, error } = completeRubricDayCore(workspace, rubricId, input, thesis);
       if (error) return error;
       syncDelegateState(next);
+      const cadence = get().opsCadence;
+      if (cadence) {
+        const linkedOpsId = findLinkedOpsTaskForRubric(cadence, rubricId);
+        if (linkedOpsId) {
+          tryCompleteLinkedOpsFromHumanProof(linkedOpsId, {
+            note: input.proof_note,
+            urls: input.proof_url?.trim() ? [input.proof_url.trim()] : undefined,
+          });
+        }
+      }
       recomputeGrowthPlane();
       return null;
     },
@@ -9267,6 +9376,10 @@ export const useApp = create<AppState>((set, get) => {
         const opsTaskId = opts?.opsTaskId;
         if (cadence && opsTaskId && !planTaskId) {
           syncOpsCadenceState(markOpsTaskInProgress(cadence, opsTaskId, runId));
+          const kernel = get().executionKernel;
+          if (kernel) {
+            syncExecutionKernelState(kernelSetRunId(kernel, opsTaskId, runId), cadence);
+          }
           const laneA = get().laneAWorkspace;
           if (laneA) {
             syncLaneAState(markLaneAItemInProgress(laneA, opsTaskId, runId));
@@ -9275,9 +9388,9 @@ export const useApp = create<AppState>((set, get) => {
           const nowOps = getNowTask(cadence);
           if (nowOps?.owner === "system") {
             syncOpsCadenceState(markOpsTaskInProgress(cadence, nowOps.id, runId));
-            const laneA = get().laneAWorkspace;
-            if (laneA) {
-              syncLaneAState(markLaneAItemInProgress(laneA, nowOps.id, runId));
+            const kernel = get().executionKernel;
+            if (kernel) {
+              syncExecutionKernelState(kernelSetRunId(kernel, nowOps.id, runId), cadence);
             }
           }
         }
@@ -9431,6 +9544,7 @@ export const useApp = create<AppState>((set, get) => {
           set({ firstShipLedger: ledger });
         }
 
+<<<<<<< HEAD
         const qualityFindings = runShipQualityLint({
           after: afterMeta,
           diffText: aggregatePatchDiffText(run.events),
@@ -9470,6 +9584,35 @@ export const useApp = create<AppState>((set, get) => {
           commitSha,
           filesApplied: result.applied.length,
         });
+=======
+        const remainingFiles = allFiles.filter((f) => !result.applied.includes(f));
+        const cadence = get().opsCadence;
+        const kernel = get().executionKernel;
+        const systemTask = cadence?.tasks.find(
+          (t) => t.status === "in_progress" && t.owner === "system",
+        );
+        if (remainingFiles.length > 0 && kernel && systemTask) {
+          syncExecutionKernelState(
+            kernelTransitionForApply({
+              kernel,
+              taskId: systemTask.id,
+              browserEvidenceRequired: false,
+              partial: {
+                applied_files: result.applied,
+                remaining_gate: `${remainingFiles.length} file(s) pending apply`,
+              },
+            }),
+            cadence,
+          );
+        } else {
+          autoCompleteOpsOnApply({
+            runId: run.runId,
+            commitSha,
+            filesApplied: result.applied.length,
+          });
+        }
+
+>>>>>>> 81e7827 (fix(Part 10): Harden execution kernel — lifecycle wiring, RunEvents, CI gates)
         get().recordSessionOutcome({
           kind: "run",
           label: summaryWithCommit,

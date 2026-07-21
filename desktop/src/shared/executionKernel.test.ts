@@ -12,6 +12,7 @@ import {
   cancelExecutionTask,
   projectKernelToOpsCadence,
   opsStatusFromKernel,
+  weekReviewGovernanceId,
 } from "./executionKernel";
 import { createOpsCadenceFromThesis } from "./cmoOpsCadence";
 
@@ -38,7 +39,8 @@ describe("executionKernel", () => {
     });
     const cadence = createOpsCadenceFromThesis(thesis);
     const kernel = bootstrapExecutionKernel({ cadence, projectId: "p1" });
-    assert.equal(Object.keys(kernel.instances).length, cadence.tasks.length);
+    assert.equal(Object.keys(kernel.instances).length, cadence.tasks.length + 1);
+    assert.ok(kernel.instances[weekReviewGovernanceId(cadence.id)]);
   });
 
   it("dispatch is idempotent while running", () => {

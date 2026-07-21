@@ -112,6 +112,50 @@ export interface ExecutionKernelState {
 
 export const EXECUTION_KERNEL_EVENT_RING = 200;
 
+/** Stable governance instance id for week review close. */
+export function weekReviewGovernanceId(cadenceId: string): string {
+  return `${cadenceId}.governance.week_review`;
+}
+
+export function findActiveOpsTaskId(
+  kernel: ExecutionKernelState | null | undefined,
+): string | null {
+  if (!kernel) return null;
+  for (const inst of Object.values(kernel.instances)) {
+    if (
+      inst.scope === "ops" &&
+      (inst.status === "running" ||
+        inst.status === "awaiting_approval" ||
+        inst.status === "verifying" ||
+        inst.status === "paused")
+    ) {
+      return inst.id;
+    }
+  }
+  return null;
+}
+
+export function findVerifyingOpsTaskId(
+  kernel: ExecutionKernelState | null | undefined,
+): string | null {
+  if (!kernel) return null;
+  for (const inst of Object.values(kernel.instances)) {
+    if (inst.scope === "ops" && inst.status === "verifying") return inst.id;
+  }
+  return null;
+}
+
+export function findOpsTaskIdForHumanRef(
+  cadence: CmoOpsCadence,
+  ref: { source: string; item_id: string },
+): string | undefined {
+  return cadence.tasks.find(
+    (t) =>
+      t.human_execution_ref?.source === ref.source &&
+      t.human_execution_ref?.item_id === ref.item_id,
+  )?.id;
+}
+
 export function defaultOwnership(): ExecutionOwnership {
   return {
     contract: "ops_cadence",
@@ -287,6 +331,8 @@ export function bootstrapExecutionKernel(input: {
     }
   }
 
+  recomputed = ensureGovernanceInstances(recomputed, cadence, projectId, provenance);
+
   return {
     id: existing?.id ?? `ek-${cadence.id}`,
     project_id: projectId,
@@ -294,6 +340,37 @@ export function bootstrapExecutionKernel(input: {
     instances: recomputed,
     events: existing?.events ?? [],
     updated_at: nowIso(),
+  };
+}
+
+function ensureGovernanceInstances(
+  instances: Record<string, ExecutionInstance>,
+  cadence: CmoOpsCadence,
+  projectId: string,
+  provenance: ExecutionProvenance,
+): Record<string, ExecutionInstance> {
+  const govId = weekReviewGovernanceId(cadence.id);
+  if (instances[govId]) return instances;
+  let status: ExecutionTaskStatus = "proposed";
+  if (cadence.week_review.status === "completed") status = "completed";
+  else if (cadence.week_review.status === "due") status = "ready";
+  return {
+    ...instances,
+    [govId]: {
+      id: govId,
+      scope: "governance",
+      execution_mode: "week_review",
+      status,
+      attempt: 1,
+      idempotency_key: buildIdempotencyKey(projectId, govId, 1),
+      depends_on: cadence.tasks.map((t) => t.id),
+      provenance,
+      ownership: defaultOwnership(),
+      completed_at:
+        cadence.week_review.status === "completed"
+          ? cadence.week_review.completed_at
+          : undefined,
+    },
   };
 }
 
@@ -320,7 +397,7 @@ export function dispatchExecutionTask(
   if (!inst) {
     throw new Error(`Execution instance not found: ${taskId}`);
   }
-  if (inst.status === "running" && inst.provenance.source === provenance.source) {
+  if (inst.status === "running") {
     return { kernel, instance: inst, noop: true };
   }
   if (inst.status !== "ready" && inst.status !== "failed") {
