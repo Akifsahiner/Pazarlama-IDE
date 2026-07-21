@@ -31,7 +31,8 @@ export function resolveRevealPrimaryCta(input: RevealCtaInput): RevealPrimaryCta
   const sealed = isStrategicDecisionSealed(marketingProfile);
   const thesisReady = channelThesis && channelThesis.verdict !== "not_ready";
 
-  if (!firstShipAt && heroPath) return "ship_first_win";
+  // Faz 1 — Week 0 ship available for all theses (content_draft paths need no hero).
+  if (!firstShipAt && (heroPath || thesisReady)) return "ship_first_win";
 
   if (firstShipAt && thesisReady && !sealed) return "complete_cmo_strategy";
 

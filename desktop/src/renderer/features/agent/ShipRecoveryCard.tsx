@@ -11,6 +11,11 @@ export function ShipRecoveryCard({ recovery }: { recovery: ShipRecoveryAction })
     <Card className="border-warn/30 bg-warn-soft/10 p-4" data-testid="ship-recovery-card">
       <p className="text-body-sm font-semibold text-text">{recovery.title}</p>
       <p className="mt-1 text-mini text-text-2">{recovery.detail}</p>
+      {recovery.playbookHint && (
+        <p className="mt-2 rounded-[var(--radius-md)] border border-line/60 bg-surface-2/50 px-2.5 py-1.5 text-[11px] text-text-2">
+          <span className="font-medium text-text">CMO playbook:</span> {recovery.playbookHint}
+        </p>
+      )}
       {recovery.retryGoal && (
         <Button
           className="mt-3"
@@ -20,7 +25,7 @@ export function ShipRecoveryCard({ recovery }: { recovery: ShipRecoveryAction })
           data-testid="ship-recovery-retry"
           onClick={() => retryQuickStartShip(recovery.retryGoal)}
         >
-          Retry with narrower goal
+          Retry with enriched replan
         </Button>
       )}
     </Card>

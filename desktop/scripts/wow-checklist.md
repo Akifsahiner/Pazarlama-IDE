@@ -111,6 +111,52 @@ Run after Plan Studio / GTM brain / design-system changes.
 - [ ] **Home / Workspace parity** — same model, operator gates, and backstage order
 - [ ] **Honest why** — linked task or operator rationale; deterministic fallback, no LLM invention
 
+## Execution Record Center (Part 0)
+- [ ] **Record always center** — Workspace opens to `execution-record-stage`, not empty canvas
+- [ ] **Bottleneck sentence** — single line `Darboğaz X → sıradaki hareket Y` above the card
+- [ ] **Seven fields** — Amaç, Deney, Durum, Yapılan, Sonuç, Öğrenilen, Sonraki on the hero card
+- [ ] **Honest empty KPI** — "Henüz ölçülmedi" / "Ölçüm bekleniyor"; no fabricated rows
+- [ ] **Primary CTA on card** — Record footer dispatches command-surface action; no duplicate GrowthCommandSurface strip
+- [ ] **Detail panel** — Diff / Browser / Kanıt tabs embed run/browser/proof views
+- [ ] **Chat command role** — Agent panel subtitle + composer steer copy; lifecycle rail not in chat
+- [ ] **Turn receipt chip** — "Record güncellendi · Yapılan → diff" links to detail tab
+- [ ] **History timeline** — closed ops tasks in experiment language (not Runs archive wording)
+- [ ] **Backstage overlay** — war room opens on demand from Record footer; default collapsed
+- [ ] **Golden path** — reveal → run → apply updates Yapılan + diff tab; next task on Record
+
+## Thesis Quality Engine (Part 7 / P18)
+- [ ] **11-dimension report** — product class through evidence confidence on `thesis_quality_report`
+- [ ] **Joint mechanism×thesis** — primary pair from ranked evidence, not SEO/landing default
+- [ ] **Neden şimdi?** — StrategicDecisionCard shows product-specific bullets with evidence
+- [ ] **Neden diğerleri değil?** — collapsible rejected-thesis table with reasons
+- [ ] **Success + kill/pivot** — KPI strip on recommended option
+- [ ] **Eval corpus** — `eval:thesis-quality` ≥100 scenarios, wrong channel ≤3%
+- [ ] **Cluely → viral not SEO** — corpus + unit tests pass
+- [ ] **B2B empty pipeline → outbound** — sales persona scenarios pass
+- [ ] **Backstage dimensions** — GrowthMechanismPanel shows 11-row confidence strip
+
+## Task Contract Engine (Part 8 / P19)
+- [ ] **14-field contract** — deliverable, effort, inputs, execution_mode, metric, if_failed on every ops task
+- [ ] **CmoOpsBoard contract strip** — deliverable, effort badge, copy blocks with Copy button
+- [ ] **Human copy-paste ready** — `human_execution_asset.copy_blocks` frozen at bind; no backstage-only scripts
+- [ ] **Measurable week review** — checklist table; non-measurable tasks excluded from pivot math
+- [ ] **Proof modal** — required_proof chips + deliverable + measure date
+- [ ] **100% execution bind** — `cmoExecutionSurfaceCoverage.test.ts` 8-thesis matrix pass
+- [ ] **Eval corpus** — `eval:task-contract` incomplete rate ≤1%
+- [ ] **Server schema parity** — ops_cadence bind fields survive PATCH/GET
+- [ ] **Plan demoted** — Home primary = Week 1 ops; 30-day plan = outline reference
+
+## Execution Kernel (Part 10)
+- [ ] **Unified lifecycle** — proposed → ready → running → awaiting_approval → applied → verifying → completed → measuring
+- [ ] **Kernel dispatch** — `dispatchExecutionTask` routes all 13 execution_mode values + week_review
+- [ ] **Dependency graph** — `depends_on` unlocks tasks (not just priority_index sequential)
+- [ ] **Retry idempotency** — retry same taskId → no duplicate tasks or human_execution_asset
+- [ ] **Pause/resume/cancel** — kernel transitions persisted in `execution_kernel` profile field
+- [ ] **Reload persistence** — lifecycle + attempt + run_id survive profile/LS hydrate
+- [ ] **Execution Record** — lifecycle derived from kernel instances when present
+- [ ] **Eval corpus** — `eval:execution-kernel` 8-thesis matrix pass, 0 incomplete
+- [ ] **Handler coverage** — `executionHandlerCoverage.test.ts` 14 modes registered
+
 ## CMO Founder-Fit + Strategic Options (P13)
 - [ ] **Exactly 7 questions** — one FounderFitWizard question per step, no long-form intake
 - [ ] **Founder-fit eligibility** — camera, risk, time, budget, and scale constraints change recommendation

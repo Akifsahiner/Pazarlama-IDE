@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, Coins, FileCode2, GitCommit } from "lucide-react";
+import { CheckCircle2, Clock, Coins, FileCode2, GitCommit, LayoutList } from "lucide-react";
 import type { TurnReceipt } from "@shared/turnReceipt";
 import { actionButtonLabel, executableActionToIntent } from "@shared/executableAction";
 import { useApp } from "@renderer/state/store";
@@ -11,11 +11,17 @@ export function TurnReceiptCard({
   variant?: "default" | "shipped";
 }) {
   const executeIntent = useApp((s) => s.executeIntent);
+  const setExecutionRecordDetailTab = useApp((s) => s.setExecutionRecordDetailTab);
   const d = receipt.deliverables;
   const tone =
     variant === "shipped" || receipt.shipped
       ? "border-ok/40 bg-ok/10"
       : "border-accent/30 bg-accent-soft/15";
+
+  const hasRecordUpdate =
+    (d.filesProposed?.length ?? 0) > 0 ||
+    (d.filesApplied?.length ?? 0) > 0 ||
+    Boolean(d.commitSha);
 
   return (
     <div
@@ -36,6 +42,17 @@ export function TurnReceiptCard({
         )}
       </div>
       <p className="text-body-sm font-medium text-text">{receipt.summaryLine}</p>
+
+      {hasRecordUpdate && (
+        <button
+          type="button"
+          className="mt-2 inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent-soft/30 px-2 py-0.5 text-[10px] font-medium text-accent hover:bg-accent-soft/50"
+          onClick={() => setExecutionRecordDetailTab("diff")}
+        >
+          <LayoutList size={10} />
+          Record güncellendi · Yapılan → diff
+        </button>
+      )}
 
       <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-text-3">
         {d.filesProposed?.map((f) => (

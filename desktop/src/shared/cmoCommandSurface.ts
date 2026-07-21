@@ -88,6 +88,7 @@ export interface CommandSurfaceGovernanceInput {
   growthMemory?: GrowthMemoryState | null;
   laneDWorkspace?: LaneDWorkspace | null;
   monetizationWorkspace?: MonetizationWorkspace | null;
+  executionKernel?: import("./executionKernel").ExecutionKernelState | null;
   now?: number;
 }
 
@@ -482,6 +483,22 @@ export function resolveCommandSurfaceAction(
     };
   }
 
+  const kernelReady = getNextExecutionAction({
+    executionKernel: input.executionKernel,
+    cadence: input.cadence,
+  });
+  if (kernelReady && input.cadence) {
+    const kTask = input.cadence.tasks.find((t) => t.id === kernelReady.taskId);
+    if (kTask?.owner === "system") {
+      return {
+        kind: "run_system",
+        taskId: kernelReady.taskId,
+        label: "Start in IDE",
+        testId: "command-surface-start-move",
+      };
+    }
+  }
+
   const today = input.plane.today;
   if (today?.ops_task_id) {
     if (today.owner === "system") {
@@ -597,4 +614,21 @@ export function resolveCommandSurfaceAction(
   }
 
   return { kind: "none", reason: "No actionable move" };
+}
+
+/** Part 10 — kernel-aware next ready task for command surface priority. */
+export function getNextExecutionAction(input: {
+  executionKernel?: import("./executionKernel").ExecutionKernelState | null;
+  cadence?: import("./cmoOpsCadence").CmoOpsCadence | null;
+}): { taskId: string; execution_mode: string } | null {
+  const { executionKernel, cadence } = input;
+  if (!executionKernel || !cadence) return null;
+  const ordered = [...cadence.tasks].sort((a, b) => a.priority_index - b.priority_index);
+  for (const task of ordered) {
+    const inst = executionKernel.instances[task.id];
+    if (inst?.status === "ready") {
+      return { taskId: task.id, execution_mode: inst.execution_mode };
+    }
+  }
+  return null;
 }
