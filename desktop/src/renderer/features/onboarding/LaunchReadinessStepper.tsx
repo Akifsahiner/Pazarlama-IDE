@@ -1,0 +1,201 @@
+import { useMemo, useState, useEffect } from "react";
+import { ArrowRight, CheckCircle2, X } from "lucide-react";
+import { useApp } from "@renderer/state/store";
+import { assessMeasurementBaseline } from "@shared/measurementBaseline";
+import { resolveLaunchReadinessSteps } from "@shared/launchReadiness";
+import { Button } from "@renderer/components/ui/Button";
+import { Badge } from "@renderer/components/ui/Badge";
+import { ProductActivationCard } from "./ProductActivationCard";
+import { RevenueSetupCard } from "./RevenueSetupCard";
+import { MeasurementBaselineCard } from "./MeasurementBaselineCard";
+
+export function LaunchReadinessStepper() {
+  const open = useApp((s) => s.launchReadinessOpen);
+  const closeLaunchReadiness = useApp((s) => s.closeLaunchReadiness);
+  const beginCmoWeek1 = useApp((s) => s.beginCmoWeek1);
+  const marketingProfile = useApp((s) => s.marketingProfile);
+  const project = useApp((s) => s.project);
+  const productActivation = useApp(
+    (s) => s.productActivation ?? s.marketingProfile?.product_activation,
+  );
+  const revenueProfile = useApp((s) => s.revenueProfile ?? s.marketingProfile?.revenue_profile);
+  const applyDefaults = useApp((s) => s.applyProductActivationDefaults);
+  const channelThesis = useApp((s) => s.channelThesis ?? s.marketingProfile?.channel_thesis);
+  const budgetPlan = useApp((s) => s.budgetPlan ?? s.marketingProfile?.budget_plan);
+  const saveBudgetPlan = useApp((s) => s.saveBudgetPlan);
+
+  useEffect(() => {
+    if (!open || budgetPlan || !channelThesis || !marketingProfile?.founder_fit) return;
+    saveBudgetPlan();
+  }, [open, budgetPlan, channelThesis, marketingProfile?.founder_fit, saveBudgetPlan]);
+
+  const baseline = assessMeasurementBaseline(marketingProfile, project);
+  const readiness = useMemo(
+    () =>
+      resolveLaunchReadinessSteps({
+        founderFit: marketingProfile?.founder_fit,
+        productActivation,
+        revenueProfile,
+        measurementReady: baseline.ready,
+        measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
+      }),
+    [baseline.ready, marketingProfile, productActivation, revenueProfile],
+  );
+
+  const actionableSteps = readiness.steps.filter((s) => s.id !== "start");
+  const [activeStepId, setActiveStepId] = useState<string>(() => {
+    const firstIncomplete = actionableSteps.find((s) => !s.complete);
+    return firstIncomplete?.id ?? actionableSteps[0]?.id ?? "activation";
+  });
+
+  if (!open) return null;
+
+  const activeStep = readiness.steps.find((s) => s.id === activeStepId) ?? readiness.steps[0];
+  const progressPct =
+    readiness.total > 0 ? Math.round((readiness.completed / readiness.total) * 100) : 0;
+
+  const goNext = () => {
+    const idx = actionableSteps.findIndex((s) => s.id === activeStepId);
+    const next = actionableSteps[idx + 1];
+    if (next) setActiveStepId(next.id);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[55] flex items-center justify-center bg-bg/80 p-4 backdrop-blur-[2px]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="launch-readiness-title"
+      data-testid="launch-readiness-stepper"
+    >
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[var(--radius-lg)] border border-line bg-surface shadow-[var(--shadow-3)]">
+        <div className="shrink-0 border-b border-line px-5 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 id="launch-readiness-title" className="text-body font-semibold text-text">
+                Launch readiness
+              </h2>
+              <p className="mt-0.5 text-mini text-text-2">
+                Launch readiness {readiness.completed}/{readiness.total} · ~2 min per step
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => closeLaunchReadiness()}
+              className="rounded-[var(--radius-sm)] p-1 text-text-3 hover:bg-surface-2 hover:text-text"
+              aria-label="Close launch setup"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2">
+            <div
+              className="h-full rounded-full bg-accent transition-all"
+              style={{ width: `${progressPct}%` }}
+              data-testid="launch-readiness-progress"
+            />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {readiness.steps.map((step) => (
+              <button
+                key={step.id}
+                type="button"
+                onClick={() => step.id !== "start" && setActiveStepId(step.id)}
+                disabled={step.id === "start"}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                  step.id === activeStepId
+                    ? "border-accent bg-accent-soft/40 text-accent"
+                    : step.complete
+                      ? "border-ok/30 bg-ok/8 text-ok"
+                      : "border-line text-text-3"
+                }`}
+              >
+                {step.complete && <CheckCircle2 size={10} />}
+                {step.label}
+                {step.optional && !step.complete && (
+                  <span className="text-text-3">(optional)</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          {activeStep?.id === "activation" && (
+            <div className="space-y-3">
+              <p className="text-mini text-text-2">
+                Define your activation event — or use scan defaults to move fast.
+              </p>
+              {!productActivation ? (
+                <>
+                  <ProductActivationCard embedded onComplete={goNext} />
+                  <Button variant="ghost" size="sm" onClick={() => applyDefaults() && goNext()}>
+                    Use scan defaults (~30 sec)
+                  </Button>
+                </>
+              ) : (
+                <div className="rounded-[var(--radius-md)] border border-ok/30 bg-ok/8 px-3 py-2 text-mini text-ok">
+                  Activation saved: {productActivation.activation_event_label}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeStep?.id === "revenue" && (
+            <div className="space-y-3">
+              <p className="text-mini text-text-2">
+                Your 30-day win is paying customers — revenue intake is required.
+              </p>
+              {!revenueProfile ? (
+                <RevenueSetupCard embedded onComplete={goNext} />
+              ) : (
+                <div className="rounded-[var(--radius-md)] border border-ok/30 bg-ok/8 px-3 py-2 text-mini text-ok">
+                  Revenue profile saved
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeStep?.id === "measurement" && (
+            <div className="space-y-3">
+              <p className="text-mini text-text-2">
+                Connect GA4 or log a manual baseline so Week 1 proof is honest.
+              </p>
+              {baseline.ready || marketingProfile?.measurement_ack?.acknowledged_at ? (
+                <div className="rounded-[var(--radius-md)] border border-ok/30 bg-ok/8 px-3 py-2 text-mini text-ok">
+                  Measurement baseline ready
+                </div>
+              ) : (
+                <MeasurementBaselineCard compact embedded onStepComplete={goNext} />
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-4">
+          <Badge tone={readiness.canStartWeek1 ? "ok" : "warn"}>
+            {readiness.canStartWeek1 ? "Ready to start Week 1" : "Complete required steps"}
+          </Badge>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => closeLaunchReadiness()}>
+              Later
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              iconRight={<ArrowRight size={14} />}
+              disabled={!readiness.canStartWeek1}
+              data-testid="launch-readiness-start-week1"
+              onClick={() => {
+                closeLaunchReadiness();
+                beginCmoWeek1();
+              }}
+            >
+              Start Week 1
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

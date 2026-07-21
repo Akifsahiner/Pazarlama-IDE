@@ -4,6 +4,7 @@ import { getMechanismRecord } from "@shared/cmoGrowthMechanismKnowledge";
 import type { GrowthMechanismId } from "@shared/cmoGrowthMechanismKnowledge";
 import type { GrowthNarrative, StrategicDecision } from "@shared/types";
 import { BOTTLENECK_LABELS } from "@shared/bottleneck";
+import { resolveWeek1PreviewTasks } from "@shared/week1Preview";
 import { Card } from "@renderer/components/ui/Card";
 import { Button } from "@renderer/components/ui/Button";
 import { Badge } from "@renderer/components/ui/Badge";
@@ -46,6 +47,7 @@ export function CmoIntakeCard({
   onStartWeek1,
   onFullPlan,
   compact = false,
+  sealed = false,
   narrative,
   strategicDecision,
   week1BlockedReason,
@@ -54,6 +56,7 @@ export function CmoIntakeCard({
   onStartWeek1?: () => void;
   onFullPlan?: () => void;
   compact?: boolean;
+  sealed?: boolean;
   narrative?: GrowthNarrative;
   strategicDecision?: StrategicDecision;
   week1BlockedReason?: string;
@@ -65,6 +68,7 @@ export function CmoIntakeCard({
   const sealedOption = strategicDecision?.selected_id
     ? strategicDecision.options.find((option) => option.id === strategicDecision.selected_id)
     : undefined;
+  const week1Preview = resolveWeek1PreviewTasks(thesis, sealed);
 
   return (
     <Card
@@ -152,11 +156,18 @@ export function CmoIntakeCard({
       )}
 
       <div className="mt-4">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-text-3">
-          Week 1 — do these in order
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-text-3">
+            Week 1 — do these in order
+          </span>
+          {week1Preview.generic && (
+            <Badge tone="warn" data-testid="week1-generic-badge">
+              Generic template — seal to personalize
+            </Badge>
+          )}
         </div>
         <ol className="space-y-2">
-          {thesis.week1_priorities.map((p, i) => (
+          {week1Preview.tasks.map((p, i) => (
             <Week1Row key={p.id ?? `${p.what}-${i}`} p={p} index={i} />
           ))}
         </ol>

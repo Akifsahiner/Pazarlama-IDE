@@ -16,6 +16,8 @@ import { SettingsPage } from "@renderer/features/settings/SettingsPage";
 import { HelpPage } from "@renderer/components/HelpPage";
 import { CmoWeekReviewModal } from "@renderer/features/workspace/CmoPivotCard";
 import { MeasurementBaselineCard } from "@renderer/features/onboarding/MeasurementBaselineCard";
+import { Week1BriefingModal } from "@renderer/features/onboarding/Week1BriefingModal";
+import { LaunchReadinessStepper } from "@renderer/features/onboarding/LaunchReadinessStepper";
 import { MonetizationTaskProofModal } from "@renderer/features/workspace/MonetizationTaskProofModal";
 import { MonetizationIssueExportModal } from "@renderer/features/workspace/MonetizationIssueExportModal";
 
@@ -49,6 +51,8 @@ export function Shell() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CmoWeekReviewModal />
+      <Week1BriefingModal />
+      <LaunchReadinessStepper />
       {measurementIntakeOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/70 p-4 backdrop-blur-[2px]">
           <div className="w-full max-w-lg">

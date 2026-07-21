@@ -31,10 +31,8 @@ import { Badge } from "@renderer/components/ui/Badge";
 import { sceneReveal } from "@renderer/design/animations";
 import { CmoIntakeCard } from "@renderer/features/onboarding/CmoIntakeCard";
 import { CmoStrategicIntakeFlow } from "@renderer/features/onboarding/CmoStrategicIntakeFlow";
-import { BudgetSetupCard } from "@renderer/features/onboarding/BudgetSetupCard";
-import { ProductActivationCard } from "@renderer/features/onboarding/ProductActivationCard";
-import { RevenueSetupCard } from "@renderer/features/onboarding/RevenueSetupCard";
 import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
+import { isWeek1Ready } from "@shared/launchReadiness";
 import {
   isQuickStartTrack,
   quickStartThesisLine,
@@ -117,9 +115,14 @@ export function ProjectReveal() {
     (s) => s.productActivation ?? s.marketingProfile?.product_activation,
   );
   const revenueProfile = useApp((s) => s.revenueProfile ?? s.marketingProfile?.revenue_profile);
-  const week1Ready = Boolean(productActivation && revenueProfile);
+  const week1Ready = isWeek1Ready({
+    founderFit: marketingProfile?.founder_fit,
+    revenueProfile,
+    productActivation,
+  });
   const strategicIntakeOpen = useApp((s) => s.strategicIntakeOpen);
   const openStrategicIntake = useApp((s) => s.openStrategicIntake);
+  const openLaunchReadiness = useApp((s) => s.openLaunchReadiness);
   const runQuickAction = useApp((s) => s.runQuickAction);
   const setActiveCanvas = useApp((s) => s.setActiveCanvas);
   const runtime = useApp((s) => s.runtime);
@@ -428,6 +431,7 @@ export function ProjectReveal() {
                 <CmoIntakeCard
                   thesis={channelThesis}
                   compact
+                  sealed={isStrategicDecisionSealed(marketingProfile)}
                   narrative={marketingProfile?.growth_narrative}
                   strategicDecision={marketingProfile?.strategic_decision}
                 />
@@ -492,11 +496,9 @@ export function ProjectReveal() {
                   </p>
                 )}
                 {isStrategicDecisionSealed(marketingProfile) && !week1Ready && !quickStart && (
-                  <>
-                    <BudgetSetupCard />
-                    <ProductActivationCard />
-                    <RevenueSetupCard />
-                  </>
+                  <Button variant="secondary" onClick={() => openLaunchReadiness()}>
+                    Complete launch setup
+                  </Button>
                 )}
                 <div className="flex flex-wrap items-center gap-3">
                   {primaryCta === "ship_first_win" && shipTarget?.heroPath ? (
@@ -518,9 +520,14 @@ export function ProjectReveal() {
                       Start Week 1 — {channelThesis!.title}
                     </Button>
                   ) : primaryCta === "complete_pre_week1" ? (
-                    <p className="text-mini text-warn">
-                      Complete product activation and revenue intake above, then start Week 1.
-                    </p>
+                    <Button
+                      variant="primary"
+                      iconRight={<ArrowRight size={16} />}
+                      onClick={() => openLaunchReadiness()}
+                      data-testid="reveal-complete-pre-week1"
+                    >
+                      Complete launch setup
+                    </Button>
                   ) : primaryCta === "complete_cmo_strategy" ? (
                     <Button
                       variant="primary"

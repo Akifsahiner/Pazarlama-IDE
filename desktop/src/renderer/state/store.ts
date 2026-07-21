@@ -733,6 +733,10 @@ interface AppState {
   week1FocusMode?: boolean;
   /** P13 — first-session founder-fit / strategic decision surface. */
   strategicIntakeOpen: boolean;
+  /** Faz 2 — Week 1 briefing modal after strategic seal. */
+  week1BriefingOpen: boolean;
+  /** Faz 2 — unified launch readiness stepper (activation / revenue / measurement). */
+  launchReadinessOpen: boolean;
   /** Faz 5 — measurement baseline gate before Week 1. */
   measurementIntakeOpen: boolean;
   /** P8 — Distribution operator (hook grid + volume). */
@@ -826,9 +830,14 @@ interface AppState {
   sealStrategicDecision: (id?: StrategicOptionId) => boolean;
   openStrategicIntake: () => void;
   closeStrategicIntake: () => void;
+  openWeek1Briefing: () => void;
+  closeWeek1Briefing: () => void;
+  openLaunchReadiness: () => void;
+  closeLaunchReadiness: () => void;
   openMeasurementIntake: () => void;
   closeMeasurementIntake: () => void;
   acknowledgeMeasurementBaseline: (note?: string) => void;
+  applyProductActivationDefaults: () => boolean;
   /** P14 — confirm numeric budget or deterministic band estimate. */
   saveBudgetPlan: (monthlyAmountUsd?: number, cpaCeilingUsd?: number) => boolean;
   /** P15 — activation intake and product-loop proof actions. */
@@ -3794,6 +3803,8 @@ export const useApp = create<AppState>((set, get) => {
     pendingHandoffConfirm: undefined,
     warRoomExpanded: false,
     strategicIntakeOpen: false,
+    week1BriefingOpen: false,
+    launchReadinessOpen: false,
     measurementIntakeOpen: false,
 
     feedItems: [],
@@ -5283,6 +5294,7 @@ export const useApp = create<AppState>((set, get) => {
         marketingProfile: next,
         channelThesis: thesis,
         strategicIntakeOpen: false,
+        week1BriefingOpen: true,
       });
       const projectId = get().activeProjectId ?? project.id;
       persistStrategicIntakeLocal(projectId, next);
@@ -5306,6 +5318,10 @@ export const useApp = create<AppState>((set, get) => {
 
     openStrategicIntake: () => set({ strategicIntakeOpen: true }),
     closeStrategicIntake: () => set({ strategicIntakeOpen: false }),
+    openWeek1Briefing: () => set({ week1BriefingOpen: true }),
+    closeWeek1Briefing: () => set({ week1BriefingOpen: false }),
+    openLaunchReadiness: () => set({ launchReadinessOpen: true }),
+    closeLaunchReadiness: () => set({ launchReadinessOpen: false }),
     openMeasurementIntake: () => set({ measurementIntakeOpen: true }),
     closeMeasurementIntake: () => set({ measurementIntakeOpen: false }),
     acknowledgeMeasurementBaseline: (note) => {
@@ -5375,6 +5391,19 @@ export const useApp = create<AppState>((set, get) => {
         has_activation_rate: built.activation_rate_pct != null,
         has_ttfv: built.ttfv_hours != null,
       });
+      return true;
+    },
+
+    applyProductActivationDefaults: () => {
+      const { project, marketingProfile } = get();
+      if (!project) return false;
+      const built = buildProductActivationProfile({
+        founderFit: marketingProfile?.founder_fit,
+        manualKpis: marketingProfile?.manual_kpis,
+        scan: project,
+      });
+      syncProductActivationState(built);
+      track("product_activation_defaults", { confidence: built.confidence });
       return true;
     },
 
@@ -5704,15 +5733,14 @@ export const useApp = create<AppState>((set, get) => {
           text: `Budget plan uses the ${marketingProfile.founder_fit.monthly_budget_band} band estimate until you confirm a numeric ceiling.`,
         });
       }
-      if (!get().productActivation && !marketingProfile?.product_activation) {
-        appendEvent({
-          role: "system",
-          kind: "status",
-          text: "Define the activation event and first-value gate before Week 1 starts.",
-        });
-        return;
-      }
-      if (!get().revenueProfile && !marketingProfile?.revenue_profile) {
+      const payingCustomersWin =
+        marketingProfile?.founder_fit?.thirty_day_win === "paying_customers";
+      if (
+        payingCustomersWin &&
+        !get().revenueProfile &&
+        !marketingProfile?.revenue_profile
+      ) {
+        set({ launchReadinessOpen: true });
         appendEvent({
           role: "system",
           kind: "status",
@@ -5995,6 +6023,8 @@ export const useApp = create<AppState>((set, get) => {
         firstHourActive: true,
         week1FocusMode: true,
         warRoomExpanded: false,
+        launchReadinessOpen: false,
+        week1BriefingOpen: false,
       });
       get().setActiveCanvas("run");
 

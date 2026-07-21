@@ -9,9 +9,13 @@ import { useApp } from "@renderer/state/store";
 export function MeasurementBaselineCard({
   onDismiss,
   compact,
+  embedded,
+  onStepComplete,
 }: {
   onDismiss?: () => void;
   compact?: boolean;
+  embedded?: boolean;
+  onStepComplete?: () => void;
 }) {
   const profile = useApp((s) => s.marketingProfile);
   const project = useApp((s) => s.project);
@@ -46,6 +50,7 @@ export function MeasurementBaselineCard({
     });
     setError(null);
     onDismiss?.();
+    onStepComplete?.();
   };
 
   return (
@@ -119,11 +124,12 @@ export function MeasurementBaselineCard({
           onClick={() => {
             acknowledgeMeasurementBaseline("I'll log KPIs manually this week");
             onDismiss?.();
+            onStepComplete?.();
           }}
         >
           I&apos;ll log manually this week
         </Button>
-        {onDismiss && (
+        {onDismiss && !embedded && (
           <Button variant="ghost" size="sm" onClick={onDismiss}>
             Dismiss
           </Button>

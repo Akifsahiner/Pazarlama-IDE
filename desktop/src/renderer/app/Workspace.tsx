@@ -32,11 +32,10 @@ import { InfluencerDealModal } from "@renderer/features/workspace/InfluencerDeal
 import { isDistributionOperatorGate } from "@shared/cmoDistributionOperator";
 import { isInfluencerOperatorGate } from "@shared/cmoInfluencerOperator";
 import { isDelegateOperatorGate, resolveDelegateOperator } from "@shared/cmoDelegateOperator";
+import { assessMeasurementBaseline } from "@shared/measurementBaseline";
 import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
-import { assessMeasurementBaseline, isMeasurementGateHard } from "@shared/measurementBaseline";
-import { BudgetSetupCard } from "@renderer/features/onboarding/BudgetSetupCard";
-import { ProductActivationCard } from "@renderer/features/onboarding/ProductActivationCard";
-import { RevenueSetupCard } from "@renderer/features/onboarding/RevenueSetupCard";
+import { isWeek1Ready } from "@shared/launchReadiness";
+import { Button } from "@renderer/components/ui/Button";
 
 export function Workspace() {
   const sidebarCollapsed = useApp((s) => s.sidebarCollapsed);
@@ -101,12 +100,15 @@ export function Workspace() {
       thesis: channelThesis,
       opsCadence,
     });
-  const week1Ready = Boolean(
-    productActivation &&
-      revenueProfile &&
-      (!isMeasurementGateHard() ||
-        assessMeasurementBaseline(marketingProfile, project).ready),
-  );
+  const openLaunchReadiness = useApp((s) => s.openLaunchReadiness);
+
+  const week1Ready = isWeek1Ready({
+    founderFit: marketingProfile?.founder_fit,
+    revenueProfile,
+    productActivation,
+    measurementReady: assessMeasurementBaseline(marketingProfile, project).ready,
+    measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
+  });
   const needsPreWeek1Setup =
     Boolean(channelThesis) &&
     !opsCadence &&
@@ -148,13 +150,15 @@ export function Workspace() {
         <WorkspaceHandoffBanner />
         <NextActionBar scope="workspace" />
         {needsPreWeek1Setup && (
-          <div className="shrink-0 space-y-3 border-b border-line px-4 py-3">
-            <p className="text-mini text-warn">
-              Complete product activation and revenue intake before Week 1 starts.
-            </p>
-            <BudgetSetupCard />
-            <ProductActivationCard />
-            <RevenueSetupCard />
+          <div className="shrink-0 border-b border-line px-4 py-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-mini text-text-2">
+                Complete launch setup before Week 1 — activation, measurement, revenue if applicable.
+              </p>
+              <Button variant="primary" size="sm" onClick={() => openLaunchReadiness()}>
+                Open launch setup
+              </Button>
+            </div>
           </div>
         )}
         {commandSurfaceActive && growthControlPlane && opsCadence && (

@@ -219,13 +219,13 @@ export function GrowthCommandSurface({
     >
       <div className="grid gap-2 sm:grid-cols-2">
         <CommandField
-          label="Darboğaz"
+          label="Bottleneck"
           value={model.bottleneck}
           labelId={`${id}-bottleneck`}
           emphasis
         />
-        <CommandField label="Bugün" value={model.today} labelId={`${id}-today`} emphasis />
-        <CommandField label="Neden" value={model.why} labelId={`${id}-why`} />
+        <CommandField label="Today" value={model.today} labelId={`${id}-today`} emphasis />
+        <CommandField label="Why" value={model.why} labelId={`${id}-why`} />
         <CommandField label="Done when" value={model.doneWhen} labelId={`${id}-done`} />
       </div>
 
