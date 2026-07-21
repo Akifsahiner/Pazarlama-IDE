@@ -5,6 +5,8 @@ import type {
   StrategicOption,
   StrategicOptionId,
 } from "@shared/types";
+import type { ThesisQualityReport } from "@shared/cmoThesisQualityEngine";
+import { useState } from "react";
 import { Badge } from "@renderer/components/ui/Badge";
 import { Button } from "@renderer/components/ui/Button";
 import { Card } from "@renderer/components/ui/Card";
@@ -98,16 +100,20 @@ function OptionCard({
 export function StrategicDecisionCard({
   narrative,
   decision,
+  qualityReport,
   onSelect,
   onConfirm,
 }: {
   narrative: GrowthNarrative;
   decision: StrategicDecision;
+  qualityReport?: ThesisQualityReport | null;
   onSelect: (id: StrategicOptionId) => void;
   onConfirm: (id: StrategicOptionId) => void;
 }) {
+  const [whyNotOpen, setWhyNotOpen] = useState(false);
   const selectedId = decision.selected_id ?? decision.recommended_id;
   const selected = decision.options.find((option) => option.id === selectedId)!;
+  const whyNow = qualityReport?.why_now ?? decision.recommendation_rationale;
 
   return (
     <Card
@@ -143,16 +149,49 @@ export function StrategicDecisionCard({
       <div className="mt-5 rounded-[var(--radius-lg)] border border-accent/25 bg-surface p-4">
         <div className="flex items-center gap-2">
           <CheckCircle2 size={15} className="text-accent" />
-          <h3 className="text-body font-semibold text-text">
-            Why Option {decision.recommended_id}
-          </h3>
+          <h3 className="text-body font-semibold text-text">Neden şimdi?</h3>
         </div>
-        <ul className="mt-2 space-y-1 text-body-sm text-text-2">
-          {decision.recommendation_rationale.map((reason) => (
-            <li key={reason}>· {reason}</li>
+        <ul className="mt-2 space-y-1.5 text-body-sm text-text-2">
+          {whyNow.map((reason) => (
+            <li key={reason} className="flex gap-2">
+              <span className="text-accent">·</span>
+              <span>{reason}</span>
+            </li>
           ))}
         </ul>
+        {qualityReport && (
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-line/60 pt-3">
+            <Badge tone="ok">{qualityReport.success_signal.slice(0, 48)}…</Badge>
+            <Badge tone="neutral">Kill/pivot: {qualityReport.kill_pivot_condition.slice(0, 52)}…</Badge>
+          </div>
+        )}
       </div>
+
+      {qualityReport && qualityReport.why_not_others.length > 0 && (
+        <div className="mt-4 rounded-[var(--radius-lg)] border border-line bg-surface-2/40 p-4">
+          <button
+            type="button"
+            onClick={() => setWhyNotOpen((v) => !v)}
+            className="flex w-full items-center justify-between text-left text-body-sm font-medium text-text"
+          >
+            Neden diğerleri değil?
+            <span className="text-micro text-text-3">{whyNotOpen ? "Gizle" : "Göster"}</span>
+          </button>
+          {whyNotOpen && (
+            <ul className="mt-3 space-y-2">
+              {qualityReport.why_not_others.slice(0, 5).map((row) => (
+                <li
+                  key={row.thesis_id}
+                  className="rounded-[var(--radius-sm)] border border-line/60 bg-surface px-3 py-2 text-mini text-text-2"
+                >
+                  <span className="font-medium text-text">{row.thesis_id.replace(/_/g, " ")}</span>
+                  <p className="mt-0.5">{row.reason}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-[var(--radius-md)] border border-line p-3">

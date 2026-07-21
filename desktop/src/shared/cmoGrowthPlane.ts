@@ -98,6 +98,10 @@ export interface GrowthControlPlane {
   thesis_id: ChannelThesisId;
   thesis_aligned: boolean;
   alignment_note?: string;
+  /** P18 — thesis quality success KPI from quality report (display-only). */
+  thesis_success_signal?: string;
+  /** P18 — kill/pivot gate from quality report (display-only). */
+  thesis_kill_pivot?: string;
   /** P11 — latest evidence-backed message learning. */
   memory_note?: string;
   /** P14 — factual spend note; never an ROI score. */
@@ -762,6 +766,7 @@ const THESIS_BINDING_TENSION: Partial<
 export function checkThesisAlignment(
   thesis: ChannelThesis | null | undefined,
   binding: BindingBottleneck,
+  qualityReport?: import("./cmoThesisQualityEngine").ThesisQualityReport | null,
 ): { aligned: boolean; note?: string } {
   if (!thesis) return { aligned: true };
 
@@ -773,7 +778,15 @@ export function checkThesisAlignment(
     };
   }
 
-  if (thesis.primary_bottleneck === binding.gtm) return { aligned: true };
+  if (thesis.primary_bottleneck === binding.gtm) {
+    if (qualityReport && qualityReport.primary_thesis_id === thesis.id) {
+      return {
+        aligned: true,
+        note: `Success: ${qualityReport.success_signal} · Pivot if: ${qualityReport.kill_pivot_condition}`,
+      };
+    }
+    return { aligned: true };
+  }
 
   const compatible: Partial<Record<GtmBottleneck, GtmBottleneck[]>> = {
     awareness: ["distribution", "measurement"],
@@ -783,11 +796,27 @@ export function checkThesisAlignment(
     revenue: ["conversion"],
   };
   const ok = compatible[binding.gtm]?.includes(thesis.primary_bottleneck);
-  if (ok) return { aligned: true };
+  if (ok) {
+    if (qualityReport && qualityReport.primary_thesis_id === thesis.id) {
+      return {
+        aligned: true,
+        note: `Success: ${qualityReport.success_signal} · Pivot if: ${qualityReport.kill_pivot_condition}`,
+      };
+    }
+    return { aligned: true };
+  }
+
+  const baseNote = `Thesis bottleneck (${thesis.primary_bottleneck}) differs from binding (${binding.gtm}). Week 1 still executes current thesis — review after KPI proof.`;
+  if (qualityReport && qualityReport.primary_thesis_id === thesis.id) {
+    return {
+      aligned: false,
+      note: `${baseNote} Pivot if: ${qualityReport.kill_pivot_condition}`,
+    };
+  }
 
   return {
     aligned: false,
-    note: `Thesis bottleneck (${thesis.primary_bottleneck}) differs from binding (${binding.gtm}). Week 1 still executes current thesis — review after KPI proof.`,
+    note: baseNote,
   };
 }
 
@@ -931,7 +960,8 @@ export function buildGrowthControlPlane(input: GrowthPlaneInput): GrowthControlP
   const binding = resolveBindingBottleneck(equation, signals, input);
   const thesis = input.thesis;
   const thesis_id = thesis?.id ?? "landing_conversion";
-  const alignment = checkThesisAlignment(thesis, binding);
+  const qualityReport = input.profile?.thesis_quality_report;
+  const alignment = checkThesisAlignment(thesis, binding, qualityReport);
   const productBinding = input.profile?.lane_d_workspace?.marketing_paused
     ? input.profile.lane_d_workspace.product_binding
     : undefined;
@@ -971,6 +1001,14 @@ export function buildGrowthControlPlane(input: GrowthPlaneInput): GrowthControlP
     thesis_id,
     thesis_aligned: alignment.aligned,
     alignment_note: alignment.note,
+    thesis_success_signal:
+      qualityReport && qualityReport.primary_thesis_id === thesis_id
+        ? qualityReport.success_signal
+        : undefined,
+    thesis_kill_pivot:
+      qualityReport && qualityReport.primary_thesis_id === thesis_id
+        ? qualityReport.kill_pivot_condition
+        : undefined,
     memory_note: memoryWinner
       ? `Last winner: ${memoryWinner.label} · ${input.growthMemory?.experiments.length ?? 0} experiments remembered`
       : undefined,
@@ -1017,6 +1055,9 @@ export function hydrateGrowthControlPlaneFromJson(raw: unknown): GrowthControlPl
     thesis_id: (o.thesis_id as ChannelThesisId) ?? "landing_conversion",
     thesis_aligned: o.thesis_aligned !== false,
     alignment_note: typeof o.alignment_note === "string" ? o.alignment_note : undefined,
+    thesis_success_signal:
+      typeof o.thesis_success_signal === "string" ? o.thesis_success_signal : undefined,
+    thesis_kill_pivot: typeof o.thesis_kill_pivot === "string" ? o.thesis_kill_pivot : undefined,
     memory_note: typeof o.memory_note === "string" ? o.memory_note : undefined,
     primary_lever: String(o.primary_lever ?? ""),
     today:

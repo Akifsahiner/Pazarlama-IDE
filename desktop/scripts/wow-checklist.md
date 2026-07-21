@@ -124,6 +124,17 @@ Run after Plan Studio / GTM brain / design-system changes.
 - [ ] **Backstage overlay** — war room opens on demand from Record footer; default collapsed
 - [ ] **Golden path** — reveal → run → apply updates Yapılan + diff tab; next task on Record
 
+## Thesis Quality Engine (Part 7 / P18)
+- [ ] **11-dimension report** — product class through evidence confidence on `thesis_quality_report`
+- [ ] **Joint mechanism×thesis** — primary pair from ranked evidence, not SEO/landing default
+- [ ] **Neden şimdi?** — StrategicDecisionCard shows product-specific bullets with evidence
+- [ ] **Neden diğerleri değil?** — collapsible rejected-thesis table with reasons
+- [ ] **Success + kill/pivot** — KPI strip on recommended option
+- [ ] **Eval corpus** — `eval:thesis-quality` ≥100 scenarios, wrong channel ≤3%
+- [ ] **Cluely → viral not SEO** — corpus + unit tests pass
+- [ ] **B2B empty pipeline → outbound** — sales persona scenarios pass
+- [ ] **Backstage dimensions** — GrowthMechanismPanel shows 11-row confidence strip
+
 ## CMO Founder-Fit + Strategic Options (P13)
 - [ ] **Exactly 7 questions** — one FounderFitWizard question per step, no long-form intake
 - [ ] **Founder-fit eligibility** — camera, risk, time, budget, and scale constraints change recommendation

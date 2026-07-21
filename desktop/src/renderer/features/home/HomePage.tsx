@@ -441,6 +441,7 @@ export function HomePage() {
               thesis={channelThesis!}
               narrative={marketingProfile?.growth_narrative}
               strategicDecision={marketingProfile?.strategic_decision}
+              thesisQualityReport={marketingProfile?.thesis_quality_report}
               onStartWeek1={week1Ready ? () => beginCmoWeek1() : undefined}
               onFullPlan={() => beginFirstHour()}
               week1BlockedReason={
