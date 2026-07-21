@@ -48,7 +48,7 @@ export const COMPOSER_HINTS: Record<ComposerMode, string> = {
 
 export const COMPOSER_PLACEHOLDERS: Record<ComposerMode, { connected: string; offline: string }> = {
   auto: {
-    connected: "Ask anything, or say “fix hero copy”, “day 3”, “next task”…",
+    connected: "Bu execution'ı yönlendir — diff, kanıt ve sonuç Record'da…",
     offline: "Enable AI to chat and run tasks…",
   },
   ask: {

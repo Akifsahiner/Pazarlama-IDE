@@ -666,7 +666,7 @@ function resolveNextActionCore(input: NextActionInput): ResolvedNextAction | nul
         reason: pv.promise,
         tone: "accent",
         primaryLabel: "Open workspace",
-        secondaryLabel: PLAN_AI_LABEL,
+        secondaryLabel: "Preview 30-day outline",
         dispatch: { type: "open_workspace" },
         secondaryDispatch: { type: "generate_plan" },
       };

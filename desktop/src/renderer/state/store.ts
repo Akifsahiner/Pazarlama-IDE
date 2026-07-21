@@ -157,6 +157,7 @@ import {
   type WorkSurface,
 } from "@shared/workSurfaces";
 import type { FeedFilter, FeedItem } from "@shared/feed";
+import type { ExecutionRecordDetailTab } from "@shared/executionRecord";
 import { railSectionToWorkSurface, type RailSection } from "@shared/projectRail";
 import { mockConnectorFeedItems, runEventToFeedItem } from "@renderer/features/workspace/feed/feedModel";
 import {
@@ -208,6 +209,7 @@ import {
 } from "@renderer/state/quickStartWedgeHelpers";
 import { buildCmoIntake, buildFinalChannelThesis } from "@shared/cmoIntake";
 import type { ChannelThesis } from "@shared/cmoIntake";
+import { evaluateThesisQuality } from "@shared/cmoThesisQualityEngine";
 import { validateFounderFit } from "@shared/cmoFounderFit";
 import { synthesizeGrowthNarrative } from "@shared/cmoGrowthNarrative";
 import {
@@ -289,6 +291,7 @@ import {
   resolveHumanProofAction,
   type HumanExecutionRef,
 } from "@shared/cmoHumanExecutionBind";
+import { assertCadenceContractComplete } from "@shared/marketingTaskContract";
 import {
   buildProductActivationProfile,
   canResumeMarketing,
@@ -772,6 +775,13 @@ interface AppState {
   feedFilter: FeedFilter;
   feedCollapsed: boolean;
   activeFeedItemId?: string;
+  /** Part 0 — Execution Record detail panel tab. */
+  executionRecordDetailTab: ExecutionRecordDetailTab;
+  executionHistoryExpanded: boolean;
+  /** Part 0 — bottom command dock collapsed to composer strip (Cursor-like). */
+  commandDockCollapsed: boolean;
+  /** Part 0 — user pinned full hero during an active run. */
+  executionHeroExpanded: boolean;
   selectedRailSection: RailSection | null;
   selectedRailEntityId?: string;
 
@@ -1114,6 +1124,12 @@ interface AppState {
   openFeedItem: (id: string) => void;
   setFeedFilter: (filter: FeedFilter) => void;
   toggleFeedCollapsed: (collapsed?: boolean) => void;
+  setExecutionRecordDetailTab: (tab: ExecutionRecordDetailTab) => void;
+  toggleExecutionHistoryExpanded: () => void;
+  setCommandDockCollapsed: (collapsed: boolean) => void;
+  toggleCommandDockCollapsed: () => void;
+  toggleExecutionHeroExpanded: () => void;
+  setExecutionHeroExpanded: (expanded: boolean) => void;
   selectRailSection: (section: RailSection, entityId?: string) => void;
   seedMockConnectorFeed: () => void;
   seedConnectorFeedPlaceholder: () => void;
@@ -1689,6 +1705,12 @@ export const useApp = create<AppState>((set, get) => {
     if (result.laneB) syncLaneBState(result.laneB);
     if (result.distributionOperator) syncDistributionOperatorState(result.distributionOperator);
     if (result.influencerOperator) syncInfluencerOperatorState(result.influencerOperator);
+    if (import.meta.env.DEV) {
+      const contractErrors = assertCadenceContractComplete(result.cadence);
+      if (contractErrors.length > 0) {
+        console.warn("[cmo] ops contract incomplete:", contractErrors.join("; "));
+      }
+    }
     return result.cadence;
   };
 
@@ -3799,8 +3821,12 @@ export const useApp = create<AppState>((set, get) => {
     feedItems: [],
     feedFilter: "all",
     feedCollapsed:
-      typeof localStorage !== "undefined" && localStorage.getItem(FEED_COLLAPSED_KEY) === "1",
+      typeof localStorage === "undefined" || localStorage.getItem(FEED_COLLAPSED_KEY) !== "0",
     activeFeedItemId: undefined,
+    executionRecordDetailTab: "record",
+    executionHistoryExpanded: false,
+    commandDockCollapsed: false,
+    executionHeroExpanded: false,
     selectedRailSection: null,
     selectedRailEntityId: undefined,
 
@@ -5071,15 +5097,33 @@ export const useApp = create<AppState>((set, get) => {
         project,
         persona: settings.persona,
         profile,
+        founder_fit: profile.founder_fit,
         draft: true,
       });
+      const thesisQualityReport = profile.founder_fit
+        ? evaluateThesisQuality({
+            project,
+            persona: settings.persona,
+            profile,
+            founder_fit: profile.founder_fit,
+            presence: profile.public_presence_policy,
+            activation: profile.product_activation,
+          })
+        : profile.thesis_quality_report;
       track("cmo_intake", { thesis_id: thesis.id, verdict: thesis.verdict });
       set({
         channelThesis: thesis,
-        marketingProfile: { ...profile, channel_thesis: thesis },
+        marketingProfile: {
+          ...profile,
+          channel_thesis: thesis,
+          ...(thesisQualityReport ? { thesis_quality_report: thesisQualityReport } : {}),
+        },
       });
       if (!isStrategicDecisionSealed(profile) && !profile.ops_cadence) {
-        void get().updateMarketingProfile({ channel_thesis: thesis });
+        void get().updateMarketingProfile({
+          channel_thesis: thesis,
+          ...(thesisQualityReport ? { thesis_quality_report: thesisQualityReport } : {}),
+        });
       }
       recomputeGrowthPlane();
       return thesis;
@@ -5180,7 +5224,7 @@ export const useApp = create<AppState>((set, get) => {
           founderFit,
           presence,
         });
-      const decision = buildStrategicDecision({
+      const { decision, qualityReport } = buildStrategicDecision({
         project,
         profile: { ...marketingProfile, public_presence_policy: presence },
         founderFit,
@@ -5195,6 +5239,7 @@ export const useApp = create<AppState>((set, get) => {
         growth_mechanism_profile: growthMechanismProfile,
         growth_narrative: narrative,
         strategic_decision: decision,
+        thesis_quality_report: qualityReport,
       };
       set({ marketingProfile: next, strategicIntakeOpen: true });
       const projectId = get().activeProjectId ?? project.id;
@@ -5205,6 +5250,7 @@ export const useApp = create<AppState>((set, get) => {
         growth_mechanism_profile: growthMechanismProfile,
         growth_narrative: narrative,
         strategic_decision: decision,
+        thesis_quality_report: qualityReport,
       });
       track("strategic_intake_generated", {
         baseline_thesis_id: baseline.id,
@@ -9706,12 +9752,15 @@ export const useApp = create<AppState>((set, get) => {
         get().navigate("workspace");
         if (item.source === "browser" || get().browser.pendingApprovalId === item.approvalId) {
           get().setActiveCanvas("browser");
+          get().setExecutionRecordDetailTab("browser");
           return;
         }
         if (item.source === "run" || get().run?.pendingApproval?.approvalId === item.approvalId) {
           get().setActiveCanvas("run");
+          get().setExecutionRecordDetailTab("diff");
           return;
         }
+        get().setExecutionRecordDetailTab("proof");
       }
 
       const target = item.canvasTarget;
@@ -9770,6 +9819,21 @@ export const useApp = create<AppState>((set, get) => {
         return { feedCollapsed: next };
       }),
 
+    setExecutionRecordDetailTab: (tab) => set({ executionRecordDetailTab: tab }),
+
+    toggleExecutionHistoryExpanded: () =>
+      set((s) => ({ executionHistoryExpanded: !s.executionHistoryExpanded })),
+
+    setCommandDockCollapsed: (collapsed) => set({ commandDockCollapsed: collapsed }),
+
+    toggleCommandDockCollapsed: () =>
+      set((s) => ({ commandDockCollapsed: !s.commandDockCollapsed })),
+
+    toggleExecutionHeroExpanded: () =>
+      set((s) => ({ executionHeroExpanded: !s.executionHeroExpanded })),
+
+    setExecutionHeroExpanded: (expanded) => set({ executionHeroExpanded: expanded }),
+
     selectRailSection: (section, entityId) => {
       let surface = railSectionToWorkSurface(section);
       const { plan, marketingProfile } = get();
@@ -9823,7 +9887,17 @@ export const useApp = create<AppState>((set, get) => {
     togglePalette: (open) => set((s) => ({ paletteOpen: open ?? !s.paletteOpen })),
     toggleSettings: (open) => set((s) => ({ settingsOpen: open ?? !s.settingsOpen })),
 
-    toggleFocusMode: (on) => set((s) => ({ focusMode: on ?? !s.focusMode })),
+    toggleFocusMode: (on) =>
+      set((s) => {
+        const next = on ?? !s.focusMode;
+        return next
+          ? {
+              focusMode: true,
+              commandDockCollapsed: true,
+              executionHeroExpanded: false,
+            }
+          : { focusMode: false };
+      }),
     toggleSidebar: (collapsed) =>
       set((s) => {
         const next = collapsed ?? !s.sidebarCollapsed;

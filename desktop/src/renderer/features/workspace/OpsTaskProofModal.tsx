@@ -111,6 +111,28 @@ export function OpsTaskProofModal() {
               Mark done — KPI proof required
             </h2>
             <p className="mt-1 text-mini text-text-2">{task.what}</p>
+            {task.deliverable && (
+              <p className="mt-1 text-[10px] font-medium text-text">
+                Deliverable: <span className="font-normal text-text-2">{task.deliverable}</span>
+              </p>
+            )}
+            {task.measure_date && (
+              <p className="mt-1 text-[10px] text-text-3">
+                Log KPI by: {new Date(task.measure_date).toLocaleDateString()}
+              </p>
+            )}
+            {task.required_proof && task.required_proof.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {task.required_proof.map((kind) => (
+                  <span
+                    key={kind}
+                    className="rounded-full border border-line px-2 py-0.5 text-[9px] text-text-3"
+                  >
+                    Proof: {kind.replace(/_/g, " ")}
+                  </span>
+                ))}
+              </div>
+            )}
             <p className="mt-2 rounded-[var(--radius-md)] border border-line bg-surface-2 px-2.5 py-2 text-[10px] text-text-3">
               <span className="font-semibold uppercase tracking-wide">Done when</span> ·{" "}
               {task.done_when}

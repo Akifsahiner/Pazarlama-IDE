@@ -20,6 +20,8 @@
     "eval:skill-quality": "npm run build && node evals/skill-quality.mjs",
     "eval:p0-plan-smoke": "npm run build && node evals/p0-plan-smoke.mjs",
     "eval:devflow-plan-smoke": "npm run build && node evals/devflow-plan-smoke.mjs",
+    "eval:thesis-quality": "node --import tsx evals/thesis-quality-matrix.mjs",
+    "eval:task-contract": "node --import tsx evals/task-contract-matrix.mjs",
     "browser:install": "playwright install chromium"
   },
   "dependencies": {
