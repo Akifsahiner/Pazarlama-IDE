@@ -23,7 +23,8 @@ export type MarketingExecutionMode =
   | "delegate_brief"
   | "export_csv"
   | "measurement_sync"
-  | "product_request";
+  | "product_request"
+  | "week_review";
 
 export interface MarketingTaskMetric {
   id: string;
@@ -99,6 +100,7 @@ const EXECUTION_MODE_EFFORT: Record<MarketingExecutionMode, number> = {
   export_csv: 20,
   measurement_sync: 15,
   product_request: 90,
+  week_review: 30,
 };
 
 export function taskContractEffortMinutes(mode: MarketingExecutionMode): number {

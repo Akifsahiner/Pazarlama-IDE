@@ -146,6 +146,15 @@ const MARKERS = [
   ["src/renderer/features/workspace/executionRecord/BottleneckSentence.tsx", "bottleneck-sentence", "Part 0 bottleneck UI"],
   ["src/renderer/features/workspace/executionRecord/ExecutionRecordCard.tsx", "execution-record-card", "Part 0 accountability card"],
   ["src/renderer/app/Workspace.tsx", "ExecutionRecordStage", "Part 0 workspace shell"],
+  // Part 10 — Execution Kernel
+  ["src/shared/executionKernel.ts", "dispatchExecutionTask", "Part 10 kernel dispatch"],
+  ["src/shared/executionKernel.ts", "bootstrapExecutionKernel", "Part 10 kernel bootstrap"],
+  ["src/shared/executionHandlers.ts", "EXECUTION_HANDLER_REGISTRY", "Part 10 handler registry"],
+  ["src/shared/executionGraph.ts", "isTaskGraphReady", "Part 10 dependency graph"],
+  ["src/shared/executionKernelBridge.ts", "planKernelDispatch", "Part 10 store bridge"],
+  ["src/shared/cmoCommandSurface.ts", "getNextExecutionAction", "Part 10 command surface kernel"],
+  ["src/renderer/state/store.ts", "dispatchExecutionTask", "Part 10 store dispatch wrapper"],
+  ["../CMO_EXECUTION_KERNEL_SPEC.md", "Unified lifecycle", "Part 10 spec"],
   ["src/shared/types.ts", "growth_memory", "P11 growth memory profile schema"],
   // CMO P13 — Founder-Fit + Strategic Options
   ["src/shared/cmoFounderFit.ts", "FOUNDER_FIT_QUESTIONS", "P13 seven-question founder fit"],

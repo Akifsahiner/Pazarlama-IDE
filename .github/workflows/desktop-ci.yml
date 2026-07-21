@@ -65,6 +65,7 @@ jobs:
       - run: npm run eval:devflow-plan-smoke
       - run: npm run eval:thesis-quality
       - run: npm run eval:task-contract
+      - run: npm run eval:execution-kernel
 
   gtm-eval:
     runs-on: ubuntu-latest

@@ -146,6 +146,17 @@ Run after Plan Studio / GTM brain / design-system changes.
 - [ ] **Server schema parity** — ops_cadence bind fields survive PATCH/GET
 - [ ] **Plan demoted** — Home primary = Week 1 ops; 30-day plan = outline reference
 
+## Execution Kernel (Part 10)
+- [ ] **Unified lifecycle** — proposed → ready → running → awaiting_approval → applied → verifying → completed → measuring
+- [ ] **Kernel dispatch** — `dispatchExecutionTask` routes all 13 execution_mode values + week_review
+- [ ] **Dependency graph** — `depends_on` unlocks tasks (not just priority_index sequential)
+- [ ] **Retry idempotency** — retry same taskId → no duplicate tasks or human_execution_asset
+- [ ] **Pause/resume/cancel** — kernel transitions persisted in `execution_kernel` profile field
+- [ ] **Reload persistence** — lifecycle + attempt + run_id survive profile/LS hydrate
+- [ ] **Execution Record** — lifecycle derived from kernel instances when present
+- [ ] **Eval corpus** — `eval:execution-kernel` 8-thesis matrix pass, 0 incomplete
+- [ ] **Handler coverage** — `executionHandlerCoverage.test.ts` 14 modes registered
+
 ## CMO Founder-Fit + Strategic Options (P13)
 - [ ] **Exactly 7 questions** — one FounderFitWizard question per step, no long-form intake
 - [ ] **Founder-fit eligibility** — camera, risk, time, budget, and scale constraints change recommendation

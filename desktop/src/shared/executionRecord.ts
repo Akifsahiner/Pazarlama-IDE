@@ -1,7 +1,8 @@
 /**
  * Part 0 — Execution Record view-model: composes P0–P17 slices into one accountability card.
  */
-import type { CampaignSession } from "./types";
+import type { ExecutionKernelState } from "./executionKernel";
+import { executionTaskStatusToRecordLifecycle } from "./executionKernel";
 import type { ChannelThesis } from "./cmoIntake";
 import type { CmoContinuousState, CmoCycleRecord } from "./cmoContinuous";
 import type { CmoOpsCadence, CmoOpsProof, CmoOpsTask } from "./cmoOpsCadence";
@@ -16,7 +17,7 @@ import {
   type CommandSurfaceGovernance,
 } from "./cmoCommandSurface";
 import { computeRunSummary, runChangedFiles } from "./runs";
-import type { RunEvent, RunStatus } from "./types";
+import type { RunEvent, RunStatus, CampaignSession } from "./types";
 
 export type ExecutionRecordLifecycle =
   | "intake"
@@ -94,6 +95,7 @@ export interface BuildActiveExecutionRecordInput extends Omit<BuildCommandSurfac
   firstShipAt?: number | null;
   wedgePhase?: string | null;
   narrativeOneLiner?: string;
+  executionKernel?: ExecutionKernelState | null;
 }
 
 export interface BuildExecutionHistoryInput extends BuildActiveExecutionRecordInput {
@@ -177,10 +179,28 @@ function resolveLifecycle(input: {
   activeRun?: ActiveRunSnapshot | null;
   hasPendingApply?: boolean;
   channelThesis?: ChannelThesis | null;
+  executionKernel?: ExecutionKernelState | null;
 }): ExecutionRecordLifecycle {
-  const { cadence, task, activeRun, hasPendingApply, channelThesis } = input;
+  const { cadence, task, activeRun, hasPendingApply, channelThesis, executionKernel } = input;
 
   if (!cadence) return channelThesis ? "intake" : "intake";
+
+  if (executionKernel && task) {
+    const inst = executionKernel.instances[task.id];
+    if (inst) {
+      const mapped = executionTaskStatusToRecordLifecycle(inst.status);
+      if (mapped !== "queued" || inst.status === "proposed" || inst.status === "ready") {
+        if (inst.status === "ready" || inst.status === "proposed") return "queued";
+        if (
+          (task.owner === "user" || task.owner === "delegate") &&
+          (inst.status === "running" || inst.status === "applied")
+        ) {
+          return "awaiting_proof";
+        }
+        return mapped;
+      }
+    }
+  }
 
   if (activeRun?.pendingApproval) return "awaiting_approval";
   if (isRunActive(activeRun)) return "running";
@@ -417,6 +437,7 @@ export function buildActiveExecutionRecord(
     activeRun: input.activeRun,
     hasPendingApply: input.hasPendingApply,
     channelThesis: input.channelThesis,
+    executionKernel: input.executionKernel,
   });
 
   const nextAction = commandInput
