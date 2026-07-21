@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import type { ExecutionRecordView } from "@shared/executionRecord";
 import { Button } from "@renderer/components/ui/Button";
-import { cardReveal } from "@renderer/design/animations";
+import { cardReveal, spring } from "@renderer/design/animations";
 import { ExecutionRecordProgress, ExecutionRecordStatusPill } from "./ExecutionRecordStatus";
 import { useCommandSurfaceDispatch } from "./useCommandSurfaceDispatch";
 import { CommandSurfaceGovernanceBanner } from "../CommandSurfaceGovernanceBanner";
@@ -42,10 +42,20 @@ function ResultChip({
   );
 }
 
-export function ExecutionRecordCard({ record }: { record: ExecutionRecordView }) {
+export function ExecutionRecordCard({
+  record,
+  compact = false,
+}: {
+  record: ExecutionRecordView;
+  compact?: boolean;
+}) {
   const dispatch = useCommandSurfaceDispatch();
   const toggleWarRoomExpanded = useApp((s) => s.toggleWarRoomExpanded);
   const warRoomExpanded = useApp((s) => s.warRoomExpanded);
+  const toggleExecutionHeroExpanded = useApp((s) => s.toggleExecutionHeroExpanded);
+  const run = useApp((s) => s.run);
+  const runActive =
+    run?.status === "running" || run?.status === "planning" || run?.status === "created";
   const primary = record.next.action.kind !== "none" ? record.next.action : null;
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -53,21 +63,79 @@ export function ExecutionRecordCard({ record }: { record: ExecutionRecordView })
   const bottleneck = parseBottleneckSentence(record.bottleneckSentence);
   const realResults = record.results.filter((r) => r.id !== "results-empty");
 
+  if (compact) {
+    return (
+      <motion.section
+        layout
+        transition={spring}
+        className="mx-auto w-full max-w-4xl shrink-0"
+        data-testid="execution-record-card"
+        data-compact="true"
+        aria-label="Execution Record"
+      >
+        <div className="rounded-[var(--radius-lg)] border border-line/70 bg-elevated/90 px-4 py-2.5 shadow-[var(--shadow-1)] backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <ExecutionRecordStatusPill lifecycle={record.lifecycle} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-body-sm font-semibold text-text">{headline}</p>
+              <p className="truncate text-micro text-text-3">{record.goal}</p>
+            </div>
+            <ExecutionRecordProgress lifecycle={record.lifecycle} />
+            {primary && (
+              <Button
+                variant="primary"
+                size="sm"
+                className="hidden shrink-0 sm:inline-flex"
+                data-testid={primary.testId}
+                onClick={() => dispatch(primary)}
+              >
+                <Play size={13} className="mr-1" />
+                {primary.label}
+              </Button>
+            )}
+            <button
+              type="button"
+              onClick={() => toggleExecutionHeroExpanded()}
+              className="inline-flex shrink-0 items-center gap-1 rounded-[var(--radius-sm)] px-2 py-1 text-micro text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
+              aria-label="Record detayını genişlet"
+            >
+              <ChevronDown size={14} />
+              <span className="hidden sm:inline">Detay</span>
+            </button>
+          </div>
+        </div>
+      </motion.section>
+    );
+  }
+
   return (
     <motion.section
       key={record.id}
+      layout
       variants={cardReveal}
       initial="hidden"
       animate="visible"
-      className="mx-auto w-full max-w-3xl"
+      transition={spring}
+      className="mx-auto w-full max-w-3xl shrink-0"
       data-testid="execution-record-card"
       aria-label="Execution Record"
     >
-      {/* Hero — one focal column, Claude-clear */}
       <div className="rounded-[var(--radius-xl)] border border-line/80 bg-elevated/95 px-6 py-6 shadow-[var(--shadow-2)] md:px-8 md:py-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <ExecutionRecordStatusPill lifecycle={record.lifecycle} />
-          <ExecutionRecordProgress lifecycle={record.lifecycle} />
+          <div className="flex items-center gap-2">
+            <ExecutionRecordProgress lifecycle={record.lifecycle} />
+            {runActive && (
+              <button
+                type="button"
+                onClick={() => toggleExecutionHeroExpanded()}
+                className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] px-2 py-1 text-micro text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
+              >
+                <ChevronUp size={14} />
+                Küçült
+              </button>
+            )}
+          </div>
         </div>
 
         <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-3">
@@ -108,7 +176,6 @@ export function ExecutionRecordCard({ record }: { record: ExecutionRecordView })
           </Button>
         )}
 
-        {/* Scannable metrics — horizontal, not buried in grid */}
         <div className="mt-6 flex flex-wrap gap-2">
           {realResults.length > 0 ? (
             realResults.map((chip) => (
@@ -124,7 +191,6 @@ export function ExecutionRecordCard({ record }: { record: ExecutionRecordView })
           )}
         </div>
 
-        {/* Progressive disclosure — detail lives here, not competing with hero */}
         <button
           type="button"
           onClick={() => setDetailsOpen((v) => !v)}

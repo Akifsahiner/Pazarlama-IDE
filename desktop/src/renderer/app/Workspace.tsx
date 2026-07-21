@@ -1,13 +1,9 @@
-import { PanelRightOpen } from "lucide-react";
 import { useMemo } from "react";
 import { useApp } from "@renderer/state/store";
 import { ResizablePanel } from "@renderer/components/ResizablePanel";
 import { ContextSidebar } from "@renderer/features/workspace/ContextSidebar";
 import { SessionHistory } from "@renderer/features/history/SessionHistory";
-import { AgentThread } from "@renderer/features/agent/AgentThread";
 import { ExecutionFeed } from "@renderer/features/workspace/ExecutionFeed";
-import { StageBreadcrumb } from "@renderer/features/workspace/stage/StageBreadcrumb";
-import { Composer } from "@renderer/features/agent/Composer";
 import { NextActionBar } from "@renderer/components/NextActionBar";
 import { WorkspaceHandoffBanner } from "@renderer/components/WorkspaceHandoffBanner";
 import { HandoffConfirmModal } from "@renderer/components/HandoffConfirmModal";
@@ -32,13 +28,12 @@ import { BudgetSetupCard } from "@renderer/features/onboarding/BudgetSetupCard";
 import { ProductActivationCard } from "@renderer/features/onboarding/ProductActivationCard";
 import { RevenueSetupCard } from "@renderer/features/onboarding/RevenueSetupCard";
 import { ExecutionRecordStage } from "@renderer/features/workspace/executionRecord/ExecutionRecordStage";
+import { WorkspaceCommandDock } from "@renderer/features/workspace/executionRecord/WorkspaceCommandDock";
 
 export function Workspace() {
   const sidebarCollapsed = useApp((s) => s.sidebarCollapsed);
   const historyOpen = useApp((s) => s.historyOpen);
   const toggleHistory = useApp((s) => s.toggleHistory);
-  const focusMode = useApp((s) => s.focusMode);
-  const toggleFocusMode = useApp((s) => s.toggleFocusMode);
   const feedCollapsed = useApp((s) => s.feedCollapsed);
   const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
   const laneBWorkspace = useApp((s) => s.laneBWorkspace ?? s.marketingProfile?.lane_b_workspace);
@@ -127,7 +122,7 @@ export function Workspace() {
         </div>
       )}
 
-      {!sidebarCollapsed && !focusMode && (
+      {!sidebarCollapsed && (
         <ResizablePanel
           side="left"
           storageKey="panel.project-rail"
@@ -174,43 +169,13 @@ export function Workspace() {
           </div>
         )}
 
-        <div className="relative flex min-h-0 flex-1">
+        {/* Center stack: Record + artifact (flex-1) · command dock (bottom) */}
+        <div className="flex min-h-0 flex-1 flex-col">
           <ExecutionRecordStage />
-          {focusMode && (
-            <button
-              onClick={() => toggleFocusMode(false)}
-              title="Exit focus mode"
-              className="app-no-drag absolute right-3 top-3 z-30 flex items-center gap-1.5 rounded-[var(--radius-md)] border border-line bg-surface/90 px-2.5 py-1 text-label text-text-2 backdrop-blur-sm transition-colors hover:bg-elevated hover:text-text"
-            >
-              <PanelRightOpen size={13} /> Show conversation
-            </button>
-          )}
-
-          {!focusMode && (
-            <ResizablePanel
-              side="right"
-              storageKey="panel.agent"
-              defaultWidth={380}
-              min={320}
-              max={560}
-            >
-              <AgentThread />
-            </ResizablePanel>
-          )}
+          <WorkspaceCommandDock />
         </div>
 
-        {focusMode && (
-          <div className="shrink-0 border-t border-line bg-surface">
-            <div className="px-4 pt-2">
-              <StageBreadcrumb />
-            </div>
-            <Composer />
-          </div>
-        )}
-
-        {!focusMode && !feedCollapsed && (
-          <ExecutionFeed mini />
-        )}
+        {!feedCollapsed && <ExecutionFeed mini />}
       </div>
     </div>
   );

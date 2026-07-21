@@ -776,6 +776,10 @@ interface AppState {
   /** Part 0 — Execution Record detail panel tab. */
   executionRecordDetailTab: ExecutionRecordDetailTab;
   executionHistoryExpanded: boolean;
+  /** Part 0 — bottom command dock collapsed to composer strip (Cursor-like). */
+  commandDockCollapsed: boolean;
+  /** Part 0 — user pinned full hero during an active run. */
+  executionHeroExpanded: boolean;
   selectedRailSection: RailSection | null;
   selectedRailEntityId?: string;
 
@@ -1120,6 +1124,10 @@ interface AppState {
   toggleFeedCollapsed: (collapsed?: boolean) => void;
   setExecutionRecordDetailTab: (tab: ExecutionRecordDetailTab) => void;
   toggleExecutionHistoryExpanded: () => void;
+  setCommandDockCollapsed: (collapsed: boolean) => void;
+  toggleCommandDockCollapsed: () => void;
+  toggleExecutionHeroExpanded: () => void;
+  setExecutionHeroExpanded: (expanded: boolean) => void;
   selectRailSection: (section: RailSection, entityId?: string) => void;
   seedMockConnectorFeed: () => void;
   seedConnectorFeedPlaceholder: () => void;
@@ -3809,6 +3817,8 @@ export const useApp = create<AppState>((set, get) => {
     activeFeedItemId: undefined,
     executionRecordDetailTab: "record",
     executionHistoryExpanded: false,
+    commandDockCollapsed: false,
+    executionHeroExpanded: false,
     selectedRailSection: null,
     selectedRailEntityId: undefined,
 
@@ -9786,6 +9796,16 @@ export const useApp = create<AppState>((set, get) => {
     toggleExecutionHistoryExpanded: () =>
       set((s) => ({ executionHistoryExpanded: !s.executionHistoryExpanded })),
 
+    setCommandDockCollapsed: (collapsed) => set({ commandDockCollapsed: collapsed }),
+
+    toggleCommandDockCollapsed: () =>
+      set((s) => ({ commandDockCollapsed: !s.commandDockCollapsed })),
+
+    toggleExecutionHeroExpanded: () =>
+      set((s) => ({ executionHeroExpanded: !s.executionHeroExpanded })),
+
+    setExecutionHeroExpanded: (expanded) => set({ executionHeroExpanded: expanded }),
+
     selectRailSection: (section, entityId) => {
       let surface = railSectionToWorkSurface(section);
       const { plan, marketingProfile } = get();
@@ -9839,7 +9859,17 @@ export const useApp = create<AppState>((set, get) => {
     togglePalette: (open) => set((s) => ({ paletteOpen: open ?? !s.paletteOpen })),
     toggleSettings: (open) => set((s) => ({ settingsOpen: open ?? !s.settingsOpen })),
 
-    toggleFocusMode: (on) => set((s) => ({ focusMode: on ?? !s.focusMode })),
+    toggleFocusMode: (on) =>
+      set((s) => {
+        const next = on ?? !s.focusMode;
+        return next
+          ? {
+              focusMode: true,
+              commandDockCollapsed: true,
+              executionHeroExpanded: false,
+            }
+          : { focusMode: false };
+      }),
     toggleSidebar: (collapsed) =>
       set((s) => {
         const next = collapsed ?? !s.sidebarCollapsed;

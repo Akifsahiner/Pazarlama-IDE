@@ -22,9 +22,12 @@ const TAB_OPTIONS: { value: ExecutionRecordDetailTab; label: string }[] = [
 export function ExecutionDetailPanel({
   record,
   defaultHint,
+  fill = false,
 }: {
   record: ExecutionRecordView;
   defaultHint: ExecutionRecordDetailTab;
+  /** When true, panel grows to fill remaining vertical space (run / focus mode). */
+  fill?: boolean;
 }) {
   const tab = useApp((s) => s.executionRecordDetailTab);
   const setTab = useApp((s) => s.setExecutionRecordDetailTab);
@@ -52,8 +55,8 @@ export function ExecutionDetailPanel({
   return (
     <div
       className={`mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-[var(--radius-xl)] border bg-surface/80 shadow-[var(--shadow-1)] ${
-        runActive ? "border-accent/35 ring-1 ring-accent/10" : "border-line"
-      }`}
+        fill ? "min-h-0 flex-1" : ""
+      } ${runActive ? "border-accent/35 ring-1 ring-accent/10" : "border-line"}`}
       data-testid="execution-detail-panel"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line/60 px-4 py-2.5">
@@ -76,8 +79,8 @@ export function ExecutionDetailPanel({
       </div>
 
       <div
-        className={`relative overflow-hidden ${
-          runActive ? "min-h-[min(520px,52vh)]" : "min-h-[min(360px,40vh)]"
+        className={`relative min-h-0 overflow-hidden ${
+          fill ? "flex flex-1 flex-col" : runActive ? "min-h-[min(520px,52vh)]" : "min-h-[min(360px,40vh)]"
         }`}
       >
         <ShipPipelineBar />
@@ -87,11 +90,11 @@ export function ExecutionDetailPanel({
           </WorkSurfaceShell>
         ) : activeTab === "diff" ? (
           hasRun ? (
-            <div className="h-full overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               <RunCanvas />
             </div>
           ) : (
-            <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-4 p-8 text-center">
+            <div className="flex min-h-[200px] flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
               <p className="max-w-sm text-body-sm text-text-2">
                 Diff burada — run başlayınca patch ve apply bu alanda görünür.
               </p>
@@ -108,11 +111,13 @@ export function ExecutionDetailPanel({
             </div>
           )
         ) : activeTab === "browser" ? (
-          <div className="h-full overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             <BrowserCanvas />
           </div>
         ) : (
-          <ProofDetailView />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <ProofDetailView />
+          </div>
         )}
       </div>
     </div>

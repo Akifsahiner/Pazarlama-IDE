@@ -15,9 +15,11 @@ export function ExecutionRecordStage() {
   const run = useApp((s) => s.run);
   const historyExpanded = useApp((s) => s.executionHistoryExpanded);
   const toggleHistory = useApp((s) => s.toggleExecutionHistoryExpanded);
+  const heroExpanded = useApp((s) => s.executionHeroExpanded);
 
   const runActive =
     run?.status === "running" || run?.status === "planning" || run?.status === "created";
+  const heroCompact = runActive && !heroExpanded;
 
   if (!project) {
     return (
@@ -31,28 +33,36 @@ export function ExecutionRecordStage() {
 
   return (
     <main
-      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-bg"
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-bg"
       data-testid="execution-record-stage"
+      data-run-active={runActive ? "true" : "false"}
     >
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5 px-4 py-6 md:px-6">
+      <div
+        className={`mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-4 md:px-6 ${
+          heroCompact ? "gap-3 py-3" : "gap-5 py-6"
+        }`}
+      >
         {preWeek1 ? (
           <ExecutionRecordEmpty record={record} />
         ) : (
           <>
-            {/* 1. Accountability hero — what & why & CTA */}
-            <ExecutionRecordCard record={record} />
+            <ExecutionRecordCard record={record} compact={heroCompact} />
 
-            {/* 2. Artifact workspace — Claude-style center when executing */}
-            <ExecutionDetailPanel record={record} defaultHint={record.detailHint} />
+            <ExecutionDetailPanel
+              record={record}
+              defaultHint={record.detailHint}
+              fill={runActive}
+            />
 
             {runActive && <LiveActivityStrip />}
 
-            {/* 3. History — collapsed by default, same language */}
-            <ExecutionHistoryTimeline
-              entries={history}
-              expanded={historyExpanded}
-              onToggle={toggleHistory}
-            />
+            {!runActive && (
+              <ExecutionHistoryTimeline
+                entries={history}
+                expanded={historyExpanded}
+                onToggle={toggleHistory}
+              />
+            )}
           </>
         )}
       </div>
