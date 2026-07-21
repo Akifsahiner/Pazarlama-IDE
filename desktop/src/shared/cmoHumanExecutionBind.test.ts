@@ -51,14 +51,14 @@ describe("cmoHumanExecutionBind", () => {
     );
   });
 
-  it("measure task prefers KPI-style done_when row", () => {
+  it("measure task prefers contract metric.measurable row", () => {
     const thesis = buildCmoIntake({ project: baseProject(), persona: "marketing" });
     const cadence = createOpsCadenceFromThesis(thesis);
     const measure = measureUserOpsTaskId(cadence);
     assert.ok(measure);
     const task = cadence.tasks.find((t) => t.id === measure);
     assert.ok(task);
-    assert.match(task!.done_when, /kpi|metric|snapshot|log|recorded|views|signups/i);
+    assert.equal(task!.metric?.measurable, true);
   });
 
   it("validateHumanTaskCoverage fails before bind", () => {

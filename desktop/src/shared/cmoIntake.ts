@@ -12,6 +12,13 @@ import { applyMechanismToChannelThesis } from "./cmoGrowthEngine";
 import { evaluateThesisQuality } from "./cmoThesisQualityEngine";
 import { capWeek1Priorities } from "./cmoExecutionBind";
 import type { GrowthMechanismId } from "./cmoGrowthMechanismKnowledge";
+import {
+  enrichThesisWeek1Priorities,
+  type MarketingExecutionMode,
+  type MarketingTaskInput,
+  type MarketingTaskMetric,
+} from "./marketingTaskContract";
+import type { ExpectedProofKind } from "./opsExecutionPlan";
 import type {
   FounderFitProfile,
   GrowthNarrative,
@@ -43,7 +50,19 @@ export interface CmoWeek1Priority {
   why: string;
   owner: CmoTaskOwner;
   done_when: string;
+  /** P19 — operational contract fields */
+  deliverable?: string;
+  execution_mode?: MarketingExecutionMode;
+  estimated_effort_minutes?: number;
+  if_failed?: string;
+  day_offset?: number;
+  inputs?: MarketingTaskInput[];
+  required_proof?: ExpectedProofKind[];
+  metric?: MarketingTaskMetric;
+  depends_on?: string[];
 }
+
+export type { CmoWeek1PriorityWithContract } from "./marketingTaskContract";
 
 export interface ChannelThesis {
   id: ChannelThesisId;
@@ -722,7 +741,7 @@ export function buildCmoIntake(input: CmoIntakeInput): ChannelThesis {
     primary_bottleneck,
     rationale: appendCycleRationale(template.rationale, input.context, weekIndex),
     week1_priorities: capWeek1Priorities(
-      template.week1(signals, signals.heroPath).map((p, i) => ({
+      enrichThesisWeek1Priorities(template.week1(signals, signals.heroPath), id).map((p, i) => ({
         ...p,
         id: weekPriorityId(id, weekIndex, i),
       })),

@@ -310,6 +310,7 @@ import {
 } from "@shared/cmoHumanExecutionBind";
 import { canCompleteHumanProof } from "@shared/humanProofProgress";
 import { outreachTrackerToCsv } from "@shared/cmoOutreachExport";
+import { assertCadenceContractComplete } from "@shared/marketingTaskContract";
 import {
   buildProductActivationProfile,
   canResumeMarketing,
@@ -1807,6 +1808,12 @@ export const useApp = create<AppState>((set, get) => {
     if (result.laneB) syncLaneBState(result.laneB);
     if (result.distributionOperator) syncDistributionOperatorState(result.distributionOperator);
     if (result.influencerOperator) syncInfluencerOperatorState(result.influencerOperator);
+    if (import.meta.env.DEV) {
+      const contractErrors = assertCadenceContractComplete(result.cadence);
+      if (contractErrors.length > 0) {
+        console.warn("[cmo] ops contract incomplete:", contractErrors.join("; "));
+      }
+    }
     return result.cadence;
   };
 

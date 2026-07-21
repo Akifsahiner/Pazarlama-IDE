@@ -13,6 +13,7 @@ import {
 } from "./cmoGrowthMechanismKnowledge";
 import type { CmoWeek1Priority } from "./cmoIntake";
 import { capWeek1Priorities } from "./cmoExecutionBind";
+import { enrichMechanismWeek1Priority } from "./marketingTaskContract";
 import type { RedListItem } from "./cmoGrowthPlane";
 import type { FounderFitProfile, MarketingProfile, ProjectProfile } from "./types";
 
@@ -406,7 +407,7 @@ export function buildMechanismWeek1Tasks(
   }
   return capWeek1Priorities(
     tasks.slice(0, 5).map((t, i) => ({
-      ...t,
+      ...enrichMechanismWeek1Priority(t, id, i),
       id: `mech.w1.${i}`,
     })),
   ).map(({ id: _id, ...rest }) => rest);

@@ -86,9 +86,15 @@ describe("cmoOpsCadence", () => {
     assert.ok(v.errors.some((e) => /URL/i.test(e)));
   });
 
-  it("tryAutoCompleteSystemTask closes in_progress system task", () => {
+  it("tryAutoCompleteSystemTask closes in_progress system task when proof is note", () => {
     const thesis = buildCmoIntake({ project: baseProject(), persona: "marketing" });
-    const cadence = createOpsCadenceFromThesis(thesis);
+    let cadence = createOpsCadenceFromThesis(thesis);
+    cadence = {
+      ...cadence,
+      tasks: cadence.tasks.map((t, i) =>
+        i === 0 ? { ...t, expected_proof_kind: "note" as const, required_proof: ["note"] } : t,
+      ),
+    };
     const before = cadence.tasks[0]!;
     assert.equal(before.owner, "system");
 

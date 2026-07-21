@@ -79,6 +79,62 @@ export const cmoWeek1PrioritySchema = z.object({
   done_when: z.string(),
 });
 
+export const marketingTaskMetricSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  target: z.number().optional(),
+  unit: z.string().optional(),
+  measurable: z.boolean(),
+  ga4_metric_name: z.enum(["sessions", "activeUsers", "conversions"]).optional(),
+});
+
+export const marketingTaskInputSchema = z.object({
+  label: z.string(),
+  ref: z.string().optional(),
+  value: z.string().optional(),
+});
+
+export const humanExecutionAssetSchema = z.object({
+  copy_blocks: z.array(
+    z.object({
+      id: z.string(),
+      label: z.string(),
+      text: z.string(),
+      variant: z.string().optional(),
+    }),
+  ),
+  brief_md: z.string().optional(),
+  target_list: z
+    .array(
+      z.object({
+        name: z.string(),
+        handle: z.string().optional(),
+        evidence: z.string().optional(),
+      }),
+    )
+    .optional(),
+  utm_template: z.string().optional(),
+  follow_up: z.string().optional(),
+});
+
+export const opsExecutionPlanSchema = z.object({
+  mode: z.enum(["repo_edit", "browser_research", "content_draft", "scout_then_edit"]),
+  goal: z.string(),
+  skills: z.array(z.string()),
+  mentions: z.array(z.record(z.string(), z.unknown())).optional(),
+  scout_prompt: z.string().optional(),
+  start_url: z.string().optional(),
+  lane_a_item_id: z.string().optional(),
+});
+
+export const humanExecutionRefSchema = z.object({
+  source: z.enum(["lane_b", "distribution", "influencer", "delegate"]),
+  item_id: z.string(),
+  proof_surface: z.enum(["ops_modal", "lane_b_modal", "operator_modal"]),
+  export_kind: z.enum(["outreach_csv", "issue", "brief"]).optional(),
+  label: z.string().optional(),
+});
+
 export const cmoOpsProofSchema = z.object({
   urls: z.array(z.string()).optional(),
   note: z.string().optional(),
@@ -91,6 +147,7 @@ export const cmoOpsProofSchema = z.object({
   kpi_target: z.number().optional(),
   kpi_source: z.enum(["manual", "ga4"]).optional(),
   kpi_unit: z.string().optional(),
+  browser_evidence: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const cmoPivotSuggestionSchema = z.object({
@@ -128,6 +185,43 @@ export const cmoOpsTaskSchema = z.object({
   skip_reason: z.string().optional(),
   unlocked_at: z.string().optional(),
   cost_estimate_usd: z.number().nonnegative().optional(),
+  execution_plan: opsExecutionPlanSchema.optional(),
+  expected_proof_kind: z.enum(["live_url", "kpi", "note", "browser_evidence"]).optional(),
+  human_execution_ref: humanExecutionRefSchema.optional(),
+  human_execution_asset: humanExecutionAssetSchema.optional(),
+  deliverable: z.string().optional(),
+  execution_mode: z
+    .enum([
+      "repo_edit",
+      "browser_research",
+      "content_draft",
+      "scout_then_edit",
+      "human_post",
+      "human_outreach",
+      "human_launch",
+      "human_log",
+      "delegate_rubric",
+      "delegate_brief",
+      "export_csv",
+      "measurement_sync",
+      "product_request",
+    ])
+    .optional(),
+  estimated_effort_minutes: z.number().positive().optional(),
+  if_failed: z.string().optional(),
+  day_offset: z.number().nonnegative().optional(),
+  inputs: z.array(marketingTaskInputSchema).optional(),
+  required_proof: z.array(z.enum(["live_url", "kpi", "note", "browser_evidence"])).optional(),
+  metric: marketingTaskMetricSchema.optional(),
+  measure_date: z.string().optional(),
+  depends_on: z.array(z.string()).optional(),
+  when: z
+    .object({
+      day_offset: z.number(),
+      slot: z.enum(["now", "today", "up_next", "later"]),
+      due_at: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const cmoOpsCadenceSchema = z.object({

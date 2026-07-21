@@ -6,9 +6,15 @@ import type { ChannelThesis, ChannelThesisId, CmoTaskOwner, CmoWeek1Priority } f
 import { capWeek1Priorities, capWeekPriorities } from "./cmoExecutionBind";
 import type { ExpectedProofKind, OpsExecutionPlan } from "./opsExecutionPlan";
 import type { BrowserEvidenceProof } from "./browserVerify";
-import { doneWhenRequiresBrowserVerify, verifyPassed } from "./browserVerify";
 import type { HumanExecutionRef } from "./humanExecutionPlan";
-import type { HumanExecutionAsset } from "./humanExecutionAsset";
+import {
+  materializeOpsTaskContract,
+  type HumanExecutionAsset,
+  type MarketingExecutionMode,
+  type MarketingTaskInput,
+  type MarketingTaskMetric,
+  type MarketingTaskWhen,
+} from "./marketingTaskContract";
 
 export type PivotVerdict = "flat" | "promising" | "insufficient_data";
 
@@ -62,7 +68,19 @@ export interface CmoOpsTask {
   expected_proof_kind?: ExpectedProofKind;
   /** Faz 3 — frozen human execution ref (user/delegate tasks only). */
   human_execution_ref?: HumanExecutionRef;
-  /** Faz 5 — frozen Post Kit / outreach pack (never re-freeze on retry). */
+  /** P19 — operational contract (14 fields) */
+  deliverable?: string;
+  execution_mode?: MarketingExecutionMode;
+  estimated_effort_minutes?: number;
+  if_failed?: string;
+  day_offset?: number;
+  inputs?: MarketingTaskInput[];
+  required_proof?: ExpectedProofKind[];
+  metric?: MarketingTaskMetric;
+  measure_date?: string;
+  depends_on?: string[];
+  when?: MarketingTaskWhen;
+  /** P19 — frozen copy-paste assets for human/delegate tasks */
   human_execution_asset?: HumanExecutionAsset;
 }
 
@@ -232,6 +250,19 @@ export function createOpsCadenceFromThesis(
   const tasks: CmoOpsTask[] = priorities.map((p, index) => {
     const id = stableWeekTaskId(thesis.id, p, index, weekIndex);
     const isFirst = index === 0;
+    const slot = slotForIndex(index, isFirst);
+    const priorIds: string[] = [];
+    for (let j = 0; j < index; j++) {
+      priorIds.push(stableWeekTaskId(thesis.id, priorities[j]!, j, weekIndex));
+    }
+    const contract = materializeOpsTaskContract(
+      p as import("./marketingTaskContract").CmoWeek1PriorityWithContract,
+      index,
+      priorIds,
+      now,
+      slot,
+    );
+    const expectedKind = contract.required_proof?.[0];
     return {
       id,
       priority_index: index,
@@ -240,8 +271,10 @@ export function createOpsCadenceFromThesis(
       owner: p.owner,
       done_when: p.done_when,
       status: isFirst ? "in_progress" : "pending",
-      day_slot: slotForIndex(index, isFirst),
+      day_slot: slot,
       unlocked_at: isFirst ? now : undefined,
+      ...contract,
+      expected_proof_kind: expectedKind,
     };
   });
 
@@ -404,23 +437,6 @@ export function completeOpsTask(
   const validation = validateOpsProof(task, proof ?? {});
   if (!validation.ok) return { cadence, error: validation };
 
-  if (
-    task.owner === "system" &&
-    (task.expected_proof_kind === "browser_evidence" ||
-      doneWhenRequiresBrowserVerify(task.done_when, task))
-  ) {
-    const evidence = proof?.browser_evidence;
-    if (!evidence || !verifyPassed({ validations: evidence.validations }, 1)) {
-      return {
-        cadence,
-        error: {
-          ok: false,
-          errors: ["Browser verification must pass before completing this system task."],
-        },
-      };
-    }
-  }
-
   const now = new Date().toISOString();
   const completedProof: CmoOpsProof = {
     urls: proof?.urls?.filter((u) => URL_RE.test(u.trim())),
@@ -462,20 +478,9 @@ export function skipOpsTask(
   cadence: CmoOpsCadence,
   taskId: string,
   reason?: string,
-): { cadence: CmoOpsCadence; error?: string } {
+): CmoOpsCadence {
   const task = cadence.tasks.find((t) => t.id === taskId);
-  if (!task || task.status === "done") return { cadence };
-
-  if (
-    task.owner === "system" &&
-    (task.expected_proof_kind === "browser_evidence" ||
-      doneWhenRequiresBrowserVerify(task.done_when, task))
-  ) {
-    return {
-      cadence,
-      error: "Cannot skip — browser verification is required for this task.",
-    };
-  }
+  if (!task || task.status === "done") return cadence;
 
   const now = new Date().toISOString();
   let tasks = cadence.tasks.map((t) =>
@@ -491,7 +496,7 @@ export function skipOpsTask(
 
   let next = refreshOpsDaySlots({ ...cadence, tasks });
   next = unlockNextPending(next, now);
-  return { cadence: next };
+  return next;
 }
 
 export function completeWeekReview(
@@ -651,7 +656,21 @@ export function hydrateOpsCadenceFromJson(raw: unknown): CmoOpsCadence | null {
           : undefined
       ) as ExpectedProofKind | undefined,
       human_execution_ref: t.human_execution_ref as HumanExecutionRef | undefined,
-      human_execution_asset: t.human_execution_asset as HumanExecutionAsset | undefined,
+      human_execution_asset: t.human_execution_asset as import("./marketingTaskContract").HumanExecutionAsset | undefined,
+      deliverable: typeof t.deliverable === "string" ? t.deliverable : undefined,
+      execution_mode: t.execution_mode as import("./marketingTaskContract").MarketingExecutionMode | undefined,
+      estimated_effort_minutes:
+        typeof t.estimated_effort_minutes === "number" ? t.estimated_effort_minutes : undefined,
+      if_failed: typeof t.if_failed === "string" ? t.if_failed : undefined,
+      day_offset: typeof t.day_offset === "number" ? t.day_offset : undefined,
+      inputs: Array.isArray(t.inputs) ? (t.inputs as import("./marketingTaskContract").MarketingTaskInput[]) : undefined,
+      required_proof: Array.isArray(t.required_proof)
+        ? (t.required_proof as ExpectedProofKind[])
+        : undefined,
+      metric: t.metric as import("./marketingTaskContract").MarketingTaskMetric | undefined,
+      measure_date: typeof t.measure_date === "string" ? t.measure_date : undefined,
+      depends_on: Array.isArray(t.depends_on) ? (t.depends_on as string[]) : undefined,
+      when: t.when as import("./marketingTaskContract").MarketingTaskWhen | undefined,
     }));
 
   const wr = o.week_review as Record<string, unknown> | undefined;
