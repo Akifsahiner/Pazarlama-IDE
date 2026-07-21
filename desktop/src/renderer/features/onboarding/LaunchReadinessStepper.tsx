@@ -48,6 +48,13 @@ export function LaunchReadinessStepper() {
     return firstIncomplete?.id ?? actionableSteps[0]?.id ?? "activation";
   });
 
+  useEffect(() => {
+    if (!open) return;
+    if (readiness.canStartWeek1) {
+      setActiveStepId("start");
+    }
+  }, [open, readiness.canStartWeek1]);
+
   if (!open) return null;
 
   const activeStep = readiness.steps.find((s) => s.id === activeStepId) ?? readiness.steps[0];
@@ -100,8 +107,11 @@ export function LaunchReadinessStepper() {
               <button
                 key={step.id}
                 type="button"
-                onClick={() => step.id !== "start" && setActiveStepId(step.id)}
-                disabled={step.id === "start"}
+                onClick={() => {
+                  if (step.id === "start" && !readiness.canStartWeek1) return;
+                  setActiveStepId(step.id);
+                }}
+                disabled={step.id === "start" && !readiness.canStartWeek1}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors ${
                   step.id === activeStepId
                     ? "border-accent bg-accent-soft/40 text-accent"
@@ -168,6 +178,55 @@ export function LaunchReadinessStepper() {
               ) : (
                 <MeasurementBaselineCard compact embedded onStepComplete={goNext} />
               )}
+            </div>
+          )}
+
+          {activeStep?.id === "start" && (
+            <div className="space-y-4" data-testid="launch-readiness-start-panel">
+              <p className="text-body-sm text-text">
+                Required setup is complete. Starting Week 1 locks your ops cadence and opens the
+                execution record.
+              </p>
+              {channelThesis && (
+                <div className="rounded-[var(--radius-md)] border border-accent/25 bg-accent-soft/10 px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-accent">
+                    Channel thesis
+                  </p>
+                  <p className="mt-1 text-body-sm font-medium text-text">{channelThesis.title}</p>
+                  {channelThesis.headline && (
+                    <p className="mt-0.5 text-mini text-text-3">{channelThesis.headline}</p>
+                  )}
+                </div>
+              )}
+              <ul className="space-y-1.5 text-mini text-text-2">
+                {readiness.steps
+                  .filter((s) => s.id !== "start")
+                  .map((step) => (
+                    <li key={step.id} className="flex items-center gap-2">
+                      <CheckCircle2
+                        size={12}
+                        className={step.complete ? "text-ok" : "text-text-3"}
+                      />
+                      <span>
+                        {step.label}
+                        {step.optional && !step.complete && (
+                          <span className="text-text-3"> (skipped)</span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+              <Button
+                variant="primary"
+                iconRight={<ArrowRight size={14} />}
+                data-testid="launch-readiness-start-panel-cta"
+                onClick={() => {
+                  closeLaunchReadiness();
+                  beginCmoWeek1();
+                }}
+              >
+                Start Week 1{channelThesis ? ` — ${channelThesis.title}` : ""}
+              </Button>
             </div>
           )}
         </div>

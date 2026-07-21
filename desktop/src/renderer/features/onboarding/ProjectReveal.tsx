@@ -33,6 +33,7 @@ import { CmoIntakeCard } from "@renderer/features/onboarding/CmoIntakeCard";
 import { CmoStrategicIntakeFlow } from "@renderer/features/onboarding/CmoStrategicIntakeFlow";
 import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
 import { isWeek1Ready } from "@shared/launchReadiness";
+import { assessMeasurementBaseline } from "@shared/measurementBaseline";
 import {
   isQuickStartTrack,
   quickStartThesisLine,
@@ -119,6 +120,8 @@ export function ProjectReveal() {
     founderFit: marketingProfile?.founder_fit,
     revenueProfile,
     productActivation,
+    measurementReady: assessMeasurementBaseline(marketingProfile, project).ready,
+    measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
   });
   const strategicIntakeOpen = useApp((s) => s.strategicIntakeOpen);
   const openStrategicIntake = useApp((s) => s.openStrategicIntake);
@@ -514,10 +517,12 @@ export function ProjectReveal() {
                     <Button
                       variant="primary"
                       iconRight={<ArrowRight size={16} />}
-                      onClick={() => beginCmoWeek1()}
+                      onClick={() => (week1Ready ? beginCmoWeek1() : openLaunchReadiness())}
                       data-testid="reveal-start-week1"
                     >
-                      Start Week 1 — {channelThesis!.title}
+                      {week1Ready
+                        ? `Start Week 1 — ${channelThesis!.title}`
+                        : "Complete launch setup"}
                     </Button>
                   ) : primaryCta === "complete_pre_week1" ? (
                     <Button

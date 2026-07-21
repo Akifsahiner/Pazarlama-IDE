@@ -120,18 +120,41 @@ test("revenue step only for paying_customers win", () => {
   assert.ok(steps.steps.some((s) => s.id === "revenue"));
 });
 
-test("week1 ready without activation for signup win", () => {
+test("week1 ready requires measurement ack or baseline", () => {
   assert.equal(
     isWeek1Ready({ founderFit: fit({ thirty_day_win: "qualified_signups" }) }),
+    false,
+  );
+  assert.equal(
+    isWeek1Ready({
+      founderFit: fit({ thirty_day_win: "qualified_signups" }),
+      measurementAcknowledged: true,
+    }),
     true,
   );
   assert.equal(
     isWeek1Ready({
       founderFit: fit({ thirty_day_win: "paying_customers" }),
       revenueProfile: undefined,
+      measurementReady: true,
     }),
     false,
   );
+});
+
+test("canStartWeek1 blocks stepper until revenue + measurement when paying_customers", () => {
+  const blocked = resolveLaunchReadinessSteps({
+    founderFit: fit({ thirty_day_win: "paying_customers" }),
+    measurementReady: true,
+  });
+  assert.equal(blocked.canStartWeek1, false);
+
+  const ready = resolveLaunchReadinessSteps({
+    founderFit: fit({ thirty_day_win: "paying_customers" }),
+    revenueProfile: { pricing_thesis: "PLG self-serve" },
+    measurementReady: true,
+  });
+  assert.equal(ready.canStartWeek1, true);
 });
 
 test("contract view from sealed decision", () => {

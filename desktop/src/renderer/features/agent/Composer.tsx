@@ -70,7 +70,15 @@ const MODE_ICON: Record<ComposerMode, LucideIcon> = {
   browse: Globe,
 };
 
-export function Composer() {
+export type ComposerVariant = "default" | "dock";
+
+export interface ComposerProps {
+  variant?: ComposerVariant;
+  /** When dock is collapsed, focus/click expands the full command panel. */
+  onExpandRequest?: () => void;
+}
+
+export function Composer({ variant = "default", onExpandRequest }: ComposerProps = {}) {
   const submitComposerText = useApp((s) => s.submitComposerText);
   const interruptRun = useApp((s) => s.interruptRun);
   const cancelPlan = useApp((s) => s.cancelPlan);
@@ -282,6 +290,81 @@ export function Composer() {
 
   const connectFeature =
     composerMode === "browse" ? "browser" : composerMode === "edit" ? "run" : "chat";
+
+  const handleDockFocus = () => {
+    onExpandRequest?.();
+    textareaRef.current?.focus();
+  };
+
+  if (variant === "dock") {
+    return (
+      <div className="px-3 py-2" data-testid="composer-dock">
+        {runtime !== "connected" && (
+          <div className="mb-2">
+            <ConnectGate
+              feature={connectFeature}
+              capability={runtime}
+              matrix={capabilityMatrix}
+              onConnect={openConnectFlow}
+              compact
+            />
+          </div>
+        )}
+        <div
+          role="button"
+          tabIndex={-1}
+          onClick={handleDockFocus}
+          className="flex items-end gap-2 rounded-[var(--radius-md)] border border-line/80 bg-surface-2/90 px-3 py-2 shadow-[var(--shadow-1)] transition-colors focus-within:border-accent/45 focus-within:ring-1 focus-within:ring-accent/15"
+        >
+          <span className="pb-1 text-text-3" aria-hidden>
+            <ModeIcon size={14} />
+          </span>
+          <textarea
+            id="agent-composer-dock"
+            ref={textareaRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onFocus={() => onExpandRequest?.()}
+            onKeyDown={onKeyDown}
+            rows={1}
+            placeholder={placeholder}
+            aria-label="Komut"
+            className="max-h-24 min-h-[1.5rem] flex-1 resize-none bg-transparent text-body-sm leading-relaxed text-text outline-none placeholder:text-text-3"
+          />
+          {(planLoading || streaming || browserRunning || runActive) && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                stop();
+              }}
+              className="mb-0.5 inline-flex h-7 items-center gap-1 rounded-[var(--radius-sm)] border border-danger-border bg-danger-soft px-2 text-micro text-danger"
+              aria-label="Stop"
+            >
+              <Square size={11} fill="currentColor" /> Durdur
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              submit();
+            }}
+            disabled={!canSend}
+            aria-label="Send"
+            className="btn-accent mb-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] disabled:opacity-40"
+          >
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <ArrowUp size={15} />}
+          </button>
+        </div>
+        {busy && (
+          <p className="mt-1.5 px-0.5 text-[10px] text-text-3">
+            Run aktif — çalışma alanı öncelikli. Genişletmek için tıkla.
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="border-t border-line">

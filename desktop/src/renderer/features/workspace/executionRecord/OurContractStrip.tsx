@@ -76,6 +76,17 @@ export function OurContractStrip({
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-mini text-text-3">
             {contract.mechanismLabel && <Badge tone="neutral">{contract.mechanismLabel}</Badge>}
+            <Badge
+              tone={
+                contract.thirtyDayTarget.confidence === "measured"
+                  ? "ok"
+                  : contract.thirtyDayTarget.confidence === "stretch"
+                    ? "warn"
+                    : "neutral"
+              }
+            >
+              {contract.thirtyDayTarget.confidence}
+            </Badge>
             <span>{kpi.headline}</span>
           </div>
         </div>

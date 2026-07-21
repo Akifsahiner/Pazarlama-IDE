@@ -20,7 +20,8 @@ import { personaValue } from "@shared/personaValue";
 
 const SHORTCUTS: [string, string][] = [
   ["Cmd / Ctrl + K", "Command palette — navigate, file search, recent files, Open in Cursor"],
-  ["Cmd / Ctrl + L", "Focus the composer"],
+  ["Cmd / Ctrl + L", "Focus the composer (expands dock if collapsed)"],
+  ["Cmd / Ctrl + J", "Toggle command dock (workspace)"],
   ["Cmd / Ctrl + 0", "Composer Auto mode (intent picks Ask / Edit / Browse)"],
   ["Cmd / Ctrl + 1 / 2 / 3", "Switch composer mode (Ask / Edit / Browse)"],
   ["Cmd / Ctrl + B", "Toggle the sidebar"],

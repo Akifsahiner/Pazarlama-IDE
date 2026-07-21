@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   isWeek1Ready,
-  needsRevenueStep,
   resolveLaunchReadinessSteps,
 } from "./launchReadiness";
 import type { FounderFitProfile } from "./types";
@@ -64,12 +63,22 @@ describe("launchReadiness", () => {
     assert.equal(ready.canStartWeek1, true);
   });
 
-  it("allows week1 without activation or revenue for non-paying wins", () => {
+  it("requires measurement acknowledgement or baseline for week1 ready", () => {
     assert.equal(
-      isWeek1Ready({ founderFit: fit({ thirty_day_win: "qualified_signups" }) }),
+      isWeek1Ready({
+        founderFit: fit({ thirty_day_win: "qualified_signups" }),
+        measurementReady: false,
+      }),
+      false,
+    );
+    assert.equal(
+      isWeek1Ready({
+        founderFit: fit({ thirty_day_win: "qualified_signups" }),
+        measurementReady: false,
+        measurementAcknowledged: true,
+      }),
       true,
     );
-    assert.equal(needsRevenueStep(fit()), false);
   });
 
   it("measurement acknowledged counts as complete", () => {

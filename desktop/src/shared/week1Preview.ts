@@ -13,15 +13,10 @@ export function resolveWeek1PreviewTasks(
   thesis: ChannelThesis,
   sealed: boolean,
 ): Week1PreviewResult {
-  if (sealed) {
-    return {
-      tasks: thesis.week1_priorities.slice(0, 5),
-      generic: false,
-    };
-  }
+  const generic = !sealed || thesis.draft === true;
   return {
     tasks: thesis.week1_priorities.slice(0, 5),
-    generic: true,
+    generic,
   };
 }
 

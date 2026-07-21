@@ -112,9 +112,7 @@ export function resolveLaunchReadinessSteps(input: LaunchReadinessInput): Launch
   };
 }
 
-/** Week 1 can begin when revenue (if required) is set; activation is optional. */
+/** Week 1 can begin when launch readiness stepper requirements are satisfied. */
 export function isWeek1Ready(input: LaunchReadinessInput): boolean {
-  const revenueRequired = needsRevenueStep(input.founderFit);
-  if (revenueRequired && !isRevenueComplete(input.revenueProfile)) return false;
-  return true;
+  return resolveLaunchReadinessSteps(input).canStartWeek1;
 }

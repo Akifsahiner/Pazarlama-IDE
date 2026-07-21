@@ -34,13 +34,18 @@ describe("week1Preview", () => {
     assert.equal(result.tasks.length, 2);
   });
 
-  it("marks tasks personalized after seal", () => {
+  it("marks tasks personalized after seal when draft is false", () => {
     const result = resolveWeek1PreviewTasks(
       thesis({ draft: false, week1_priorities: [{ id: "m1", what: "Mechanism task", why: "w", done_when: "d", owner: "system" }] }),
       true,
     );
     assert.equal(result.generic, false);
     assert.equal(result.tasks[0]?.what, "Mechanism task");
+  });
+
+  it("stays generic for draft thesis even when sealed flag passed incorrectly", () => {
+    const result = resolveWeek1PreviewTasks(thesis({ draft: true }), true);
+    assert.equal(result.generic, true);
   });
 
   it("caps preview at 5 tasks", () => {

@@ -157,6 +157,7 @@ import {
   type WorkSurface,
 } from "@shared/workSurfaces";
 import type { FeedFilter, FeedItem } from "@shared/feed";
+import type { ExecutionRecordDetailTab } from "@shared/executionRecord";
 import { railSectionToWorkSurface, type RailSection } from "@shared/projectRail";
 import { mockConnectorFeedItems, runEventToFeedItem } from "@renderer/features/workspace/feed/feedModel";
 import {
@@ -236,8 +237,8 @@ import {
 } from "@shared/browserVerify";
 import {
   assessMeasurementBaseline,
-  isMeasurementGateHard,
 } from "@shared/measurementBaseline";
+import { resolveLaunchReadinessSteps } from "@shared/launchReadiness";
 import {
   allOpsTasksTerminal,
   attachKpiToCompletedProof,
@@ -776,6 +777,13 @@ interface AppState {
   feedFilter: FeedFilter;
   feedCollapsed: boolean;
   activeFeedItemId?: string;
+  /** Part 0 — Execution Record detail panel tab. */
+  executionRecordDetailTab: ExecutionRecordDetailTab;
+  executionHistoryExpanded: boolean;
+  /** Part 0 — bottom command dock collapsed to composer strip (Cursor-like). */
+  commandDockCollapsed: boolean;
+  /** Part 0 — user pinned full hero during an active run. */
+  executionHeroExpanded: boolean;
   selectedRailSection: RailSection | null;
   selectedRailEntityId?: string;
 
@@ -1123,6 +1131,12 @@ interface AppState {
   openFeedItem: (id: string) => void;
   setFeedFilter: (filter: FeedFilter) => void;
   toggleFeedCollapsed: (collapsed?: boolean) => void;
+  setExecutionRecordDetailTab: (tab: ExecutionRecordDetailTab) => void;
+  toggleExecutionHistoryExpanded: () => void;
+  setCommandDockCollapsed: (collapsed: boolean) => void;
+  toggleCommandDockCollapsed: () => void;
+  toggleExecutionHeroExpanded: () => void;
+  setExecutionHeroExpanded: (expanded: boolean) => void;
   selectRailSection: (section: RailSection, entityId?: string) => void;
   seedMockConnectorFeed: () => void;
   seedConnectorFeedPlaceholder: () => void;
@@ -3810,8 +3824,12 @@ export const useApp = create<AppState>((set, get) => {
     feedItems: [],
     feedFilter: "all",
     feedCollapsed:
-      typeof localStorage !== "undefined" && localStorage.getItem(FEED_COLLAPSED_KEY) === "1",
+      typeof localStorage === "undefined" || localStorage.getItem(FEED_COLLAPSED_KEY) !== "0",
     activeFeedItemId: undefined,
+    executionRecordDetailTab: "record",
+    executionHistoryExpanded: false,
+    commandDockCollapsed: false,
+    executionHeroExpanded: false,
     selectedRailSection: null,
     selectedRailEntityId: undefined,
 
@@ -5733,38 +5751,23 @@ export const useApp = create<AppState>((set, get) => {
           text: `Budget plan uses the ${marketingProfile.founder_fit.monthly_budget_band} band estimate until you confirm a numeric ceiling.`,
         });
       }
-      const payingCustomersWin =
-        marketingProfile?.founder_fit?.thirty_day_win === "paying_customers";
-      if (
-        payingCustomersWin &&
-        !get().revenueProfile &&
-        !marketingProfile?.revenue_profile
-      ) {
+      const baseline = assessMeasurementBaseline(marketingProfile, project);
+      const readiness = resolveLaunchReadinessSteps({
+        founderFit: marketingProfile?.founder_fit,
+        productActivation:
+          get().productActivation ?? marketingProfile?.product_activation,
+        revenueProfile: get().revenueProfile ?? marketingProfile?.revenue_profile,
+        measurementReady: baseline.ready,
+        measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
+      });
+      if (!readiness.canStartWeek1) {
         set({ launchReadinessOpen: true });
         appendEvent({
           role: "system",
           kind: "status",
-          text: "Define how payment will be received — complete revenue intake before Week 1 starts.",
+          text: "Complete launch setup — activation, revenue (if applicable), and measurement — before Week 1 starts.",
         });
         return;
-      }
-      const baseline = assessMeasurementBaseline(marketingProfile, project);
-      if (!baseline.ready) {
-        if (isMeasurementGateHard()) {
-          set({ measurementIntakeOpen: true });
-          appendEvent({
-            role: "system",
-            kind: "status",
-            text: "Connect GA4 or log a manual baseline before Week 1 starts.",
-          });
-          return;
-        }
-        set({ measurementIntakeOpen: true });
-        appendEvent({
-          role: "system",
-          kind: "status",
-          text: "Week 1 works best with a measurement baseline — connect GA4 or log a manual KPI.",
-        });
       }
 
       track("begin_cmo_week1", { thesis_id: thesis.id });
@@ -9736,12 +9739,15 @@ export const useApp = create<AppState>((set, get) => {
         get().navigate("workspace");
         if (item.source === "browser" || get().browser.pendingApprovalId === item.approvalId) {
           get().setActiveCanvas("browser");
+          get().setExecutionRecordDetailTab("browser");
           return;
         }
         if (item.source === "run" || get().run?.pendingApproval?.approvalId === item.approvalId) {
           get().setActiveCanvas("run");
+          get().setExecutionRecordDetailTab("diff");
           return;
         }
+        get().setExecutionRecordDetailTab("proof");
       }
 
       const target = item.canvasTarget;
@@ -9800,6 +9806,21 @@ export const useApp = create<AppState>((set, get) => {
         return { feedCollapsed: next };
       }),
 
+    setExecutionRecordDetailTab: (tab) => set({ executionRecordDetailTab: tab }),
+
+    toggleExecutionHistoryExpanded: () =>
+      set((s) => ({ executionHistoryExpanded: !s.executionHistoryExpanded })),
+
+    setCommandDockCollapsed: (collapsed) => set({ commandDockCollapsed: collapsed }),
+
+    toggleCommandDockCollapsed: () =>
+      set((s) => ({ commandDockCollapsed: !s.commandDockCollapsed })),
+
+    toggleExecutionHeroExpanded: () =>
+      set((s) => ({ executionHeroExpanded: !s.executionHeroExpanded })),
+
+    setExecutionHeroExpanded: (expanded) => set({ executionHeroExpanded: expanded }),
+
     selectRailSection: (section, entityId) => {
       let surface = railSectionToWorkSurface(section);
       const { plan, marketingProfile } = get();
@@ -9853,7 +9874,17 @@ export const useApp = create<AppState>((set, get) => {
     togglePalette: (open) => set((s) => ({ paletteOpen: open ?? !s.paletteOpen })),
     toggleSettings: (open) => set((s) => ({ settingsOpen: open ?? !s.settingsOpen })),
 
-    toggleFocusMode: (on) => set((s) => ({ focusMode: on ?? !s.focusMode })),
+    toggleFocusMode: (on) =>
+      set((s) => {
+        const next = on ?? !s.focusMode;
+        return next
+          ? {
+              focusMode: true,
+              commandDockCollapsed: true,
+              executionHeroExpanded: false,
+            }
+          : { focusMode: false };
+      }),
     toggleSidebar: (collapsed) =>
       set((s) => {
         const next = collapsed ?? !s.sidebarCollapsed;
