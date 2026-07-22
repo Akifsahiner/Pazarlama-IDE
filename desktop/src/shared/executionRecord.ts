@@ -531,6 +531,8 @@ export function buildActiveExecutionRecord(
   const nextAction = commandInput
     ? resolveCommandSurfaceAction({
         ...commandInput,
+        profile: input.marketingProfile,
+        channelThesis: input.channelThesis,
         executionKernel: input.executionKernel,
         hasActiveRun: Boolean(
           input.activeRun?.runId &&

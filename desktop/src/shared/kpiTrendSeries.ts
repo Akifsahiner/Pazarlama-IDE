@@ -108,3 +108,19 @@ export function buildKpiTrendSeries(
 export function hasTrendData(points: KpiTrendPoint[]): boolean {
   return points.length >= 2;
 }
+
+/** Count pulse checkpoints (Day 3+) where KPI was logged but below 50% of implicit target. */
+export function countFlatPulseCheckpoints(
+  points: KpiTrendPoint[],
+  target?: number,
+  flatThresholdPct = 50,
+): number {
+  if (!target || target <= 0) return 0;
+  let flat = 0;
+  for (const point of points) {
+    if (point.day_index < 3) continue;
+    const pct = (point.value / target) * 100;
+    if (pct < flatThresholdPct) flat += 1;
+  }
+  return flat;
+}

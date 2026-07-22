@@ -1,6 +1,7 @@
 import type { DayPulseView, PulseCheckpointDay } from "@shared/measurementPulse";
 import type { KpiTrendPoint } from "@shared/kpiTrendSeries";
 import { hasTrendData } from "@shared/kpiTrendSeries";
+import type { CommandSurfaceAction } from "@shared/cmoCommandSurface";
 import { Badge } from "@renderer/components/ui/Badge";
 import { KpiTrendSparkline } from "./KpiTrendSparkline";
 import { Ga4SyncChip } from "./Ga4SyncChip";
@@ -17,10 +18,14 @@ export function DayPulseRow({
   pulse,
   kpiTrend,
   compact = false,
+  pulseAction,
+  onPulseAction,
 }: {
   pulse: DayPulseView;
   kpiTrend?: KpiTrendPoint[];
   compact?: boolean;
+  pulseAction?: CommandSurfaceAction | null;
+  onPulseAction?: () => void;
 }) {
   if (!pulse.visible) return null;
 
@@ -110,6 +115,16 @@ export function DayPulseRow({
 
         <p className="text-mini text-accent" data-testid="day-pulse-action">
           <span className="font-semibold text-text">Action:</span> {pulse.actionSuggestion}
+          {pulseAction && pulseAction.kind !== "none" && onPulseAction && (
+            <button
+              type="button"
+              onClick={onPulseAction}
+              className="ml-2 rounded-[var(--radius-sm)] border border-accent/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent hover:bg-accent/10"
+              data-testid="day-pulse-action-cta"
+            >
+              Go
+            </button>
+          )}
         </p>
 
         {pulse.sourceUsed && (
