@@ -1,4 +1,5 @@
 import type { FirstShipLedger, ProjectProfile } from "@shared/types";
+import type { ShipReceipt } from "@shared/shipReceipt";
 import type { FirstShipSnapshot } from "@shared/firstShipSnapshot";
 import { parseShipSnapshotFromSource } from "@shared/firstShipSnapshot";
 import type { ExecutionMetricsRollup } from "@shared/executionMetrics";
@@ -7,6 +8,7 @@ import { inferIntegrateRoute } from "@shared/assetTarget";
 
 export const ONBOARDING_TRACK_LS = "onboarding_track.v1";
 export const FIRST_SHIP_LEDGER_LS = "first_ship_ledger.v1";
+export const SHIP_RECEIPT_LS = "ship_receipt.v1";
 export const EXECUTION_METRICS_LS = "execution_metrics.v1";
 export const SESSION_OUTCOMES_LS = "session_outcomes.v1";
 
@@ -39,6 +41,23 @@ export function loadFirstShipLedger(projectId: string): FirstShipLedger | undefi
 export function persistFirstShipLedgerLocal(projectId: string, ledger: FirstShipLedger): void {
   try {
     localStorage.setItem(`${FIRST_SHIP_LEDGER_LS}.${projectId}`, JSON.stringify(ledger));
+  } catch {
+    /* quota */
+  }
+}
+
+export function loadShipReceipt(projectId: string): ShipReceipt | undefined {
+  try {
+    const raw = localStorage.getItem(`${SHIP_RECEIPT_LS}.${projectId}`);
+    return raw ? (JSON.parse(raw) as ShipReceipt) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function persistShipReceiptLocal(projectId: string, receipt: ShipReceipt): void {
+  try {
+    localStorage.setItem(`${SHIP_RECEIPT_LS}.${projectId}`, JSON.stringify(receipt));
   } catch {
     /* quota */
   }

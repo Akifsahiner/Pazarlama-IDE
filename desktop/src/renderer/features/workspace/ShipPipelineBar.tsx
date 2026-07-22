@@ -2,7 +2,15 @@ import { CheckCircle2 } from "lucide-react";
 import { shipPipelineStepLabel, type ShipPipelineStage } from "@shared/shipPipeline";
 import { useApp } from "@renderer/state/store";
 
-const STAGES: ShipPipelineStage[] = ["run", "diff", "apply", "preview", "verify", "done"];
+const STAGES: ShipPipelineStage[] = [
+  "run",
+  "diff",
+  "approval",
+  "apply",
+  "preview",
+  "verify",
+  "done",
+];
 
 export function ShipPipelineBar() {
   const stage = useApp((s) => s.shipPipeline?.stage ?? "idle");

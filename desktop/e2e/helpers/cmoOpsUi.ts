@@ -1,22 +1,24 @@
 import { expect, type Page } from "@playwright/test";
 
-export async function openOpsBackstage(page: Page) {
-  const openBtn = page.getByRole("button", { name: /Open backstage/i });
+const WAR_ROOM_OPEN = /War room — full week plan/i;
+
+export async function openWarRoom(page: Page) {
+  const openBtn = page.getByRole("button", { name: WAR_ROOM_OPEN });
   if (await openBtn.isVisible().catch(() => false)) {
     await openBtn.click();
   }
   await expect(page.getByTestId("cmo-backstage")).toBeVisible({ timeout: 10_000 });
+}
+
+export async function openOpsBackstage(page: Page) {
+  await openWarRoom(page);
   await page.getByTestId("cmo-backstage").getByRole("button", { name: /^Ops$/i }).click();
   await expect(page.getByTestId("cmo-ops-board")).toBeVisible();
   await page.locator("#cmo-ops-board").scrollIntoViewIfNeeded();
 }
 
 export async function openMonetizationBackstage(page: Page) {
-  const openBtn = page.getByRole("button", { name: /Open backstage/i });
-  if (await openBtn.isVisible().catch(() => false)) {
-    await openBtn.click();
-  }
-  await expect(page.getByTestId("cmo-backstage")).toBeVisible({ timeout: 10_000 });
+  await openWarRoom(page);
   await page.getByTestId("cmo-backstage").getByRole("button", { name: /^Monetize$/i }).click();
   await expect(page.getByTestId("monetization-panel")).toBeVisible({ timeout: 10_000 });
   await page.locator("#monetization-panel-wrap").scrollIntoViewIfNeeded();
@@ -278,11 +280,7 @@ export async function assertCycleArchived(page: Page) {
 }
 
 export async function openCycleBackstage(page: Page) {
-  const openBtn = page.getByRole("button", { name: /Open backstage/i });
-  if (await openBtn.isVisible().catch(() => false)) {
-    await openBtn.click();
-  }
-  await expect(page.getByTestId("cmo-backstage")).toBeVisible({ timeout: 10_000 });
+  await openWarRoom(page);
   await page.getByTestId("cmo-backstage").getByRole("button", { name: /^Cycle$/i }).click();
   await expect(page.getByTestId("cmo-cycle-panel")).toBeVisible({ timeout: 10_000 });
   await page.locator("#cmo-cycle-panel").scrollIntoViewIfNeeded();
@@ -296,7 +294,7 @@ export async function assertReplanReadyInCyclePanel(page: Page) {
 export async function startNextCycleDoubleDownViaUi(page: Page) {
   await assertReplanReadyInCyclePanel(page);
   await page.getByTestId("cmo-cycle-double-down").click();
-  await expect(page.getByTestId("growth-command-surface")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("morning-brief-grid")).toBeVisible({ timeout: 20_000 });
 }
 
 export async function startNextCyclePivotViaUi(page: Page) {
@@ -304,7 +302,7 @@ export async function startNextCyclePivotViaUi(page: Page) {
   const pivotBtn = page.getByTestId("cmo-cycle-pivot-start");
   await expect(pivotBtn).toBeVisible({ timeout: 15_000 });
   await pivotBtn.click();
-  await expect(page.getByTestId("growth-command-surface")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("morning-brief-grid")).toBeVisible({ timeout: 20_000 });
 }
 
 export async function assertWeekCycleActive(page: Page, weekIndex: number) {

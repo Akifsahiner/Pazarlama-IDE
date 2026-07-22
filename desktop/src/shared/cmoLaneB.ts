@@ -352,6 +352,23 @@ export function getNextLaneBItem(workspace: LaneBWorkspace): LaneBItem | null {
   );
 }
 
+const RUNBOOK_OFFSET_ORDER = ["T-7d", "T-3d", "T-1d", "T-0", "H+2h", "T+24h"];
+
+/** Faz 5 — current runbook step for launch-day CTA (first pending by T-offset). */
+export function resolveCurrentRunbookStep(workspace: LaneBWorkspace): LaneBItem | null {
+  if (workspace.mode !== "launch_runbook") return null;
+  const pending = workspace.items.filter(
+    (i) => i.status === "pending" || i.status === "scheduled",
+  );
+  if (pending.length === 0) return null;
+  const sorted = [...pending].sort((a, b) => {
+    const ai = RUNBOOK_OFFSET_ORDER.indexOf(a.runbook_offset ?? "");
+    const bi = RUNBOOK_OFFSET_ORDER.indexOf(b.runbook_offset ?? "");
+    return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+  });
+  return sorted[0] ?? null;
+}
+
 export function validateLaneBProof(proof: LaneBProofInput): { ok: boolean; errors: string[] } {
   const errors: string[] = [];
   if (proof.spend_usd != null && (!Number.isFinite(proof.spend_usd) || proof.spend_usd < 0)) {

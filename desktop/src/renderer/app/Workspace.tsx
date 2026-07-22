@@ -1,18 +1,9 @@
-import { PanelRightOpen } from "lucide-react";
 import { useMemo } from "react";
 import { useApp } from "@renderer/state/store";
-import { isCommandSurfaceActive } from "@shared/cmoCommandSurface";
 import { ResizablePanel } from "@renderer/components/ResizablePanel";
-import { ResizableVerticalPanel } from "@renderer/components/ResizableVerticalPanel";
 import { ContextSidebar } from "@renderer/features/workspace/ContextSidebar";
 import { SessionHistory } from "@renderer/features/history/SessionHistory";
-import { Canvas } from "@renderer/features/workspace/Canvas";
-import { AgentThread } from "@renderer/features/agent/AgentThread";
 import { ExecutionFeed } from "@renderer/features/workspace/ExecutionFeed";
-import { StageBreadcrumb } from "@renderer/features/workspace/stage/StageBreadcrumb";
-import { Composer } from "@renderer/features/agent/Composer";
-import { SalesExportBar } from "@renderer/features/workspace/SalesExportBar";
-import { ExecutionQueuePanel } from "@renderer/features/workspace/ExecutionQueuePanel";
 import { NextActionBar } from "@renderer/components/NextActionBar";
 import { WorkspaceHandoffBanner } from "@renderer/components/WorkspaceHandoffBanner";
 import { HandoffConfirmModal } from "@renderer/components/HandoffConfirmModal";
@@ -24,26 +15,25 @@ import { RevenueAttributionProofModal } from "@renderer/features/workspace/Reven
 import { DelegateBriefModal } from "@renderer/features/workspace/DelegatePanel";
 import { DelegateHireModal } from "@renderer/features/workspace/DelegateHireModal";
 import { DelegateRubricModal } from "@renderer/features/workspace/DelegateRubricModal";
-import { GrowthCommandSurface } from "@renderer/features/workspace/GrowthCommandSurface";
 import { CmoBackstage } from "@renderer/features/workspace/CmoBackstage";
 import { DistributionProofModal } from "@renderer/features/workspace/DistributionProofModal";
 import { InfluencerProofModal } from "@renderer/features/workspace/InfluencerProofModal";
 import { InfluencerDealModal } from "@renderer/features/workspace/InfluencerDealModal";
+import { HumanTaskKitDrawer } from "@renderer/features/workspace/executionRecord/HumanTaskKitDrawer";
 import { isDistributionOperatorGate } from "@shared/cmoDistributionOperator";
 import { isInfluencerOperatorGate } from "@shared/cmoInfluencerOperator";
 import { isDelegateOperatorGate, resolveDelegateOperator } from "@shared/cmoDelegateOperator";
+import { assessMeasurementBaseline } from "@shared/measurementBaseline";
 import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
-import { assessMeasurementBaseline, isMeasurementGateHard } from "@shared/measurementBaseline";
-import { BudgetSetupCard } from "@renderer/features/onboarding/BudgetSetupCard";
-import { ProductActivationCard } from "@renderer/features/onboarding/ProductActivationCard";
-import { RevenueSetupCard } from "@renderer/features/onboarding/RevenueSetupCard";
+import { isWeek1Ready } from "@shared/launchReadiness";
+import { Button } from "@renderer/components/ui/Button";
+import { ExecutionRecordStage } from "@renderer/features/workspace/executionRecord/ExecutionRecordStage";
+import { WorkspaceCommandDock } from "@renderer/features/workspace/executionRecord/WorkspaceCommandDock";
 
 export function Workspace() {
   const sidebarCollapsed = useApp((s) => s.sidebarCollapsed);
   const historyOpen = useApp((s) => s.historyOpen);
   const toggleHistory = useApp((s) => s.toggleHistory);
-  const focusMode = useApp((s) => s.focusMode);
-  const toggleFocusMode = useApp((s) => s.toggleFocusMode);
   const feedCollapsed = useApp((s) => s.feedCollapsed);
   const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
   const laneBWorkspace = useApp((s) => s.laneBWorkspace ?? s.marketingProfile?.lane_b_workspace);
@@ -80,7 +70,6 @@ export function Workspace() {
     (s) => s.influencerOperator ?? s.marketingProfile?.influencer_operator,
   );
 
-  const commandSurfaceActive = isCommandSurfaceActive({ growthControlPlane, opsCadence });
   const distOperatorActive =
     !!distributionOperator &&
     isDistributionOperatorGate({
@@ -101,17 +90,21 @@ export function Workspace() {
       thesis: channelThesis,
       opsCadence,
     });
-  const week1Ready = Boolean(
-    productActivation &&
-      revenueProfile &&
-      (!isMeasurementGateHard() ||
-        assessMeasurementBaseline(marketingProfile, project).ready),
-  );
+  const openLaunchReadiness = useApp((s) => s.openLaunchReadiness);
+
+  const week1Ready = isWeek1Ready({
+    founderFit: marketingProfile?.founder_fit,
+    revenueProfile,
+    productActivation,
+    measurementReady: assessMeasurementBaseline(marketingProfile, project).ready,
+    measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
+  });
   const needsPreWeek1Setup =
     Boolean(channelThesis) &&
     !opsCadence &&
     isStrategicDecisionSealed(marketingProfile) &&
     !week1Ready;
+
   return (
     <div className="relative flex h-full min-h-0 flex-1">
       <HandoffConfirmModal />
@@ -126,13 +119,14 @@ export function Workspace() {
       <DistributionProofModal />
       <InfluencerProofModal />
       <InfluencerDealModal />
+      <HumanTaskKitDrawer />
       {historyOpen && (
         <div className="absolute left-0 top-0 z-[var(--z-overlay)] h-full w-64 border-r border-line shadow-[var(--shadow-3)]">
           <SessionHistory onClose={() => toggleHistory(false)} />
         </div>
       )}
 
-      {!sidebarCollapsed && !focusMode && (
+      {!sidebarCollapsed && (
         <ResizablePanel
           side="left"
           storageKey="panel.project-rail"
@@ -148,24 +142,28 @@ export function Workspace() {
         <WorkspaceHandoffBanner />
         <NextActionBar scope="workspace" />
         {needsPreWeek1Setup && (
-          <div className="shrink-0 space-y-3 border-b border-line px-4 py-3">
-            <p className="text-mini text-warn">
-              Complete product activation and revenue intake before Week 1 starts.
-            </p>
-            <BudgetSetupCard />
-            <ProductActivationCard />
-            <RevenueSetupCard />
+          <div className="shrink-0 border-b border-line px-4 py-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-mini text-text-2">
+                Complete launch setup before Week 1 — activation, measurement, revenue if applicable.
+              </p>
+              <Button variant="primary" size="sm" onClick={() => openLaunchReadiness()}>
+                Open launch setup
+              </Button>
+            </div>
           </div>
         )}
-        {commandSurfaceActive && growthControlPlane && opsCadence && (
-          <div className="shrink-0 border-b border-line px-4 py-3">
-            <GrowthCommandSurface
-              plane={growthControlPlane}
+
+        {warRoomExpanded && growthControlPlane && opsCadence && (
+          <div className="absolute inset-x-0 top-[var(--next-action-h,0px)] z-[var(--z-overlay)] max-h-[70vh] overflow-y-auto border-b border-line bg-bg shadow-[var(--shadow-3)]">
+            <CmoBackstage
               cadence={opsCadence}
+              thesis={channelThesis}
+              plane={growthControlPlane}
+              laneAWorkspace={laneAWorkspace}
               laneBWorkspace={laneBWorkspace}
               laneDWorkspace={laneDWorkspace}
               monetizationWorkspace={monetizationWorkspace}
-              revenueProfile={revenueProfile}
               distributionOperator={distOperatorActive ? distributionOperator : null}
               influencerOperator={infOperatorActive ? influencerOperator : null}
               delegateOperator={delegateOperatorActive ? delegateWorkspace : null}
@@ -176,92 +174,14 @@ export function Workspace() {
             />
           </div>
         )}
-        {commandSurfaceActive && warRoomExpanded && growthControlPlane && opsCadence && (
-          <CmoBackstage
-            cadence={opsCadence}
-            thesis={channelThesis}
-            plane={growthControlPlane}
-            laneAWorkspace={laneAWorkspace}
-            laneBWorkspace={laneBWorkspace}
-            laneDWorkspace={laneDWorkspace}
-            monetizationWorkspace={monetizationWorkspace}
-            distributionOperator={distOperatorActive ? distributionOperator : null}
-            influencerOperator={infOperatorActive ? influencerOperator : null}
-            delegateOperator={delegateOperatorActive ? delegateWorkspace : null}
-            continuous={cmoContinuous}
-            campaignSession={campaignSession}
-            growthMemory={growthMemory}
-            compact
-          />
-        )}
-        {!commandSurfaceActive && growthControlPlane && opsCadence && (
-          <CmoBackstage
-            cadence={opsCadence}
-            thesis={channelThesis}
-            plane={growthControlPlane}
-            laneAWorkspace={laneAWorkspace}
-            laneBWorkspace={laneBWorkspace}
-            laneDWorkspace={laneDWorkspace}
-            monetizationWorkspace={monetizationWorkspace}
-            distributionOperator={distOperatorActive ? distributionOperator : null}
-            influencerOperator={infOperatorActive ? influencerOperator : null}
-            delegateOperator={delegateOperatorActive ? delegateWorkspace : null}
-            continuous={cmoContinuous}
-            campaignSession={campaignSession}
-            growthMemory={growthMemory}
-            compact
-          />
-        )}
-        <SalesExportBar />
-        <ExecutionQueuePanel />
-        <div className="relative flex min-h-0 flex-1">
-          <div className="relative flex h-full min-h-0 min-w-0 flex-1">
-            <Canvas />
-            {focusMode && (
-              <button
-                onClick={() => toggleFocusMode(false)}
-                title="Exit focus mode"
-                className="app-no-drag absolute right-3 top-3 z-30 flex items-center gap-1.5 rounded-[var(--radius-md)] border border-line bg-surface/90 px-2.5 py-1 text-label text-text-2 backdrop-blur-sm transition-colors hover:bg-elevated hover:text-text"
-              >
-                <PanelRightOpen size={13} /> Show conversation
-              </button>
-            )}
-          </div>
 
-          {!focusMode && (
-            <ResizablePanel
-              side="right"
-              storageKey="panel.agent"
-              defaultWidth={380}
-              min={320}
-              max={560}
-            >
-              <AgentThread />
-            </ResizablePanel>
-          )}
+        {/* Center stack: Record + artifact (flex-1) · command dock (bottom) */}
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ExecutionRecordStage />
+          <WorkspaceCommandDock />
         </div>
 
-        {focusMode && (
-          <div className="shrink-0 border-t border-line bg-surface">
-            <div className="px-4 pt-2">
-              <StageBreadcrumb />
-            </div>
-            <Composer />
-          </div>
-        )}
-
-        {focusMode || feedCollapsed ? (
-          <ExecutionFeed mini={focusMode} />
-        ) : (
-          <ResizableVerticalPanel
-            storageKey="panel.execution-feed"
-            defaultHeight={200}
-            min={120}
-            max={320}
-          >
-            <ExecutionFeed />
-          </ResizableVerticalPanel>
-        )}
+        {!feedCollapsed && <ExecutionFeed mini />}
       </div>
     </div>
   );

@@ -41,6 +41,8 @@ export function OpsTaskProofModal() {
     task.expected_proof_kind === "live_url" ||
     /\b(url|live post|link|published|posted)\b/i.test(task.done_when);
 
+  const hasPostedUrl = urls.some((u) => u.trim().length >= 8);
+
   const proofInput = {
     urls: urls.filter((u) => u.trim()),
     note,
@@ -127,7 +129,48 @@ export function OpsTaskProofModal() {
         </div>
 
         <div className="mt-4 space-y-3">
-          {gate && (
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-text-3">
+              {needsLiveUrl ? "Link to live asset (required first)" : "Proof URLs"}
+            </label>
+            {needsLiveUrl && (
+              <p className="mt-1 text-[10px] text-text-3">
+                Paste the primary published URL before logging KPI — progressive proof flow.
+              </p>
+            )}
+            <div className="mt-1.5 space-y-1.5">
+              {urls.map((url, i) => (
+                <div key={i} className="flex gap-1.5">
+                  <div className="relative min-w-0 flex-1">
+                    <Link2
+                      size={12}
+                      className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-3"
+                    />
+                    <input
+                      type="url"
+                      value={url}
+                      placeholder="https://…"
+                      data-testid={i === 0 ? "ops-proof-url-0" : undefined}
+                      className="w-full rounded-[var(--radius-md)] border border-line bg-surface-2 py-1.5 pl-8 pr-2 text-body-sm text-text"
+                      onChange={(e) =>
+                        setUrls((prev) => prev.map((u, j) => (j === i ? e.target.value : u)))
+                      }
+                    />
+                  </div>
+                  {urls.length > 1 && (
+                    <Button variant="ghost" size="sm" onClick={() => removeUrl(i)}>
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <Button variant="ghost" size="sm" className="mt-1" iconLeft={<Plus size={12} />} onClick={addUrl}>
+              Add URL
+            </Button>
+          </div>
+
+          {gate && hasPostedUrl && (
             <div className="rounded-[var(--radius-md)] border border-accent/25 bg-accent-soft/10 px-3 py-2.5">
               <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-accent">
                 <BarChart3 size={12} />
@@ -171,46 +214,9 @@ export function OpsTaskProofModal() {
             </div>
           )}
 
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-text-3">
-              {needsLiveUrl ? "Link to live asset (required)" : "Proof URLs"}
-            </label>
-            {needsLiveUrl && (
-              <p className="mt-1 text-[10px] text-text-3">
-                Paste the primary published URL — it becomes the proof chip on the ops board.
-              </p>
-            )}
-            <div className="mt-1.5 space-y-1.5">
-              {urls.map((url, i) => (
-                <div key={i} className="flex gap-1.5">
-                  <div className="relative min-w-0 flex-1">
-                    <Link2
-                      size={12}
-                      className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-3"
-                    />
-                    <input
-                      type="url"
-                      value={url}
-                      placeholder="https://…"
-                      data-testid={i === 0 ? "ops-proof-url-0" : undefined}
-                      className="w-full rounded-[var(--radius-md)] border border-line bg-surface-2 py-1.5 pl-8 pr-2 text-body-sm text-text"
-                      onChange={(e) =>
-                        setUrls((prev) => prev.map((u, j) => (j === i ? e.target.value : u)))
-                      }
-                    />
-                  </div>
-                  {urls.length > 1 && (
-                    <Button variant="ghost" size="sm" onClick={() => removeUrl(i)}>
-                      Remove
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <Button variant="ghost" size="sm" className="mt-1" iconLeft={<Plus size={12} />} onClick={addUrl}>
-              Add URL
-            </Button>
-          </div>
+          {!hasPostedUrl && gate && (
+            <p className="text-mini text-text-3">Add a post URL above to unlock KPI logging.</p>
+          )}
 
           <div>
             <label className="text-[10px] font-semibold uppercase tracking-wide text-text-3">

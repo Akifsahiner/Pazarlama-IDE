@@ -85,6 +85,7 @@ describe("cmoInfluencerOperator", () => {
       });
       ws = r.workspace;
       r = completeInfluencerTouch(ws, id, "replied", {
+        thread_url: `https://instagram.com/direct/t/${i}`,
         reply_received: true,
         reply_interest: "warm",
         reply_note: "Interested in learning more about the product",
@@ -124,6 +125,7 @@ describe("cmoInfluencerOperator", () => {
       let r = completeInfluencerTouch(ws, id, "pitched", { note: "DM sent to creator ok" });
       ws = r.workspace;
       r = completeInfluencerTouch(ws, id, "replied", {
+        thread_url: "https://instagram.com/direct/t/win-thread",
         reply_received: true,
         reply_interest: "hot",
         reply_note: "Let's schedule a call this week",
@@ -175,6 +177,7 @@ describe("cmoInfluencerOperator", () => {
     let r = completeInfluencerTouch(ws, id, "pitched", { note: "DM sent to @c1 today ok" });
     ws = r.workspace;
     r = completeInfluencerTouch(ws, id, "replied", {
+      thread_url: "https://instagram.com/direct/t/c1-thread",
       reply_received: true,
       reply_interest: "warm",
       reply_note: "They want to see the brief first",

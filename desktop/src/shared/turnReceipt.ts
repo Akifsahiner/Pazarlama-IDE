@@ -53,6 +53,17 @@ export interface BuildTurnReceiptInput {
   decisionsCount?: number;
 }
 
+/** Concatenate unified patch hunks from run events for quality lint / diff analysis. */
+export function aggregatePatchDiffText(events: RunEvent[]): string {
+  const parts: string[] = [];
+  for (const e of events) {
+    if (e.type !== "file.patch_created" && e.type !== "file.patch_updated") continue;
+    const patch = (e.payload as { patch?: string } | undefined)?.patch;
+    if (patch) parts.push(patch);
+  }
+  return parts.join("\n");
+}
+
 export function aggregatePatchStats(events: RunEvent[]): {
   linesAdded: number;
   linesRemoved: number;

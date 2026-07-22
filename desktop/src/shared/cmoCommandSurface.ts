@@ -22,6 +22,7 @@ import {
   influencerOutreachSummary,
 } from "./cmoInfluencerOperator";
 import type { LaneBWorkspace } from "./cmoLaneB";
+import { resolveCurrentRunbookStep } from "./cmoLaneB";
 import { getNextProductRequest, type LaneDWorkspace } from "./cmoLaneD";
 import { getNextMonetizationTask, type MonetizationWorkspace } from "./cmoRevenuePlane";
 import { withNarrativePrefix } from "./cmoNarrativeContext";
@@ -371,6 +372,7 @@ export type CommandSurfaceAction =
       thesisId?: ChannelThesisId;
     }
   | { kind: "lane_b_proof"; itemId: string; label: string; testId: string }
+  | { kind: "focus_war_room"; anchor: string; label: string; testId: string }
   | { kind: "focus_backstage"; anchor: string; label: string; testId: string }
   | { kind: "none"; reason: string };
 
@@ -441,16 +443,40 @@ export function resolveCommandSurfaceAction(
     };
   }
 
+  const runbookStep =
+    input.laneBWorkspace?.mode === "launch_runbook"
+      ? resolveCurrentRunbookStep(input.laneBWorkspace)
+      : null;
+  if (runbookStep) {
+    const offset = runbookStep.runbook_offset ?? "T-0";
+    const label =
+      offset === "T-0"
+        ? `Launch now: ${runbookStep.title}`
+        : `Runbook ${offset}: ${runbookStep.title}`;
+    return {
+      kind: "lane_b_proof",
+      itemId: runbookStep.id,
+      label,
+      testId: "command-surface-runbook-step",
+    };
+  }
+
   const distNext = input.distributionOperator
     ? getNextDistributionSlot(input.distributionOperator)
     : null;
   if (distNext) {
+    const linkedTask = input.cadence?.tasks.find(
+      (t) => t.human_execution_ref?.item_id === distNext.id,
+    );
+    const proofMeta = linkedTask?.human_execution_ref
+      ? resolveHumanProofAction(linkedTask.human_execution_ref)
+      : null;
     return {
       kind: "operator_proof",
       operator: "distribution",
       touchId: distNext.id,
-      label: "Log distribution proof",
-      testId: "command-surface-distribution-proof",
+      label: proofMeta?.label ?? "Open Post Kit",
+      testId: proofMeta?.testId ?? "command-surface-distribution-proof",
     };
   }
 
@@ -571,7 +597,7 @@ export function resolveCommandSurfaceAction(
 
   if (governance?.kind === "measuring") {
     return {
-      kind: "focus_backstage",
+      kind: "focus_war_room",
       anchor: "cmo-cycle-panel",
       label: governance.primaryLabel,
       testId: "command-surface-view-cycle",
@@ -580,7 +606,7 @@ export function resolveCommandSurfaceAction(
 
   if (governance?.kind === "revenue_focus") {
     return {
-      kind: "focus_backstage",
+      kind: "focus_war_room",
       anchor: "revenue-plane-panel-wrap",
       label: governance.primaryLabel,
       testId: "command-surface-revenue-focus",
@@ -589,7 +615,7 @@ export function resolveCommandSurfaceAction(
 
   if (governance?.kind === "product_loop") {
     return {
-      kind: "focus_backstage",
+      kind: "focus_war_room",
       anchor: "lane-d-panel-wrap",
       label: governance.primaryLabel,
       testId: "command-surface-product-loop-focus",

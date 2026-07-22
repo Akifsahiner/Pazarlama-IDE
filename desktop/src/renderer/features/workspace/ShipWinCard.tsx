@@ -5,6 +5,7 @@ import { assessMeasurementBaseline } from "@shared/measurementBaseline";
 import { Card } from "@renderer/components/ui/Card";
 import { Button } from "@renderer/components/ui/Button";
 import { Badge } from "@renderer/components/ui/Badge";
+import { ShipBeforeAfterGrid } from "./ShipBeforeAfterGrid";
 import { useApp } from "@renderer/state/store";
 
 export function ShipWinCard({
@@ -42,40 +43,13 @@ export function ShipWinCard({
         )}
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div data-testid="ship-win-before">
-          <p className="text-[10px] font-semibold uppercase text-text-3">Before</p>
-          {before?.metaTitle && (
-            <p className="mt-1 text-mini text-text-2">
-              <span className="text-text-3">Title:</span> {before.metaTitle}
-            </p>
-          )}
-          {before?.heroHeadline && (
-            <p className="mt-1 text-mini text-text-2">
-              <span className="text-text-3">Hero:</span> {before.heroHeadline}
-            </p>
-          )}
-          {!before?.metaTitle && !before?.heroHeadline && (
-            <p className="mt-1 text-mini text-text-3">Baseline captured at scan</p>
-          )}
-        </div>
-        <div data-testid="ship-win-after">
-          <p className="text-[10px] font-semibold uppercase text-text-3">After</p>
-          {after?.metaTitle && (
-            <p className="mt-1 text-mini text-text">
-              <span className="text-text-3">Title:</span> {after.metaTitle}
-            </p>
-          )}
-          {after?.heroHeadline && (
-            <p className="mt-1 text-mini text-text">
-              <span className="text-text-3">Hero:</span> {after.heroHeadline}
-            </p>
-          )}
-          {!after?.metaTitle && !after?.heroHeadline && files.length > 0 && (
-            <p className="mt-1 text-mini text-text">{files.join(", ")}</p>
-          )}
-        </div>
-      </div>
+      <ShipBeforeAfterGrid
+        before={before}
+        after={after}
+        files={files}
+        beforeTestId="ship-win-before"
+        afterTestId="ship-win-after"
+      />
 
       {linesDelta && (
         <p className="mt-2 text-[10px] text-text-3">

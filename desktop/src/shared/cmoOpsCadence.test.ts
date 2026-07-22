@@ -11,6 +11,7 @@ import {
   tryAutoCompleteSystemTask,
   attachBrowserEvidenceToSystemTask,
   validateOpsProof,
+  skipOpsTask,
 } from "./cmoOpsCadence";
 import { toBrowserEvidenceProof } from "./browserVerify";
 import type { ProjectProfile } from "./types";
@@ -155,5 +156,23 @@ describe("cmoOpsCadence", () => {
       }).cadence;
     }
     assert.equal(opsQueueBlocksLaneWork(cadence), false);
+  });
+
+  it("skipOpsTask blocks system tasks requiring browser verify", () => {
+    const thesis = buildCmoIntake({ project: baseProject(), persona: "marketing" });
+    const cadence = createOpsCadenceFromThesis(thesis);
+    const systemTask = cadence.tasks.find((t) => t.owner === "system");
+    assert.ok(systemTask);
+    const verifyTask = {
+      ...systemTask!,
+      done_when: "Live URL verified in browser",
+      expected_proof_kind: "browser_evidence" as const,
+    };
+    const cadenceWithVerify = {
+      ...cadence,
+      tasks: cadence.tasks.map((t) => (t.id === systemTask!.id ? verifyTask : t)),
+    };
+    const { error } = skipOpsTask(cadenceWithVerify, verifyTask.id, "Not needed");
+    assert.match(error ?? "", /browser verification/i);
   });
 });

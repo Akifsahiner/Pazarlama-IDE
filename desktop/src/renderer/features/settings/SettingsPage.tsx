@@ -495,7 +495,7 @@ export function SettingsSections({
           <span className="text-body-sm text-text-2">Marketing IDE — Claude for Marketing &amp; Sales</span>
         </div>
         <div className="mt-1 flex items-center gap-2 text-body-sm text-text-3">
-          <Keyboard size={13} /> Cmd/Ctrl+K command center · L composer · B sidebar · , settings · N new session
+          <Keyboard size={13} /> Cmd/Ctrl+K command center · L composer · J command dock · B sidebar · , settings · N new session
         </div>
       </Section>
       )}

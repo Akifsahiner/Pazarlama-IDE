@@ -9,7 +9,13 @@ function optionalNumber(value: string): number | undefined {
   return value === "" ? undefined : Number(value);
 }
 
-export function ProductActivationCard() {
+export function ProductActivationCard({
+  embedded = false,
+  onComplete,
+}: {
+  embedded?: boolean;
+  onComplete?: () => void;
+} = {}) {
   const profile = useApp((state) => state.marketingProfile);
   const budget = useApp((state) => state.budgetPlan ?? state.marketingProfile?.budget_plan);
   const activation = useApp(
@@ -25,7 +31,9 @@ export function ProductActivationCard() {
   const [onboarding, setOnboarding] = useState<"" | "yes" | "no">("");
   const [error, setError] = useState<string | null>(null);
 
-  if (!profile || !budget || activation || !isStrategicDecisionSealed(profile)) return null;
+  if (!profile || !isStrategicDecisionSealed(profile)) return null;
+  if (!embedded && (!budget || activation)) return null;
+  if (embedded && activation) return null;
 
   const submit = () => {
     if (eventLabel.trim().length < 3) {
@@ -49,10 +57,11 @@ export function ProductActivationCard() {
       onboarding_path_exists: onboarding === "" ? undefined : onboarding === "yes",
     });
     setError(ok ? null : "Could not save activation intake.");
+    if (ok) onComplete?.();
   };
 
-  return (
-    <Card data-testid="product-activation-card" className="p-4">
+  const inner = (
+    <>
       <div className="flex items-center gap-2">
         <Gauge size={15} className="text-accent" />
         <h3 className="text-body-sm font-semibold text-text">Define first value before scale</h3>
@@ -116,6 +125,20 @@ export function ProductActivationCard() {
           Save activation gate
         </Button>
       </div>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div data-testid="product-activation-card" className="rounded-[var(--radius-lg)] border border-line p-4">
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <Card data-testid="product-activation-card" className="p-4">
+      {inner}
     </Card>
   );
 }

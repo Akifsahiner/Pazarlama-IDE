@@ -13,6 +13,7 @@ import {
   Library,
   Map as MapIcon,
   MessageSquarePlus,
+  PanelBottom,
   Plug,
   Settings as SettingsIcon,
   Wand2,
@@ -88,6 +89,10 @@ export function CommandPalette() {
   const runBrowserTask = useApp((s) => s.runBrowserTask);
   const checkConnection = useApp((s) => s.checkConnection);
   const previewFile = useApp((s) => s.previewFile);
+  const toggleCommandDockCollapsed = useApp((s) => s.toggleCommandDockCollapsed);
+  const setCommandDockCollapsed = useApp((s) => s.setCommandDockCollapsed);
+  const toggleFocusMode = useApp((s) => s.toggleFocusMode);
+  const focusMode = useApp((s) => s.focusMode);
   const project = useApp((s) => s.project);
   const projectRecents = useApp((s) => s.recents);
   const hasProject = project !== null;
@@ -154,11 +159,29 @@ export function CommandPalette() {
         );
       } },
       { id: "new-session", label: "New session", icon: MessageSquarePlus, shortcut: ["Ctrl", "N"], run: () => void createNewSession() },
+      {
+        id: "toggle-command-dock",
+        label: focusMode ? "Show command dock" : "Toggle command dock",
+        hint: "Workspace",
+        keywords: "chat composer komut panel bottom",
+        icon: PanelBottom,
+        enabled: hasProject,
+        shortcut: ["Ctrl", "J"],
+        run: () => {
+          navigate("workspace");
+          if (focusMode) {
+            toggleFocusMode(false);
+            setCommandDockCollapsed(false);
+          } else {
+            toggleCommandDockCollapsed();
+          }
+        },
+      },
       { id: "close", label: "Close project", icon: XCircle, enabled: hasProject, run: () => closeProject() },
       { id: "connect", label: "Retry connection", hint: "Settings", icon: Plug, run: () => { navigate("settings"); void checkConnection(); } },
       { id: "settings", label: "Settings", icon: SettingsIcon, shortcut: ["Ctrl", ","], run: () => navigate("settings") },
     ],
-    [openFolderDialog, openProjectPicker, generatePlan, createNewSession, closeProject, setActiveCanvas, setWorkSurface, navigate, runBrowserTask, checkConnection, hasProject, connected, projectRoot, fileSearchHint],
+    [openFolderDialog, openProjectPicker, generatePlan, createNewSession, closeProject, setActiveCanvas, setWorkSurface, navigate, runBrowserTask, checkConnection, hasProject, connected, projectRoot, fileSearchHint, toggleCommandDockCollapsed, setCommandDockCollapsed, toggleFocusMode, focusMode],
   );
 
   useEffect(() => {

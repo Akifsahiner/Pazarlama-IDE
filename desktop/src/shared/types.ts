@@ -207,6 +207,13 @@ export interface ManualKpi {
   channel?: string;
   updated_at: string;
   source: "manual";
+  import_note?: string;
+  snapshots?: Array<{
+    day_index: number;
+    value: number;
+    recorded_at: string;
+    source: "manual" | "import" | "proof" | "ga4";
+  }>;
 }
 
 export interface Ga4ConnectorSnapshot {

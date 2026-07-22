@@ -11,6 +11,14 @@ import type { LaneBWorkspace } from "./cmoLaneB";
 import type { CmoOpsCadence, CmoOpsTask } from "./cmoOpsCadence";
 import { opsQueueBlocksLaneWork } from "./cmoOpsCadence";
 import type { HumanExecutionRef } from "./humanExecutionPlan";
+import { resolveHumanExecutionAssetForTask } from "./buildHumanExecutionAsset";
+import type { HumanExecutionAsset } from "./humanExecutionAsset";
+import {
+  lintHumanExecutionAsset,
+  lintHumanOpsTaskDoneWhen,
+  type HumanContractFinding,
+} from "./humanExecutionContractLint";
+import { getNextDelegateRubricDay } from "./cmoDelegateOperator";
 
 export type { HumanExecutionRef, HumanExportKind, HumanExecutionSource, HumanProofSurface } from "./humanExecutionPlan";
 
@@ -44,25 +52,25 @@ export function resolveHumanProofAction(ref: HumanExecutionRef): {
   label: string;
 } {
   if (ref.export_kind === "outreach_csv") {
-    return { testId: "command-surface-export-outreach", label: "Export outreach CSV" };
+    return { testId: "command-surface-export-outreach", label: "Open outreach pack" };
   }
   switch (ref.proof_surface) {
     case "lane_b_modal":
-      return { testId: "command-surface-lane-b-proof", label: "Submit Lane B proof" };
+      return { testId: "command-surface-lane-b-proof", label: "Open Post Kit" };
     case "operator_modal":
       return {
         testId: `command-surface-${ref.source}-proof`,
         label:
           ref.source === "distribution"
-            ? "Log distribution proof"
+            ? "Open Post Kit"
             : ref.source === "influencer"
-              ? "Log outreach proof"
-              : "Submit delegate rubric",
+              ? "Open outreach pack"
+              : "Open delegate rubric",
       };
     default:
       return {
         testId: "command-surface-submit-proof",
-        label: ref.export_kind ? "Submit proof" : "Submit proof",
+        label: "Open Post Kit",
       };
   }
 }
@@ -86,6 +94,7 @@ export function resolveHumanExecutionRef(input: {
   distributionOperator?: DistributionOperatorWorkspace | null;
   influencerOperator?: InfluencerOperatorWorkspace | null;
   delegateOperator?: DelegateOperatorWorkspace | null;
+  opsDayIndex?: number;
 }): HumanExecutionRef | null {
   if (input.task.owner !== "user" && input.task.owner !== "delegate") return null;
 
@@ -137,7 +146,9 @@ export function resolveHumanExecutionRef(input: {
   }
 
   if (input.delegateOperator && input.task.owner === "delegate") {
-    const rubric = input.delegateOperator.daily_rubrics[0];
+    const rubric =
+      getNextDelegateRubricDay(input.delegateOperator, input.opsDayIndex ?? 1) ??
+      input.delegateOperator.daily_rubrics.find((r) => r.status !== "done");
     if (rubric) {
       return {
         source: "delegate",
@@ -191,6 +202,7 @@ export interface BindHumanCadenceResult {
   distributionOperator?: DistributionOperatorWorkspace;
   influencerOperator?: InfluencerOperatorWorkspace;
   missingRefs: string[];
+  contractFindings: HumanContractFinding[];
 }
 
 export function bindHumanExecutionForCadence(input: {
@@ -200,9 +212,11 @@ export function bindHumanExecutionForCadence(input: {
   distributionOperator?: DistributionOperatorWorkspace | null;
   influencerOperator?: InfluencerOperatorWorkspace | null;
   delegateOperator?: DelegateOperatorWorkspace | null;
+  projectName?: string;
   strict?: boolean;
 }): BindHumanCadenceResult {
   const missingRefs: string[] = [];
+  const contractFindings: HumanContractFinding[] = [];
   let laneB = input.laneB ? { ...input.laneB, items: [...input.laneB.items] } : undefined;
   let distributionOperator = input.distributionOperator
     ? {
@@ -226,6 +240,7 @@ export function bindHumanExecutionForCadence(input: {
         distributionOperator,
         influencerOperator,
         delegateOperator: input.delegateOperator,
+        opsDayIndex: input.cadence.day_index,
       });
       if (!ref) {
         missingRefs.push(task.id);
@@ -258,10 +273,23 @@ export function bindHumanExecutionForCadence(input: {
       }
 
       const kind = inferExpectedProofKind(task.done_when);
+      const asset: HumanExecutionAsset = resolveHumanExecutionAssetForTask(task, {
+        ref,
+        thesis: input.thesis,
+        cadence: input.cadence,
+        laneB,
+        distributionOperator,
+        influencerOperator,
+        delegateOperator: input.delegateOperator,
+        projectName: input.projectName,
+      });
+      contractFindings.push(...lintHumanOpsTaskDoneWhen(task));
+      contractFindings.push(...lintHumanExecutionAsset(asset, input.thesis.id));
       return {
         ...task,
         expected_proof_kind: task.expected_proof_kind ?? kind,
         human_execution_ref: ref,
+        human_execution_asset: asset,
       };
     }
     return task;
@@ -271,12 +299,20 @@ export function bindHumanExecutionForCadence(input: {
     throw new Error(`Human ops tasks missing execution ref: ${missingRefs.join(", ")}`);
   }
 
+  const blockFindings = contractFindings.filter((f) => f.severity === "block");
+  if (input.strict && blockFindings.length > 0) {
+    throw new Error(
+      `Human bind contract lint failed: ${blockFindings.map((f) => f.detail).join(" | ")}`,
+    );
+  }
+
   return {
     cadence: { ...input.cadence, tasks },
     laneB,
     distributionOperator,
     influencerOperator,
     missingRefs,
+    contractFindings,
   };
 }
 

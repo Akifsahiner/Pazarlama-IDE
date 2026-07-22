@@ -105,7 +105,7 @@ describe("cmoDistributionOperator", () => {
     assert.equal(verdict.hook_id, "hook.a");
   });
 
-  it("kill rule → 3 posts <45% retention → kill", () => {
+  it("kill rule → 3 posts <20% retention → kill", () => {
     const thesis = buildCmoIntake({
       project: baseProject(),
       persona: "marketing",
@@ -116,7 +116,7 @@ describe("cmoDistributionOperator", () => {
     for (let i = 0; i < 3; i++) {
       const r = completeDistributionSlot(ws, hookBPosts[i]!.id, {
         post_url: `https://tiktok.com/v/${i}`,
-        retention_3s_pct: 30,
+        retention_3s_pct: 15,
         views_24h: 100,
       });
       ws = r.workspace;

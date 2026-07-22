@@ -33,7 +33,13 @@ const PROVIDER_OPTIONS: PaymentProvider[] = [
   "none_detected",
 ];
 
-export function RevenueSetupCard() {
+export function RevenueSetupCard({
+  embedded = false,
+  onComplete,
+}: {
+  embedded?: boolean;
+  onComplete?: () => void;
+} = {}) {
   const profile = useApp((state) => state.marketingProfile);
   const settings = useApp((state) => state.settings);
   const project = useApp((state) => state.project);
@@ -96,9 +102,10 @@ export function RevenueSetupCard() {
     scan,
   ]);
 
-  if (!profile || !budget || !activation || revenue || !isStrategicDecisionSealed(profile)) {
-    return null;
-  }
+  if (!profile || !isStrategicDecisionSealed(profile)) return null;
+  if (embedded && revenue) return null;
+  if (!embedded && (!budget || !activation || revenue)) return null;
+  if (embedded && !profile.founder_fit) return null;
 
   const submit = () => {
     const values = [paidCustomers, mrr, ltv, pricingViews, checkoutStarts]
@@ -118,12 +125,13 @@ export function RevenueSetupCard() {
       checkoutStarts: optionalNumber(checkoutStarts),
     });
     setError(ok ? null : "Could not save revenue intake.");
+    if (ok) onComplete?.();
   };
 
   const ambiguous = thesisPreview.model === "hybrid" || thesisPreview.model === "not_yet";
 
-  return (
-    <Card data-testid="revenue-setup-card" className="p-4">
+  const inner = (
+    <>
       <div className="flex items-center gap-2">
         <CreditCard size={15} className="text-accent" />
         <h3 className="text-body-sm font-semibold text-text">How will you get paid?</h3>
@@ -245,6 +253,20 @@ export function RevenueSetupCard() {
       <Button className="mt-3 w-full" onClick={submit}>
         Save revenue intake
       </Button>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div data-testid="revenue-setup-card" className="rounded-[var(--radius-lg)] border border-line p-4">
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <Card data-testid="revenue-setup-card" className="p-4">
+      {inner}
     </Card>
   );
 }

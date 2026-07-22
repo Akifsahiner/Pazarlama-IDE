@@ -144,7 +144,7 @@ function dispatchAction(dispatch: NextActionDispatch) {
       break;
     case "focus_ops_board":
       s.navigate("workspace");
-      s.focusBackstageAnchor("cmo-ops-board");
+      s.focusWarRoomAnchor("cmo-ops-board");
       break;
     case "open_week_review":
       s.openWeekReviewModal();
@@ -168,7 +168,7 @@ function dispatchAction(dispatch: NextActionDispatch) {
       break;
     case "focus_lane_b_panel":
       s.navigate("workspace");
-      s.focusBackstageAnchor("lane-b-panel");
+      s.focusWarRoomAnchor("lane-b-panel");
       break;
     case "open_delegate_brief":
       s.openDelegateBriefModal(dispatch.briefId);
@@ -180,7 +180,7 @@ function dispatchAction(dispatch: NextActionDispatch) {
       break;
     case "focus_delegate_panel":
       s.navigate("workspace");
-      s.focusBackstageAnchor("delegate-panel");
+      s.focusWarRoomAnchor("delegate-panel");
       break;
     default:
       break;
