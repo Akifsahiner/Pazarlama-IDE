@@ -30,6 +30,9 @@ export interface LaunchReadinessInput {
   measurementReady?: boolean;
   /** User acknowledged measurement soft-skip (non-hard gate). */
   measurementAcknowledged?: boolean;
+  /** Quick Start: first patch shipped — measurement deferred until Week 2+. */
+  firstShipAt?: number | null;
+  onboardingTrack?: "quick_start" | "full_cmo";
 }
 
 export function needsRevenueStep(founderFit?: FounderFitProfile | null): boolean {
@@ -61,6 +64,11 @@ export function resolveLaunchReadinessSteps(input: LaunchReadinessInput): Launch
     input.measurementReady ?? false,
     input.measurementAcknowledged,
   );
+  const quickStartDeferred =
+    input.onboardingTrack === "quick_start" &&
+    Boolean(input.firstShipAt) &&
+    (!needsRevenueStep(input.founderFit) || revenueDone);
+  const effectiveMeasurementDone = measurementDone || quickStartDeferred;
 
   steps.push({
     id: "activation",
@@ -83,14 +91,15 @@ export function resolveLaunchReadinessSteps(input: LaunchReadinessInput): Launch
 
   steps.push({
     id: "measurement",
-    label: "Measurement baseline",
-    estimateMinutes: 2,
-    complete: measurementDone,
+    label: quickStartDeferred ? "Measurement (deferred)" : "Measurement baseline",
+    estimateMinutes: quickStartDeferred ? 0 : 2,
+    complete: effectiveMeasurementDone,
     required: false,
+    optional: true,
   });
 
   const priorRequiredDone =
-    (!revenueRequired || revenueDone) && measurementDone;
+    (!revenueRequired || revenueDone) && effectiveMeasurementDone;
 
   steps.push({
     id: "start",
@@ -114,5 +123,12 @@ export function resolveLaunchReadinessSteps(input: LaunchReadinessInput): Launch
 
 /** Week 1 can begin when launch readiness stepper requirements are satisfied. */
 export function isWeek1Ready(input: LaunchReadinessInput): boolean {
+  if (
+    input.onboardingTrack === "quick_start" &&
+    input.firstShipAt &&
+    (!needsRevenueStep(input.founderFit) || isRevenueComplete(input.revenueProfile))
+  ) {
+    return true;
+  }
   return resolveLaunchReadinessSteps(input).canStartWeek1;
 }

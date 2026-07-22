@@ -109,6 +109,11 @@ export function markShipReceiptVerifySkipped(receipt: ShipReceipt): ShipReceipt 
   return { ...receipt, verifyStatus: "skipped" };
 }
 
+/** Founder confirmed diff locally when Computer Use is unavailable. */
+export function markShipReceiptVerifyLocalPassed(receipt: ShipReceipt): ShipReceipt {
+  return { ...receipt, verifyStatus: "passed" };
+}
+
 export function shipReceiptToResultChips(receipt: ShipReceipt | null | undefined): ExecutionResultChip[] {
   if (!receipt) return [];
 

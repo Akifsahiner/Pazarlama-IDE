@@ -5,6 +5,7 @@ import type { GrowthMechanismId } from "@shared/cmoGrowthMechanismKnowledge";
 import type { ThesisQualityReport } from "@shared/cmoThesisQualityEngine";
 import type { GrowthNarrative, StrategicDecision } from "@shared/types";
 import { BOTTLENECK_LABELS } from "@shared/bottleneck";
+import { HUMAN_EXECUTION_CONTRACT } from "@shared/humanExecutionContract";
 import { resolveWeek1PreviewTasks } from "@shared/week1Preview";
 import { Card } from "@renderer/components/ui/Card";
 import { Button } from "@renderer/components/ui/Button";
@@ -177,6 +178,9 @@ export function CmoIntakeCard({
       )}
 
       <div className="mt-4">
+        <p className="mb-3 rounded-[var(--radius-md)] border border-line bg-surface-2 px-3 py-2 text-mini text-text-2">
+          {HUMAN_EXECUTION_CONTRACT.expectation}
+        </p>
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-wide text-text-3">
             Week 1 — do these in order

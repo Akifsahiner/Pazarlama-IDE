@@ -1,5 +1,5 @@
 import { ArrowRight } from "lucide-react";
-import { resolveLaunchReadinessSteps } from "@shared/launchReadiness";
+import { resolveLaunchReadinessSteps, isWeek1Ready } from "@shared/launchReadiness";
 import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
 import { assessMeasurementBaseline } from "@shared/measurementBaseline";
 import { useApp } from "@renderer/state/store";
@@ -14,6 +14,8 @@ export function LaunchReadinessBanner() {
   const project = useApp((s) => s.project);
   const productActivation = useApp((s) => s.productActivation);
   const revenueProfile = useApp((s) => s.revenueProfile);
+  const firstShipAt = useApp((s) => s.firstShipAt);
+  const onboardingTrack = useApp((s) => s.onboardingTrack);
   const openLaunchReadiness = useApp((s) => s.openLaunchReadiness);
   const beginCmoWeek1 = useApp((s) => s.beginCmoWeek1);
 
@@ -26,6 +28,17 @@ export function LaunchReadinessBanner() {
     revenueProfile: revenueProfile ?? marketingProfile?.revenue_profile,
     measurementReady: baseline.ready,
     measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
+    firstShipAt,
+    onboardingTrack,
+  });
+  const canStart = isWeek1Ready({
+    founderFit: marketingProfile?.founder_fit,
+    productActivation: productActivation ?? marketingProfile?.product_activation,
+    revenueProfile: revenueProfile ?? marketingProfile?.revenue_profile,
+    measurementReady: baseline.ready,
+    measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
+    firstShipAt,
+    onboardingTrack,
   });
 
   const remaining = readiness.total - readiness.completed;
@@ -49,13 +62,15 @@ export function LaunchReadinessBanner() {
             </span>
           </div>
           <h3 className="mt-1 text-body-sm font-semibold text-text">
-            {readiness.canStartWeek1
+            {readiness.canStartWeek1 || canStart
               ? "Ready to start Week 1 ops"
               : `${remaining} setup step${remaining === 1 ? "" : "s"} before Week 1`}
           </h3>
           <p className="mt-1 text-mini text-text-2">
-            {readiness.canStartWeek1
-              ? "Activation, measurement, and revenue gates passed — your ops table will appear next."
+            {canStart
+              ? firstShipAt && onboardingTrack === "quick_start"
+                ? "First patch shipped — Week 1 ops unlock without extra measurement ceremony."
+                : "Activation, measurement, and revenue gates passed — your ops table will appear next."
               : estimateMin > 0
                 ? `About ${estimateMin} min — activation, measurement ack, and revenue (if applicable). Then Week 1 ops unlock.`
                 : "Complete launch setup to unlock the Week 1 ops table."}
@@ -65,10 +80,10 @@ export function LaunchReadinessBanner() {
           variant="primary"
           size="sm"
           iconRight={<ArrowRight size={13} />}
-          onClick={() => (readiness.canStartWeek1 ? beginCmoWeek1() : openLaunchReadiness())}
+          onClick={() => (canStart ? beginCmoWeek1() : openLaunchReadiness())}
           data-testid="launch-readiness-banner-cta"
         >
-          {readiness.canStartWeek1 ? "Start Week 1" : "Continue launch setup"}
+          {canStart ? "Start Week 1" : "Continue launch setup"}
         </Button>
       </div>
     </Card>

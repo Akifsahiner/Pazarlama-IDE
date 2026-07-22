@@ -91,6 +91,8 @@ export function Workspace() {
       opsCadence,
     });
   const openLaunchReadiness = useApp((s) => s.openLaunchReadiness);
+  const firstShipAt = useApp((s) => s.firstShipAt);
+  const onboardingTrack = useApp((s) => s.onboardingTrack);
 
   const week1Ready = isWeek1Ready({
     founderFit: marketingProfile?.founder_fit,
@@ -98,6 +100,8 @@ export function Workspace() {
     productActivation,
     measurementReady: assessMeasurementBaseline(marketingProfile, project).ready,
     measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
+    firstShipAt,
+    onboardingTrack,
   });
   const needsPreWeek1Setup =
     Boolean(channelThesis) &&
