@@ -958,6 +958,10 @@ export interface QuotaInfo {
   agent_limit: number;
   browser_min_limit: number;
   cost_budget_cents?: number;
+  /** UTC billing period start (YYYY-MM-DD). */
+  period_start?: string;
+  /** ISO timestamp when monthly quota resets. */
+  resets_at?: string;
 }
 
 export interface UsageHistoryItem {

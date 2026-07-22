@@ -12,7 +12,7 @@ export const heroCopy = {
   subheadline:
     "Connect once (or preview offline), open your project folder, and get a 30-day launch plan you approve — agent tasks, diffs, and browser research you apply yourself.",
   cta: "Download Marketing IDE",
-  secondaryCta: "See your first hour",
+  secondaryCta: "View pricing",
 } as const;
 
 export const trustItems = [

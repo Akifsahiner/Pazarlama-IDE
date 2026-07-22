@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { OtherDownloads } from "@/components/download/OtherDownloads";
 import { PlatformDownloadButton } from "@/components/download/PlatformDownloadButton";
@@ -18,12 +19,12 @@ export function HeroCTA() {
     >
       <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
         <PlatformDownloadButton id="download-button" animated className="shimmer-button--hero" />
-        <a
-          href="#first-run"
+        <Link
+          href="/pricing"
           className="hero-secondary-cta rounded-full border border-white/34 bg-white/16 px-5 py-2.5 text-[14px] font-medium shadow-[0_4px_24px_rgba(8,48,96,0.14)] backdrop-blur-xl transition-colors hover:bg-white/24"
         >
           {heroCopy.secondaryCta}
-        </a>
+        </Link>
       </div>
       <OtherDownloads tone="hero" />
       <TrustStrip tone="hero" />

@@ -1,58 +1,50 @@
+import { useMemo } from "react";
 import { formatCostCents, formatTokenCount } from "@shared/contextBudget";
+import { summarizeUsage, usageStatusChip } from "@shared/usageDisplay";
+import { normalizeTier } from "@shared/tierFeatures";
 import { useApp } from "@renderer/state/store";
 
-function Bar({
-  label,
-  used,
-  limit,
-  color,
-}: {
-  label: string;
-  used: number;
-  limit: number;
-  color: string;
-}) {
-  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
-  const warn = pct >= 80;
-  return (
-    <div className="flex items-center gap-2" title={`${label}: ${used}/${limit}`}>
-      <span className="w-10 shrink-0 text-[10px] text-text-3">{label}</span>
-      <div className="h-1 w-16 overflow-hidden rounded-full bg-elevated">
-        <div
-          className={`h-full rounded-full ${warn ? "bg-warn" : color}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
+/** Cursor-style status bar usage chip — plan + % used, click for details. */
 export function UsageMeter() {
   const auth = useApp((s) => s.auth);
+  const tierLabel = useApp((s) => s.tierLabel);
   const navigate = useApp((s) => s.navigate);
-  if (!auth.usage || !auth.quota) return null;
 
-  const tokens = (auth.usage.tokens_in ?? 0) + (auth.usage.tokens_out ?? 0);
-  const cost = auth.usage.cost_cents ?? 0;
+  const summary = useMemo(() => {
+    if (!auth.usage || !auth.quota) return null;
+    return summarizeUsage({
+      usage: auth.usage,
+      quota: auth.quota,
+      tier: normalizeTier(auth.user?.tier),
+      tierLabel: tierLabel ?? undefined,
+    });
+  }, [auth.usage, auth.quota, auth.user?.tier, tierLabel]);
+
+  if (!summary) return null;
+
+  const chip = usageStatusChip(summary);
+  const barPct = summary.hasAiAccess ? summary.primaryPct : 0;
+  const barClass = summary.atLimit ? "bg-danger" : summary.nearLimit ? "bg-warn" : "bg-accent";
 
   return (
     <button
       type="button"
-      className="hidden items-center gap-3 md:flex"
+      className="flex min-w-0 items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-0.5 transition-colors hover:bg-elevated"
       onClick={() => navigate("settings", "usage")}
-      title="View usage & quota"
+      title={`${chip} · ${formatTokenCount(summary.totalTokens)} tokens · ${formatCostCents(summary.costCents)} this month`}
     >
-      <Bar label="Plan" used={auth.usage.plan} limit={auth.quota.plan_limit} color="bg-accent" />
-      <Bar label="Agent" used={auth.usage.agent} limit={auth.quota.agent_limit} color="bg-accent" />
-      <Bar
-        label="Browser"
-        used={auth.usage.browser_min}
-        limit={auth.quota.browser_min_limit}
-        color="bg-accent"
-      />
-      {(tokens > 0 || cost > 0) && (
-        <span className="text-[10px] tabular-nums text-text-3">
-          {formatTokenCount(tokens)} · {formatCostCents(cost)}
+      <span className="hidden max-w-[8rem] truncate text-[10px] tabular-nums text-text-2 sm:inline">
+        {chip}
+      </span>
+      {summary.hasAiAccess && (
+        <span className="flex items-center gap-1.5">
+          <span className="h-1 w-12 overflow-hidden rounded-full bg-elevated">
+            <span
+              className={`block h-full rounded-full ${barClass}`}
+              style={{ width: `${Math.min(100, barPct)}%` }}
+            />
+          </span>
+          <span className="text-[10px] tabular-nums text-text-3">{barPct}%</span>
         </span>
       )}
     </button>

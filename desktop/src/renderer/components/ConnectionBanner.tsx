@@ -1,4 +1,6 @@
 import { presentError } from "@renderer/lib/errorPresenter";
+import { summarizeUsage } from "@shared/usageDisplay";
+import { normalizeTier } from "@shared/tierFeatures";
 import { useApp } from "@renderer/state/store";
 
 function BannerAction({ label, onClick }: { label: string; onClick: () => void }) {
@@ -22,19 +24,27 @@ export function ConnectionBanner() {
   const runtime = useApp((s) => s.runtime);
   const localOnlyMode = useApp((s) => s.localOnlyMode);
   const auth = useApp((s) => s.auth);
+  const tierLabel = useApp((s) => s.tierLabel);
   const authError = useApp((s) => s.authError);
   const navigate = useApp((s) => s.navigate);
   const signOut = useApp((s) => s.signOut);
   const openConnectFlow = useApp((s) => s.openConnectFlow);
+  const startCheckout = useApp((s) => s.startCheckout);
   const workspaceHandoff = useApp((s) => s.workspaceHandoff);
   const outboxCount = useApp((s) => s.outboxCount);
 
-  const usage = auth.usage;
-  const quota = auth.quota;
-  const quotaHigh =
-    usage &&
-    quota &&
-    (usage.agent / quota.agent_limit >= 0.8 || usage.plan / quota.plan_limit >= 0.8);
+  const usageSummary =
+    auth.usage && auth.quota
+      ? summarizeUsage({
+          usage: auth.usage,
+          quota: auth.quota,
+          tier: normalizeTier(auth.user?.tier),
+          tierLabel: tierLabel ?? undefined,
+        })
+      : null;
+
+  const usageWarning =
+    usageSummary && usageSummary.hasAiAccess && (usageSummary.nearLimit || usageSummary.atLimit);
 
   if (authError) {
     return (
@@ -70,14 +80,22 @@ export function ConnectionBanner() {
     );
   }
 
-  // Connection dot + retry live in StatusBar only — no duplicate offline banner here.
-
-  if (connection === "connected" && runtime === "connected" && quotaHigh && usage && quota) {
+  if (connection === "connected" && runtime === "connected" && usageWarning && usageSummary) {
     return (
       <div className="border-b border-warn/30 bg-warn/10 px-3 py-1.5 text-center text-mini text-warn">
-        Usage above 80% this month (agent {usage.agent}/{quota.agent_limit}, plans {usage.plan}/
-        {quota.plan_limit}). Prefer Sonnet and run plan tasks one at a time.
+        {usageSummary.atLimit
+          ? `Monthly included usage reached (${usageSummary.primaryPct}%).`
+          : `${usageSummary.primaryPct}% of included usage used — ${usageSummary.primaryLabel}.`}
+        {usageSummary.resetLabel ? ` Resets ${usageSummary.resetLabel}.` : null}
         <BannerAction label="View usage" onClick={() => navigate("settings", "usage")} />
+        {auth.billingConfigured && normalizeTier(auth.user?.tier) !== "team" && (
+          <BannerAction
+            label={normalizeTier(auth.user?.tier) === "free" ? "Upgrade to Pro" : "Upgrade plan"}
+            onClick={() =>
+              void startCheckout(normalizeTier(auth.user?.tier) === "free" ? "pro" : "team")
+            }
+          />
+        )}
       </div>
     );
   }
