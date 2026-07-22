@@ -2,28 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle,
-  ArrowRight,
   BarChart3,
   Check,
   CheckCircle2,
-  Compass,
   FileCode2,
   FileText,
-  Rocket,
   Route as RouteIcon,
-  Search,
-  Target,
-  Wand2,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { inferMarketingGaps } from "@shared/marketingGaps";
 import { orderRevealRoutes, resolveFirstShipTarget } from "@shared/firstHourWow";
-import {
-  QUICK_ACTION_GOALS,
-  type QuickActionId,
-  isQuickActionDisabled,
-  resolveQuickAction,
-} from "@shared/quickActions";
 import { useApp } from "@renderer/state/store";
 import { Card } from "@renderer/components/ui/Card";
 import { Button } from "@renderer/components/ui/Button";
@@ -37,12 +24,10 @@ import { assessMeasurementBaseline } from "@shared/measurementBaseline";
 import {
   isQuickStartTrack,
   quickStartThesisLine,
-  resolveRevealPrimaryCta,
 } from "@shared/quickStartWedge";
 import logoUrl from "@renderer/assets/logo.png";
 import { QuickStartForkCard } from "@renderer/features/onboarding/QuickStartForkCard";
 import {
-  CURSOR_WOW,
   revealBeatDelayMs,
   revealBeatsForTrack,
   revealInitialDelayMs,
@@ -51,13 +36,8 @@ import {
 } from "@shared/instantWow";
 import { HumanExecutionContractBanner } from "@renderer/components/HumanExecutionContractBanner";
 import { ThesisChip } from "@renderer/components/ThesisChip";
-
-interface Move {
-  icon: LucideIcon;
-  title: string;
-  action: QuickActionId | "generate_plan" | "first_hour_wow";
-  tone: "accent" | "sales";
-}
+import { OneNextActionCard } from "@renderer/components/OneNextActionCard";
+import { resolveFirstRunPrimaryAction } from "@shared/northStarFunnel";
 
 type RevealBeat = RevealBeatId;
 
@@ -113,12 +93,7 @@ export function ProjectReveal() {
   const project = useApp((s) => s.project);
   const persona = useApp((s) => s.settings.persona);
   const reducedMotion = useApp((s) => s.settings.reducedMotion);
-  const startRun = useApp((s) => s.startRun);
-  const generatePlan = useApp((s) => s.generatePlan);
-  const previewPlanOutline = useApp((s) => s.previewPlanOutline);
   const openConnectFlow = useApp((s) => s.openConnectFlow);
-  const beginFirstHour = useApp((s) => s.beginFirstHour);
-  const beginFirstHourWow = useApp((s) => s.beginFirstHourWow);
   const beginQuickStartShip = useApp((s) => s.beginQuickStartShip);
   const beginCmoWeek1 = useApp((s) => s.beginCmoWeek1);
   const setOnboardingTrack = useApp((s) => s.setOnboardingTrack);
@@ -142,11 +117,8 @@ export function ProjectReveal() {
   const strategicIntakeOpen = useApp((s) => s.strategicIntakeOpen);
   const openStrategicIntake = useApp((s) => s.openStrategicIntake);
   const openLaunchReadiness = useApp((s) => s.openLaunchReadiness);
-  const runQuickAction = useApp((s) => s.runQuickAction);
-  const setActiveCanvas = useApp((s) => s.setActiveCanvas);
   const runtime = useApp((s) => s.runtime);
   const connected = runtime === "connected";
-  const hasFolder = project?.source.kind === "folder";
 
   const [beat, setBeat] = useState<RevealBeat>("name");
 
@@ -156,12 +128,6 @@ export function ProjectReveal() {
   );
 
   const enterHome = () => useApp.setState({ phase: "workspace", route: "home" });
-
-  const goWorkspace = () => {
-    useApp.setState({ phase: "workspace", route: "workspace" });
-    setActiveCanvas("campaign-plan");
-    useApp.getState().setWorkSurface("campaign-plan");
-  };
 
   useEffect(() => {
     if (!project) enterHome();
@@ -197,62 +163,57 @@ export function ProjectReveal() {
   const shipTarget = useMemo(() => (project ? resolveFirstShipTarget(project) : null), [project]);
   const orderedRoutes = useMemo(() => (project ? orderRevealRoutes(project) : { rest: [] }), [project]);
 
-  const primaryCta = resolveRevealPrimaryCta({
-    firstShipAt,
-    heroPath: shipTarget?.heroPath,
-    channelThesis,
-    marketingProfile,
-    week1Ready,
-    onboardingTrack,
-  });
   const quickStart = isQuickStartTrack(onboardingTrack) && !firstShipAt;
   const thesisLine = quickStartThesisLine(channelThesis);
 
-  if (!project) return null;
+  const primaryRunAction = useMemo(
+    () =>
+      resolveFirstRunPrimaryAction({
+        firstShipAt,
+        heroPath: shipTarget?.heroPath,
+        channelThesis,
+        marketingProfile,
+        week1Ready,
+        onboardingTrack,
+        connected,
+        persona,
+      }),
+    [
+      channelThesis,
+      connected,
+      firstShipAt,
+      marketingProfile,
+      onboardingTrack,
+      persona,
+      shipTarget?.heroPath,
+      week1Ready,
+    ],
+  );
 
-  const runMove = (move: Move) => {
-    if (move.action === "first_hour_wow") {
-      beginFirstHourWow();
-      return;
+  const runPrimaryRevealAction = () => {
+    switch (primaryRunAction.id) {
+      case "ship_first_patch":
+        beginQuickStartShip();
+        break;
+      case "complete_cmo_strategy":
+        openStrategicIntake();
+        break;
+      case "complete_launch_setup":
+        openLaunchReadiness();
+        break;
+      case "start_week1":
+        week1Ready ? beginCmoWeek1() : openLaunchReadiness();
+        break;
+      case "connect":
+        openConnectFlow();
+        break;
+      default:
+        beginQuickStartShip();
+        break;
     }
-    if (move.action === "generate_plan") {
-      if (connected) {
-        void generatePlan();
-      } else {
-        previewPlanOutline();
-      }
-      setActiveCanvas("campaign-plan");
-      goWorkspace();
-      return;
-    }
-    if (move.action === "launch") {
-      void startRun(QUICK_ACTION_GOALS.LAUNCH);
-      setActiveCanvas("run");
-      goWorkspace();
-      return;
-    }
-    if (move.action === "icp") {
-      void startRun(QUICK_ACTION_GOALS.ICP);
-      setActiveCanvas("run");
-      goWorkspace();
-      return;
-    }
-    const action = resolveQuickAction(move.action);
-    const blocked = isQuickActionDisabled(action, { connected, hasFolder });
-    if (blocked) {
-      goWorkspace();
-      runQuickAction(move.action);
-      return;
-    }
-    if (action.mode === "edit") {
-      void startRun(action.draft);
-      setActiveCanvas("run");
-      goWorkspace();
-      return;
-    }
-    runQuickAction(move.action);
-    goWorkspace();
   };
+
+  if (!project) return null;
 
   const sourceKindLabel =
     project.source.kind === "folder" ? "Local folder" : project.source.kind === "repo" ? "Repository" : "Live site";
@@ -267,21 +228,6 @@ export function ProjectReveal() {
       value: project.scannedFileCount > 0 ? String(project.scannedFileCount) : "—",
     },
   ];
-
-  const moves: Move[] =
-    persona === "sales"
-      ? [
-          { icon: Target, title: "Build my ICP", action: "icp", tone: "sales" },
-          { icon: Search, title: "Research 20 leads", action: "leads", tone: "sales" },
-          { icon: Rocket, title: "Prepare for launch", action: "launch", tone: "accent" },
-        ]
-      : [
-          ...(shipTarget?.heroPath
-            ? [{ icon: FileCode2, title: "Review hero & ship", action: "first_hour_wow" as const, tone: "accent" as const }]
-            : []),
-          { icon: Wand2, title: connected ? "30-day launch plan" : "Preview launch outline", action: "generate_plan", tone: "accent" },
-          { icon: Compass, title: "Scan competitors", action: "competitors", tone: "accent" },
-        ];
 
   return (
     <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-y-auto">
@@ -471,150 +417,36 @@ export function ProjectReveal() {
               initial={reducedMotion ? false : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <div className="mb-3 flex items-center gap-2">
-                <h2 className="text-h3 text-text">Suggested first moves</h2>
-                <Badge tone={persona === "sales" ? "sales" : "marketing"}>
-                  {persona === "sales" ? "Sales" : "Marketing"}
-                </Badge>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {moves.map((m) => {
-                  const actionId =
-                    m.action === "generate_plan" ? "plan" : m.action === "first_hour_wow" ? null : m.action;
-                  const disabled =
-                    m.action === "generate_plan" || m.action === "first_hour_wow"
-                      ? null
-                      : isQuickActionDisabled(resolveQuickAction(actionId!), {
-                          connected,
-                          hasFolder,
-                        });
-                  return (
-                    <Card
-                      key={m.title}
-                      interactive
-                      onClick={() => runMove(m)}
-                      className={`flex flex-col gap-2 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
-                      title={disabled ?? undefined}
-                    >
-                      <span
-                        className={`flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] ${
-                          m.tone === "sales" ? "bg-sales-soft text-sales" : "bg-accent-soft text-accent"
-                        }`}
-                      >
-                        <m.icon size={17} />
-                      </span>
-                      <span className="text-body font-medium text-text">{m.title}</span>
-                    </Card>
-                  );
-                })}
-              </div>
+              <OneNextActionCard
+                action={primaryRunAction}
+                onPrimary={runPrimaryRevealAction}
+                onTertiary={
+                  primaryRunAction.id === "ship_first_patch"
+                    ? () => setOnboardingTrack("full_cmo")
+                    : undefined
+                }
+                testId="reveal-one-next-action"
+              />
 
-              <div className="mb-6 text-center">
-                <p className="text-body font-medium text-text">{CURSOR_WOW.headline}</p>
-                <p className="mt-1 text-body-sm text-text-2">{CURSOR_WOW.subhead}</p>
-              </div>
-
-              <div className="mb-4">
+              <div className="mt-4">
                 <HumanExecutionContractBanner compact />
               </div>
 
-              <div className="mt-9 flex flex-col gap-3">
+              <div className="mt-6 flex flex-col gap-3">
                 {shouldShowQuickStartFork({ onboardingTrack, firstShipAt }) && (
                   <QuickStartForkCard compact />
                 )}
                 {!connected && (
                   <p className="text-body-sm text-text-2">
-                    Offline is fine — preview a scan-based plan outline first.
+                    Offline scan is ready — connect for AI diffs and Week 1 ops.
                     <button type="button" onClick={openConnectFlow} className="ml-1 text-accent hover:underline">
-                      Connect for full AI
+                      Connect
                     </button>
                   </p>
                 )}
-                {isStrategicDecisionSealed(marketingProfile) && !week1Ready && !quickStart && (
-                  <Button variant="secondary" onClick={() => openLaunchReadiness()}>
-                    Complete launch setup
-                  </Button>
-                )}
-                <div className="flex flex-wrap items-center gap-3">
-                  {primaryCta === "ship_first_win" && shipTarget?.heroPath ? (
-                    <Button
-                      variant="primary"
-                      iconRight={<ArrowRight size={16} />}
-                      onClick={() => beginQuickStartShip()}
-                      data-testid="reveal-ship-first-win"
-                    >
-                      {CURSOR_WOW.primaryCta}
-                    </Button>
-                  ) : primaryCta === "start_week1" ? (
-                    <Button
-                      variant="primary"
-                      iconRight={<ArrowRight size={16} />}
-                      onClick={() => (week1Ready ? beginCmoWeek1() : openLaunchReadiness())}
-                      data-testid="reveal-start-week1"
-                    >
-                      {week1Ready
-                        ? `Start Week 1 — ${channelThesis!.title}`
-                        : "Complete launch setup"}
-                    </Button>
-                  ) : primaryCta === "complete_pre_week1" ? (
-                    <Button
-                      variant="primary"
-                      iconRight={<ArrowRight size={16} />}
-                      onClick={() => openLaunchReadiness()}
-                      data-testid="reveal-complete-pre-week1"
-                    >
-                      Complete launch setup
-                    </Button>
-                  ) : primaryCta === "complete_cmo_strategy" ? (
-                    <Button
-                      variant="primary"
-                      iconRight={<ArrowRight size={16} />}
-                      onClick={openStrategicIntake}
-                      data-testid="reveal-open-strategic-intake"
-                    >
-                      Complete CMO strategy (7 questions)
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      iconRight={<ArrowRight size={16} />}
-                      onClick={() => beginFirstHour()}
-                    >
-                      {connected ? "Start AI launch plan" : "Preview plan in workspace"}
-                    </Button>
-                  )}
-                  {primaryCta === "ship_first_win" && channelThesis && (
-                    <Button variant="secondary" onClick={() => setOnboardingTrack("full_cmo")}>
-                      {CURSOR_WOW.secondaryCta}
-                    </Button>
-                  )}
-                  {firstShipAt && channelThesis && (
-                    <Button variant="secondary" onClick={() => beginFirstHour()}>
-                      {connected ? "Full launch plan" : "Preview plan outline"}
-                    </Button>
-                  )}
-                  {!firstShipAt && primaryCta !== "ship_first_win" && shipTarget?.heroPath && (
-                    <Button
-                      variant="secondary"
-                      onClick={() => beginQuickStartShip()}
-                      data-testid="reveal-first-hour-wow"
-                    >
-                      Quick hero ship
-                    </Button>
-                  )}
-                  <Button variant="secondary" onClick={enterHome}>
-                    Open dashboard
-                  </Button>
-                </div>
-                <p className="text-mini text-text-3">
-                  {!firstShipAt && shipTarget?.heroPath
-                    ? "Agent reads your landing file, cites path:line, then you apply one patch — same folder as Cursor."
-                    : firstShipAt && channelThesis
-                      ? "First change shipped — complete CMO strategy to unlock Week 1 ops with owners and deadlines."
-                      : channelThesis
-                        ? "CMO picked your primary channel thesis — Week 1 tasks have owners, deadlines, and done criteria."
-                        : `One click opens Plan Studio${connected ? " and generates your plan" : " with a scan-based outline"}.`}
-                </p>
+                <Button variant="ghost" size="sm" onClick={enterHome} className="self-start">
+                  Open dashboard
+                </Button>
                 {strategicIntakeOpen &&
                   channelThesis &&
                   channelThesis.verdict !== "not_ready" &&

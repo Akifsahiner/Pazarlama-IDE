@@ -33,6 +33,7 @@ import { PLAN_PREVIEW_LABEL, PLAN_AI_LABEL } from "./planLabels";
 import { personaValue } from "./personaValue";
 import type { WorkSurface } from "./workSurfaces";
 import { WORK_SURFACE_META } from "./workSurfaces";
+import { isWeek1OpsActive } from "./northStarFunnel";
 
 export type NextActionScope = "page" | "workspace";
 
@@ -113,6 +114,9 @@ export interface NextActionInput {
 
   /** P1 — CMO ops cadence when Week 1 is active without a full plan. */
   opsCadence?: CmoOpsCadence | null;
+  /** Quick Start track — suppress plan CTAs pre-ship. */
+  firstShipAt?: number | null;
+  onboardingTrack?: "quick_start" | "full_cmo";
   /** P3 — Lane B workspace (posting / outreach / runbook). */
   laneBWorkspace?: LaneBWorkspace | null;
   channelThesis?: ChannelThesis | null;
@@ -731,19 +735,43 @@ export function resolveNextActionCore(input: NextActionInput): ResolvedNextActio
   }
 
   if (!input.plan && input.hasProject) {
+    if (isWeek1OpsActive(input.opsCadence)) {
+      return {
+        id: "week1-ops-home",
+        eyebrow: "Week 1",
+        title: "Today's ops task is waiting",
+        reason: "Execution Record has your one next action — open workspace to continue.",
+        tone: "accent",
+        primaryLabel: "Open workspace",
+        dispatch: { type: "open_workspace" },
+      };
+    }
     const pv = personaValue(input.persona);
+    const preShipQuickStart =
+      input.onboardingTrack !== "full_cmo" && input.firstShipAt == null;
     if (input.scope === "page" && input.route === "home") {
+      if (preShipQuickStart) {
+        return {
+          id: "home-ship-first",
+          eyebrow: "Quick Start",
+          title: "Ship your first marketing patch",
+          reason: "One approved diff on your landing file — same folder as Cursor.",
+          tone: "accent",
+          primaryLabel: "Open workspace",
+          dispatch: { type: "open_workspace" },
+        };
+      }
       if (!input.connected) {
         return {
           id: "home-offline-plan",
           eyebrow: pv.eyebrow,
-          title: pv.offlinePlanTitle,
-          reason: "Scan-based outline — connect for full AI personalization.",
+          title: "Connect for AI runs",
+          reason: "Scan works offline — connect to ship repo diffs and Week 1 ops.",
           tone: "accent",
-          primaryLabel: PLAN_PREVIEW_LABEL,
-          secondaryLabel: "Connect",
-          dispatch: { type: "preview_plan" },
-          secondaryDispatch: { type: "connect" },
+          primaryLabel: "Connect",
+          secondaryLabel: "Open workspace",
+          dispatch: { type: "connect" },
+          secondaryDispatch: { type: "open_workspace" },
         };
       }
       return {
@@ -753,9 +781,18 @@ export function resolveNextActionCore(input: NextActionInput): ResolvedNextActio
         reason: pv.promise,
         tone: "accent",
         primaryLabel: "Open workspace",
-        secondaryLabel: "Preview 30-day outline",
         dispatch: { type: "open_workspace" },
-        secondaryDispatch: { type: "generate_plan" },
+      };
+    }
+    if (preShipQuickStart) {
+      return {
+        id: "ship-first-workspace",
+        eyebrow: "Quick Start",
+        title: "Ship from your repo",
+        reason: pv.promise,
+        tone: "accent",
+        primaryLabel: "Open workspace",
+        dispatch: { type: "open_workspace" },
       };
     }
     return {
@@ -778,6 +815,7 @@ export function resolveNextActionCore(input: NextActionInput): ResolvedNextActio
     input.scope === "workspace" &&
     input.workSurface !== "campaign-plan"
   ) {
+    if (isWeek1OpsActive(input.opsCadence)) return null;
     const unlock = surfaceUnlockAction(input.workSurface);
     if (unlock && !input.plan) return unlock;
   }
@@ -787,12 +825,17 @@ export function resolveNextActionCore(input: NextActionInput): ResolvedNextActio
       id: "first-run",
       eyebrow: "Get moving",
       title: "Run your first task",
-      reason: "Start from the launch plan or describe work in the composer.",
+      reason: isWeek1OpsActive(input.opsCadence)
+        ? "Continue Week 1 ops in Execution Record."
+        : "Open workspace — ship your first patch or start Week 1 ops.",
       tone: "accent",
       primaryLabel: "Open workspace",
-      secondaryLabel: input.plan ? "View plan" : undefined,
+      secondaryLabel: input.plan && !isWeek1OpsActive(input.opsCadence) ? "View plan" : undefined,
       dispatch: { type: "open_workspace" },
-      secondaryDispatch: input.plan ? { type: "open_plan_surface" } : undefined,
+      secondaryDispatch:
+        input.plan && !isWeek1OpsActive(input.opsCadence)
+          ? { type: "open_plan_surface" }
+          : undefined,
     };
   }
 
@@ -814,12 +857,12 @@ export function resolveNextActionCore(input: NextActionInput): ResolvedNextActio
       id: "connect-home",
       eyebrow: "Unlock AI",
       title: "Enable AI features",
-      reason: "Scan and preview work offline — enable AI for agent, browser, and full plans.",
+      reason: "Scan works offline — connect for agent runs, repo diffs, and Week 1 ops.",
       tone: "neutral",
       primaryLabel: "Retry connection",
-      secondaryLabel: "Preview plan",
+      secondaryLabel: "Open workspace",
       dispatch: { type: "connect" },
-      secondaryDispatch: input.plan ? { type: "open_plan_surface" } : { type: "preview_plan" },
+      secondaryDispatch: { type: "open_workspace" },
     };
   }
 

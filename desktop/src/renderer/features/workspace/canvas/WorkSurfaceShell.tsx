@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Lock } from "lucide-react";
 import { WORK_SURFACE_META, WORK_SURFACES, type WorkSurface } from "@shared/workSurfaces";
+import { shouldBlockPlanStudio } from "@shared/northStarFunnel";
 import { SURFACE_UNLOCK, lockedSurfaceCount, surfaceUnlockHint } from "@shared/surfaceUnlock";
 import { useApp } from "@renderer/state/store";
 import { StageBreadcrumb } from "@renderer/features/workspace/stage/StageBreadcrumb";
@@ -24,7 +25,10 @@ export function WorkSurfaceShell({
   const findings = useApp((s) => s.browser.findings);
   const thread = useApp((s) => s.thread);
   const serverAssets = useApp((s) => s.serverAssets);
+  const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
   const [peekSurface, setPeekSurface] = useState<WorkSurface | null>(null);
+
+  const week1Ops = shouldBlockPlanStudio({ opsCadence });
 
   const threadAssets = thread.filter((e) => e.kind === "asset" && e.asset).map((e) => e.asset!);
   const availability = computeSurfaceAvailability({
@@ -78,6 +82,7 @@ export function WorkSurfaceShell({
           aria-label="Work surfaces"
         >
           {WORK_SURFACES.map((surface) => {
+            if (week1Ops && surface === "campaign-plan") return null;
             const sm = WORK_SURFACE_META[surface];
             const enabled = availability[surface];
             const isActive = surface === active;

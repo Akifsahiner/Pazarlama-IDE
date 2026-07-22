@@ -129,8 +129,24 @@ describe("resolveNextAction", () => {
     assert.equal(a?.dispatch.type === "continue_plan" && a.dispatch.taskId, "t1");
   });
 
-  it("allows offline plan preview when no plan", () => {
-    const a = resolveNextAction(base({ connected: false, plan: null }));
+  it("quick start pre-ship home suggests ship-first workspace open", () => {
+    const a = resolveNextAction(
+      base({ connected: false, plan: null, onboardingTrack: "quick_start" }),
+    );
+    assert.equal(a?.id, "home-ship-first");
+    assert.equal(a?.dispatch.type, "open_workspace");
+  });
+
+  it("allows offline plan preview on full_cmo track without ship", () => {
+    const a = resolveNextAction(
+      base({
+        connected: false,
+        plan: null,
+        onboardingTrack: "full_cmo",
+        route: "workspace",
+        scope: "workspace",
+      }),
+    );
     assert.equal(a?.dispatch.type, "preview_plan");
   });
 
@@ -148,26 +164,52 @@ describe("resolveNextAction", () => {
     assert.notEqual(withRun?.id, "return-run");
   });
 
-  it("suggests generate plan when connected and no plan", () => {
+  it("suggests workspace open when connected quick start pre-ship", () => {
     const a = resolveNextAction(
-      base({ connected: true, plan: null, route: "workspace", scope: "workspace" }),
+      base({
+        connected: true,
+        plan: null,
+        route: "workspace",
+        scope: "workspace",
+        onboardingTrack: "quick_start",
+      }),
+    );
+    assert.equal(a?.dispatch.type, "open_workspace");
+  });
+
+  it("suggests generate plan when connected full_cmo and no plan", () => {
+    const a = resolveNextAction(
+      base({
+        connected: true,
+        plan: null,
+        route: "workspace",
+        scope: "workspace",
+        onboardingTrack: "full_cmo",
+      }),
     );
     assert.equal(a?.dispatch.type, "generate_plan");
   });
 
-  it("uses sales persona value on home", () => {
+  it("uses sales persona value on home when full_cmo track", () => {
     const a = resolveNextAction(
-      base({ persona: "sales", route: "home", scope: "page", connected: true }),
+      base({
+        persona: "sales",
+        route: "home",
+        scope: "page",
+        connected: true,
+        onboardingTrack: "full_cmo",
+        firstShipAt: Date.now(),
+      }),
     );
     assert.equal(a?.title, "Build your ICP");
     assert.equal(a?.eyebrow, "Sales");
   });
 
-  it("uses marketing offline preview title", () => {
+  it("quick start home prioritizes ship-first over plan preview", () => {
     const a = resolveNextAction(
-      base({ persona: "marketing", connected: false, route: "home", scope: "page" }),
+      base({ persona: "marketing", connected: false, route: "home", scope: "page", onboardingTrack: "quick_start" }),
     );
-    assert.equal(a?.title, "Preview launch outline");
+    assert.equal(a?.title, "Ship your first marketing patch");
   });
 
   it("prefixes eyebrow with campaign phase when session active", () => {

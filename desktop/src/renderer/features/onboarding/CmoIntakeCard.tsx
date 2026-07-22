@@ -213,7 +213,7 @@ export function CmoIntakeCard({
             )}
             {onFullPlan && (
               <Button variant="secondary" onClick={onFullPlan}>
-                Full launch plan
+                Full 30-day plan (backstage)
               </Button>
             )}
           </div>
