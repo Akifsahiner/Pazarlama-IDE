@@ -102,7 +102,7 @@ import {
 } from "@renderer/lib/auth";
 import { BrowserSocket } from "@renderer/lib/browserSocket";
 import { resolveBackendToken } from "@renderer/lib/backendToken";
-import { setAnalyticsEnabled, track } from "@renderer/lib/analytics";
+import { setAnalyticsEnabled, configureAnalytics, track } from "@renderer/lib/analytics";
 import {
   makeEventId,
   type AuthInfo,
@@ -370,6 +370,7 @@ import {
   buildDelegateHandoffBundle,
   completeRubricDay as completeRubricDayCore,
   createDelegateOperatorFromThesis,
+  extendDelegateTrial as extendDelegateTrialCore,
   hydrateDelegateOperatorFromJson,
   importDelegateDelivery,
   migrateToOperatorWorkspace,
@@ -1068,6 +1069,7 @@ interface AppState {
     rubricId: string,
     input: RubricProofInput,
   ) => string | null;
+  extendDelegateTrial: (briefId?: string) => void;
   skipDelegateBrief: (briefId: string, reason?: string) => void;
   connectGa4: () => Promise<void>;
   syncGa4Metrics: () => Promise<void>;
@@ -4217,6 +4219,10 @@ export const useApp = create<AppState>((set, get) => {
           "Loading settings",
         );
         setAnalyticsEnabled(settings.telemetry);
+        configureAnalytics({
+          serverUrl: settings.serverUrl,
+          clientVersion: version,
+        });
         initTheme(migrateTheme(settings.theme));
         set({ settings, version, recents, ready: true, initPhase: "resuming" });
       } catch (err) {
@@ -7792,6 +7798,31 @@ export const useApp = create<AppState>((set, get) => {
       return null;
     },
 
+    extendDelegateTrial: (briefId) => {
+      const thesis = get().channelThesis ?? get().marketingProfile?.channel_thesis;
+      const workspace = resolveDelegateOperator(
+        get().delegateOperator ?? get().delegateWorkspace,
+        thesis,
+      );
+      if (!workspace || !thesis) return;
+      const targetId =
+        briefId ??
+        workspace.verdict?.brief_id ??
+        workspace.briefs.find(
+          (b) => b.status === "handed_off" || b.status === "in_progress",
+        )?.id;
+      if (!targetId) return;
+      const next = extendDelegateTrialCore(workspace, targetId, thesis);
+      syncDelegateState(next);
+      track("delegate_trial_extended", { brief_id: targetId });
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `Delegate trial extended +3 days for ${targetId}`,
+      });
+      recomputeGrowthPlane();
+    },
+
     completeDelegateBrief: (briefId, proof) => {
       const thesis = get().channelThesis ?? get().marketingProfile?.channel_thesis;
       const workspace = resolveDelegateOperator(
@@ -8016,6 +8047,12 @@ export const useApp = create<AppState>((set, get) => {
     updateSettings: async (patch) => {
       const settings = await window.api.settings.set(patch);
       if (patch.telemetry !== undefined) setAnalyticsEnabled(settings.telemetry);
+      if (patch.serverUrl !== undefined || patch.telemetry !== undefined) {
+        configureAnalytics({
+          serverUrl: settings.serverUrl,
+          clientVersion: get().version,
+        });
+      }
       if (patch.theme !== undefined) initTheme(migrateTheme(settings.theme));
       set({ settings });
       if (patch.serverUrl !== undefined || patch.apiToken !== undefined) {

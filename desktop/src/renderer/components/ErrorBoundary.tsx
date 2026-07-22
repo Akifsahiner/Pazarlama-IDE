@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react";
+import { track } from "@renderer/lib/analytics";
 
 interface Props {
   children: ReactNode;
@@ -15,9 +16,13 @@ export class ErrorBoundary extends Component<Props, State> {
     return { error };
   }
 
-  componentDidCatch(error: Error): void {
-    // Keep a console trace for diagnostics; no external reporting.
+  componentDidCatch(error: Error, info: { componentStack?: string }): void {
     console.error("Renderer crash:", error);
+    track("renderer_crash", {
+      message: error.message,
+      name: error.name,
+      component_stack: info.componentStack?.slice(0, 500),
+    });
   }
 
   private reset = () => this.setState({ error: null });

@@ -483,7 +483,9 @@ export function SettingsSections({
             onChange={(next) => void updateSettings({ telemetry: next })}
             label="Anonymous usage analytics"
           />
-          {settings.telemetry ? "Sharing anonymous usage" : "Off — nothing leaves your machine"}
+          {settings.telemetry
+            ? "On — redacted events sent to your configured server"
+            : "Off — nothing leaves your machine"}
         </label>
       </Section>
       )}
