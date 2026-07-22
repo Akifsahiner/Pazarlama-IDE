@@ -69,3 +69,5 @@ Matrix geçmek ≠ kullanıcı ship eder. This protocol validates the **founder 
 File issues with: thesis id, step number, screen record timestamp, expected vs actual.
 
 Do **not** expand scope to Parts 21–28 until this protocol passes.
+
+**Facilitator sheet:** [`golden-path-dogfood-facilitator-sheet.md`](./golden-path-dogfood-facilitator-sheet.md)

@@ -15,7 +15,6 @@ export function useCommandSurfaceDispatch() {
   const openProductIssueModal = useApp((s) => s.openProductIssueModal);
   const openMonetizationTaskModal = useApp((s) => s.openMonetizationTaskModal);
   const openMonetizationIssueModal = useApp((s) => s.openMonetizationIssueModal);
-  const openWeekReviewModal = useApp((s) => s.openWeekReviewModal);
   const startNextCmoCycle = useApp((s) => s.startNextCmoCycle);
   const openHumanTaskKitDrawer = useApp((s) => s.openHumanTaskKitDrawer);
   const openLaneBProofModal = useApp((s) => s.openLaneBProofModal);

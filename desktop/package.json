@@ -34,6 +34,7 @@
     "test:e2e:cmo-multi": "playwright test --grep @cmo-multi",
     "test:e2e:cmo-prod": "playwright test --grep @cmo-prod",
     "test:e2e:execution-kernel": "playwright test --grep @execution-kernel",
+    "test:e2e:apply-gate": "playwright test --grep @apply-gate",
     "test:e2e:browser-verify": "playwright test --grep @browser-verify",
     "test:e2e:cmo-measure": "playwright test --grep @cmo-measure",
     "test:e2e:day-pulse": "playwright test --grep @day-pulse",

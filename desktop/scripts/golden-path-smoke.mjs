@@ -78,6 +78,7 @@ const mustExist = [
   "src/main/evidence/storeEvidence.ts",
   "src/renderer/features/onboarding/MeasurementBaselineCard.tsx",
   "e2e/browser-verify.spec.ts",
+  "e2e/apply-gate.spec.ts",
   "e2e/cmo-measure.spec.ts",
   "scripts/verify-fixture-smoke.mjs",
   "../CMO_BROWSER_VERIFY_SPEC.md",
@@ -91,6 +92,7 @@ const mustExist = [
   "scripts/first-ship-agent-smoke.mjs",
   "scripts/first-ship-dogfood.md",
   "scripts/golden-path-dogfood.md",
+  "scripts/golden-path-dogfood-facilitator-sheet.md",
   "src/shared/applyGate.ts",
 ];
 
@@ -234,7 +236,7 @@ const exportChecks = [
   { file: "src/shared/measurementBaseline.ts", needle: "assessMeasurementBaseline" },
   { file: "src/shared/cmoProofLoop.ts", needle: "evaluateWeek1MetricsWithGa4Priority" },
   { file: "src/renderer/features/workspace/CmoOpsBoard.tsx", needle: "ops-browser-evidence-chip" },
-  { file: "e2e/browser-verify.spec.ts", needle: "@browser-verify" },
+  { file: "e2e/apply-gate.spec.ts", needle: "@apply-gate" },
   { file: "e2e/cmo-measure.spec.ts", needle: "@cmo-measure" },
   { file: "src/renderer/components/BundledLocalServerCard.tsx", needle: "Start local stack" },
 ];
