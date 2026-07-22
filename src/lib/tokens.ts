@@ -71,9 +71,10 @@ export const founderQuote = {
 } as const;
 
 export const navLinks = [
-  { label: "How it works", href: "#how-it-works" },
-  { label: "Workspace", href: "#workspace" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "How it works", href: "/#how-it-works" },
+  { label: "Workspace", href: "/#workspace" },
+  { label: "FAQ", href: "/#faq" },
 ] as const;
 
 export const featureBento = {

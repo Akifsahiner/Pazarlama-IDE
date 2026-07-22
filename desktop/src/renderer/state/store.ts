@@ -619,6 +619,13 @@ function quotaBlocked(auth: AuthInfo, kind: "plan" | "agent"): boolean {
   return auth.usage.agent >= auth.quota.agent_limit;
 }
 
+function costBudgetBlocked(auth: AuthInfo): boolean {
+  if (!auth.usage || !auth.quota?.cost_budget_cents) return false;
+  const budget = auth.quota.cost_budget_cents;
+  if (budget <= 0 || budget >= 999_999) return false;
+  return (auth.usage.cost_cents ?? 0) >= budget;
+}
+
 function tierFeatureBlocked(
   tierFeatures: string[] | undefined,
   feature: TierFeature,
@@ -4576,6 +4583,18 @@ export const useApp = create<AppState>((set, get) => {
 
     handleAuthCallback: async (url) => {
       if (!url.startsWith("marketingide://")) return;
+
+      if (url.startsWith("marketingide://billing/")) {
+        if (url.includes("billing/success")) {
+          try {
+            await get().loadMe();
+          } catch (err) {
+            reportBackgroundError("loadMe after billing", err, "warn");
+          }
+        }
+        return;
+      }
+
       const config = getAuthConfig();
       if (!config) return;
       try {
@@ -4671,7 +4690,7 @@ export const useApp = create<AppState>((set, get) => {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes("billing_not_configured")) {
           appendPresentedError(
-            "Billing is not configured on this server. Add Stripe keys to server/.env.",
+            "Billing is not configured on this server. Add Paddle keys to server/.env.",
           );
         } else {
           appendPresentedError(msg);
@@ -4687,9 +4706,9 @@ export const useApp = create<AppState>((set, get) => {
         await window.api.shell.openExternal(url);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        if (msg.includes("billing_not_configured") || msg.includes("no_stripe_customer")) {
+        if (msg.includes("billing_not_configured") || msg.includes("no_stripe_customer") || msg.includes("no_paddle_customer")) {
           appendPresentedError(
-            msg.includes("no_stripe_customer")
+            msg.includes("no_stripe_customer") || msg.includes("no_paddle_customer")
               ? "No billing account yet — upgrade to Pro first."
               : "Billing is not configured on this server.",
           );
@@ -8502,6 +8521,12 @@ export const useApp = create<AppState>((set, get) => {
         appendPresentedError("Monthly plan quota reached.");
         return;
       }
+      if (costBudgetBlocked(auth)) {
+        appendPresentedError(
+          "Monthly included API usage reached. Upgrade your plan or wait until next cycle.",
+        );
+        return;
+      }
       const { tierFeatures } = get();
       if (tierFeatureBlocked(tierFeatures, "ai_plan")) {
         appendPresentedError(
@@ -8814,6 +8839,12 @@ export const useApp = create<AppState>((set, get) => {
       }
       if (!proactive && quotaBlocked(auth, "agent")) {
         appendPresentedError("Monthly agent quota reached.");
+        return;
+      }
+      if (!proactive && costBudgetBlocked(auth)) {
+        appendPresentedError(
+          "Monthly included API usage reached. Upgrade your plan or wait until next cycle.",
+        );
         return;
       }
       const { tierFeatures } = get();

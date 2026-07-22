@@ -957,6 +957,7 @@ export interface QuotaInfo {
   plan_limit: number;
   agent_limit: number;
   browser_min_limit: number;
+  cost_budget_cents?: number;
 }
 
 export interface UsageHistoryItem {
@@ -974,6 +975,7 @@ export interface MeResponse {
   features?: string[];
   tierLabel?: string;
   billingConfigured?: boolean;
+  billingProvider?: "paddle" | "stripe";
   usage: UsageInfo;
   quota: QuotaInfo;
 }

@@ -9,6 +9,9 @@ export interface ProfileRow {
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
   stripe_price_id?: string | null;
+  paddle_customer_id?: string | null;
+  paddle_subscription_id?: string | null;
+  paddle_price_id?: string | null;
 }
 
 export interface QuotaRow {
@@ -17,12 +20,14 @@ export interface QuotaRow {
   plan_limit: number;
   agent_limit: number;
   browser_min_limit: number;
+  cost_budget_cents: number;
 }
 
 export const DEFAULT_QUOTA: Omit<QuotaRow, "user_id" | "period_start"> = {
   plan_limit: 20,
   agent_limit: 200,
   browser_min_limit: 30,
+  cost_budget_cents: 1500,
 };
 
 export interface ProfileBundle {
@@ -96,6 +101,10 @@ export async function getOrCreate(userId: string, email?: string): Promise<Profi
       ...tierQuota,
     };
 
+  if (quota.cost_budget_cents == null) {
+    quota = { ...quota, cost_budget_cents: tierQuota.cost_budget_cents };
+  }
+
   quota = await ensureQuotaPeriod(userId, tier, quota);
 
   void email;
@@ -115,7 +124,8 @@ export async function ensureQuotaPeriod(
   const limitsOk =
     quota.plan_limit === desired.plan_limit &&
     quota.agent_limit === desired.agent_limit &&
-    quota.browser_min_limit === desired.browser_min_limit;
+    quota.browser_min_limit === desired.browser_min_limit &&
+    Number(quota.cost_budget_cents) === desired.cost_budget_cents;
 
   if (monthOk && limitsOk) return quota;
 
@@ -133,6 +143,7 @@ export async function ensureQuotaPeriod(
       plan_limit: next.plan_limit,
       agent_limit: next.agent_limit,
       browser_min_limit: next.browser_min_limit,
+      cost_budget_cents: next.cost_budget_cents,
     }),
   });
 
@@ -145,11 +156,19 @@ export interface StripeBillingFields {
   stripe_price_id?: string | null;
 }
 
-/** Update tier + quota limits (Stripe webhook / admin). */
+export interface PaddleBillingFields {
+  paddle_customer_id?: string | null;
+  paddle_subscription_id?: string | null;
+  paddle_price_id?: string | null;
+}
+
+export type BillingFields = StripeBillingFields & PaddleBillingFields;
+
+/** Update tier + quota limits (billing webhook / admin). */
 export async function updateTier(
   userId: string,
   tier: TierId,
-  stripe?: StripeBillingFields,
+  billing?: BillingFields,
 ): Promise<ProfileBundle> {
   if (!persistenceEnabled || userId === DEV_USER_ID) {
     const q = tierQuotaFor(tier);
@@ -158,22 +177,31 @@ export async function updateTier(
         id: userId,
         tier,
         created_at: new Date().toISOString(),
-        ...stripe,
+        ...billing,
       },
       quota: { user_id: userId, period_start: utcMonthStartDate(), ...q },
     };
   }
 
   const patch: Record<string, unknown> = { tier };
-  if (stripe) {
-    if (stripe.stripe_customer_id !== undefined) {
-      patch.stripe_customer_id = stripe.stripe_customer_id;
+  if (billing) {
+    if (billing.stripe_customer_id !== undefined) {
+      patch.stripe_customer_id = billing.stripe_customer_id;
     }
-    if (stripe.stripe_subscription_id !== undefined) {
-      patch.stripe_subscription_id = stripe.stripe_subscription_id;
+    if (billing.stripe_subscription_id !== undefined) {
+      patch.stripe_subscription_id = billing.stripe_subscription_id;
     }
-    if (stripe.stripe_price_id !== undefined) {
-      patch.stripe_price_id = stripe.stripe_price_id;
+    if (billing.stripe_price_id !== undefined) {
+      patch.stripe_price_id = billing.stripe_price_id;
+    }
+    if (billing.paddle_customer_id !== undefined) {
+      patch.paddle_customer_id = billing.paddle_customer_id;
+    }
+    if (billing.paddle_subscription_id !== undefined) {
+      patch.paddle_subscription_id = billing.paddle_subscription_id;
+    }
+    if (billing.paddle_price_id !== undefined) {
+      patch.paddle_price_id = billing.paddle_price_id;
     }
   }
 
@@ -205,10 +233,27 @@ export async function setStripeCustomerId(userId: string, customerId: string): P
   });
 }
 
+export async function setPaddleCustomerId(userId: string, customerId: string): Promise<void> {
+  if (!persistenceEnabled || userId === DEV_USER_ID) return;
+  await sb(`/profiles?id=${eq(userId)}`, {
+    method: "PATCH",
+    prefer: "return=minimal",
+    body: JSON.stringify({ paddle_customer_id: customerId }),
+  });
+}
+
 export async function findByStripeCustomerId(customerId: string): Promise<ProfileRow | null> {
   if (!persistenceEnabled) return null;
   const rows = await sb<ProfileRow[]>(
     `/profiles?stripe_customer_id=${eq(customerId)}&limit=1`,
+  );
+  return rows?.[0] ?? null;
+}
+
+export async function findByPaddleCustomerId(customerId: string): Promise<ProfileRow | null> {
+  if (!persistenceEnabled) return null;
+  const rows = await sb<ProfileRow[]>(
+    `/profiles?paddle_customer_id=${eq(customerId)}&limit=1`,
   );
   return rows?.[0] ?? null;
 }

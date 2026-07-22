@@ -42,6 +42,9 @@ export async function assertTierAndQuota(
 ): Promise<void> {
   const feature = tierFeatureForResource(resource);
   await assertTierFeature(userId, feature);
-  const { assertQuota } = await import("./quota.js");
+  const { assertQuota, assertCostBudget } = await import("./quota.js");
   await assertQuota(userId, resource);
+  if (resource === "agent" || resource === "plan") {
+    await assertCostBudget(userId);
+  }
 }

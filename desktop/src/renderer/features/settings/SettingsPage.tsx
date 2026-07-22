@@ -214,8 +214,8 @@ export function SettingsSections({
                 <div className="text-body-sm font-medium text-text">Billing</div>
                 <p className="text-caption text-text-3">
                   {auth.billingConfigured
-                    ? "Manage your plan with Stripe Checkout / Customer Portal."
-                    : "Stripe is not configured on this server — ask your admin to add billing keys."}
+                    ? "Manage your subscription via Paddle — upgrade, cancel, or update payment."
+                    : "Billing is not configured on this server — ask your admin to add Paddle keys."}
                 </p>
               </div>
               <div className="flex shrink-0 gap-2">

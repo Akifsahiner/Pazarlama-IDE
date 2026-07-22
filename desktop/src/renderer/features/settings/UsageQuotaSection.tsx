@@ -106,7 +106,10 @@ export function UsageQuotaSection() {
 
   const agentPct = quota.agent_limit < 9999 ? usage.agent / quota.agent_limit : 0;
   const planPct = quota.plan_limit < 9999 ? usage.plan / quota.plan_limit : 0;
-  const nearLimit = agentPct >= 0.8 || planPct >= 0.8;
+  const costBudget = quota.cost_budget_cents ?? 0;
+  const costPct =
+    costBudget > 0 && costBudget < 999_999 ? (usage.cost_cents ?? 0) / costBudget : 0;
+  const nearLimit = agentPct >= 0.8 || planPct >= 0.8 || costPct >= 0.8;
   const tokens = (usage.tokens_in ?? 0) + (usage.tokens_out ?? 0);
 
   return (
@@ -133,6 +136,14 @@ export function UsageQuotaSection() {
       <UsageRow label="Plan generations" used={usage.plan} limit={quota.plan_limit} />
       <UsageRow label="Agent turns" used={usage.agent} limit={quota.agent_limit} />
       <UsageRow label="Browser minutes" used={usage.browser_min} limit={quota.browser_min_limit} />
+
+      {(quota.cost_budget_cents ?? 0) > 0 && (quota.cost_budget_cents ?? 0) < 999_999 && (
+        <UsageRow
+          label="Included API usage"
+          used={Math.round(usage.cost_cents ?? 0)}
+          limit={Math.round(quota.cost_budget_cents ?? 0)}
+        />
+      )}
 
       <div className="grid grid-cols-3 gap-2 rounded-[var(--radius-md)] border border-line bg-surface-2 px-3 py-2 text-caption">
         <div>
