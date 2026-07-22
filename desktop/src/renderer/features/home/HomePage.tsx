@@ -147,6 +147,8 @@ export function HomePage() {
     productActivation,
     measurementReady: baselineReady,
     measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
+    firstShipAt,
+    onboardingTrack,
   });
   const needsPreWeek1Setup =
     Boolean(channelThesis) &&

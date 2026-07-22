@@ -65,6 +65,13 @@ function runHandoffAction(action: WorkspaceHandoffAction) {
     case "focus_lane_b":
       s.focusWarRoomAnchor("lane-b-panel-wrap");
       break;
+    case "preview_diff":
+      s.navigate("workspace");
+      useApp.setState({ canvas: { mode: "preview" }, shipRecovery: undefined });
+      break;
+    case "mark_local_verify":
+      s.confirmLocalShipVerify();
+      break;
     default:
       break;
   }

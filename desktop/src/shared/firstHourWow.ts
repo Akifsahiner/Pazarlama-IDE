@@ -1,4 +1,4 @@
-import { inferIntegrateRoute } from "./assetTarget";
+import { inferIntegrateRoute, inferMarketingDocRoute } from "./assetTarget";
 import { extractCodeCitations } from "./codeCitation";
 import type { ConversationIntent } from "./conversationIntent";
 import { executableActionToIntent } from "./executableAction";
@@ -32,20 +32,27 @@ export function resolveAppRootLabel(project: ProjectProfile): string | undefined
 
 export function resolveFirstShipTarget(project: ProjectProfile): FirstShipTarget {
   const routes = (project.routes ?? []).map(normalizePath);
-  const heroPath = inferIntegrateRoute(routes);
+  const heroPath = inferIntegrateRoute(routes) ?? inferMarketingDocRoute(routes);
   const appRoot = resolveAppRootLabel(project);
   const framework = project.framework ?? "Web app";
+  const isDocTarget = heroPath != null && /\.md$/i.test(heroPath);
 
   const stackParts: string[] = [framework];
   if (appRoot) stackParts.push(`${appRoot} ✓`);
   const stackLine = stackParts.join(" · ");
 
   const editGoal = heroPath
-    ? `Improve hero CTA, meta title/description, and above-the-fold conversion copy in @${heroPath}. Propose one concrete patch.`
-    : "Improve landing page hero CTA, meta tags, and primary conversion copy in the repo. Propose one concrete patch.";
+    ? isDocTarget
+      ? `Improve positioning, headline, and CTA copy in @${heroPath}. Propose one concrete patch.`
+      : `Improve hero CTA, meta title/description, and above-the-fold conversion copy in @${heroPath}. Propose one concrete patch.`
+    : project.readmeSummary
+      ? "Improve landing positioning and primary CTA copy based on the README. Propose one concrete marketing patch in the repo."
+      : "Improve landing page hero CTA, meta tags, and primary conversion copy in the repo. Propose one concrete patch.";
 
   const scoutPrompt = heroPath
-    ? `Review the hero CTA, meta title/description, and conversion copy in @${heroPath}. What is the single highest-impact change? Cite path:line from the repo and propose one executable edit.`
+    ? isDocTarget
+      ? `Review headline, positioning, and CTA in @${heroPath}. What is the single highest-impact change? Cite path:line and propose one executable edit.`
+      : `Review the hero CTA, meta title/description, and conversion copy in @${heroPath}. What is the single highest-impact change? Cite path:line from the repo and propose one executable edit.`
     : "Review the landing page hero CTA and conversion copy in this repo. What is the single highest-impact change? Cite path:line and propose one executable edit.";
 
   return { heroPath, appRootLabel: appRoot, stackLine, editGoal, scoutPrompt };

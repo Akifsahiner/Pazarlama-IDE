@@ -62,8 +62,9 @@ export function buildShipRecovery(
     case "verify_unavailable":
       return {
         kind,
-        title: "Connect Computer Use to verify",
-        detail: "Changes are applied — connect backend + Computer Use to capture live proof.",
+        title: "Review diff locally (Computer Use offline)",
+        detail:
+          "Changes are applied — open the edited file or dev preview and confirm hero + meta. Live browser verify is optional for first ship.",
       };
     case "verify_failed":
       return {

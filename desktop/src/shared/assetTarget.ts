@@ -53,6 +53,12 @@ const ROUTE_PRIORITY = [
   /(?:^|\/)pages\/index\.(tsx|jsx|ts|js)$/i,
   /(?:^|\/)src\/pages\/index\.(tsx|jsx|ts|js)$/i,
   /(?:^|\/)app\/\(.*\)\/page\.(tsx|jsx)$/i,
+  /(?:^|\/)index\.html$/i,
+  /(?:^|\/)public\/index\.html$/i,
+  /(?:^|\/)src\/App\.(tsx|jsx|vue)$/i,
+  /(?:^|\/)App\.(tsx|jsx|vue)$/i,
+  /(?:^|\/)src\/routes\/\+page\.svelte$/i,
+  /(?:^|\/)src\/pages\/index\.astro$/i,
 ];
 
 const ROUTE_FALLBACK = /(page|index|landing|home|route)/i;
@@ -65,6 +71,14 @@ export function inferIntegrateRoute(routes: string[]): string | undefined {
     if (hit) return hit;
   }
   return normalized.find((r) => isCodePath(r) && ROUTE_FALLBACK.test(r));
+}
+
+/** Markdown or static landing when no framework route exists. */
+export function inferMarketingDocRoute(routes: string[]): string | undefined {
+  const normalized = routes.map((r) => r.replace(/\\/g, "/"));
+  const md = normalized.find((r) => /readme\.md$/i.test(r) || /landing\.md$/i.test(r));
+  if (md) return md;
+  return normalized.find((r) => isSafeDirectWrite(r) && /(readme|landing|home)/i.test(r));
 }
 
 export function hasLocalFolder(project: ProjectProfile | null | undefined): boolean {

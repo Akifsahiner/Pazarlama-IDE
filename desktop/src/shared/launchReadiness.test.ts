@@ -90,4 +90,35 @@ describe("launchReadiness", () => {
     const measurement = state.steps.find((s) => s.id === "measurement")!;
     assert.equal(measurement.complete, true);
   });
+
+  it("quick start bypasses measurement after first ship", () => {
+    assert.equal(
+      isWeek1Ready({
+        onboardingTrack: "quick_start",
+        firstShipAt: Date.now(),
+        founderFit: fit(),
+        measurementReady: false,
+      }),
+      true,
+    );
+    assert.equal(
+      isWeek1Ready({
+        onboardingTrack: "full_cmo",
+        firstShipAt: Date.now(),
+        founderFit: fit(),
+        measurementReady: false,
+      }),
+      false,
+    );
+    const quick = resolveLaunchReadinessSteps({
+      onboardingTrack: "quick_start",
+      firstShipAt: Date.now(),
+      founderFit: fit(),
+      measurementReady: false,
+    });
+    assert.equal(quick.canStartWeek1, true);
+    const measurement = quick.steps.find((s) => s.id === "measurement")!;
+    assert.equal(measurement.complete, true);
+    assert.equal(measurement.label, "Measurement (deferred)");
+  });
 });

@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { ArrowRight, CheckCircle2, X } from "lucide-react";
 import { useApp } from "@renderer/state/store";
 import { assessMeasurementBaseline } from "@shared/measurementBaseline";
-import { resolveLaunchReadinessSteps } from "@shared/launchReadiness";
+import { isWeek1Ready, resolveLaunchReadinessSteps } from "@shared/launchReadiness";
 import { Button } from "@renderer/components/ui/Button";
 import { Badge } from "@renderer/components/ui/Badge";
 import { ProductActivationCard } from "./ProductActivationCard";
@@ -23,6 +23,8 @@ export function LaunchReadinessStepper() {
   const channelThesis = useApp((s) => s.channelThesis ?? s.marketingProfile?.channel_thesis);
   const budgetPlan = useApp((s) => s.budgetPlan ?? s.marketingProfile?.budget_plan);
   const saveBudgetPlan = useApp((s) => s.saveBudgetPlan);
+  const firstShipAt = useApp((s) => s.firstShipAt);
+  const onboardingTrack = useApp((s) => s.onboardingTrack);
 
   useEffect(() => {
     if (!open || budgetPlan || !channelThesis || !marketingProfile?.founder_fit) return;
@@ -38,8 +40,32 @@ export function LaunchReadinessStepper() {
         revenueProfile,
         measurementReady: baseline.ready,
         measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
+        firstShipAt,
+        onboardingTrack,
       }),
-    [baseline.ready, marketingProfile, productActivation, revenueProfile],
+    [baseline.ready, firstShipAt, marketingProfile, onboardingTrack, productActivation, revenueProfile],
+  );
+
+  const canStartWeek1 = useMemo(
+    () =>
+      isWeek1Ready({
+        founderFit: marketingProfile?.founder_fit,
+        productActivation,
+        revenueProfile,
+        measurementReady: baseline.ready,
+        measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
+        firstShipAt,
+        onboardingTrack,
+      }),
+    [
+      baseline.ready,
+      firstShipAt,
+      marketingProfile?.founder_fit,
+      marketingProfile?.measurement_ack?.acknowledged_at,
+      onboardingTrack,
+      productActivation,
+      revenueProfile,
+    ],
   );
 
   const actionableSteps = readiness.steps.filter((s) => s.id !== "start");
@@ -50,10 +76,10 @@ export function LaunchReadinessStepper() {
 
   useEffect(() => {
     if (!open) return;
-    if (readiness.canStartWeek1) {
+    if (canStartWeek1) {
       setActiveStepId("start");
     }
-  }, [open, readiness.canStartWeek1]);
+  }, [open, canStartWeek1]);
 
   if (!open) return null;
 
@@ -108,10 +134,10 @@ export function LaunchReadinessStepper() {
                 key={step.id}
                 type="button"
                 onClick={() => {
-                  if (step.id === "start" && !readiness.canStartWeek1) return;
+                  if (step.id === "start" && !canStartWeek1) return;
                   setActiveStepId(step.id);
                 }}
-                disabled={step.id === "start" && !readiness.canStartWeek1}
+                disabled={step.id === "start" && !canStartWeek1}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors ${
                   step.id === activeStepId
                     ? "border-accent bg-accent-soft/40 text-accent"
@@ -232,8 +258,12 @@ export function LaunchReadinessStepper() {
         </div>
 
         <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-4">
-          <Badge tone={readiness.canStartWeek1 ? "ok" : "warn"}>
-            {readiness.canStartWeek1 ? "Ready to start Week 1" : "Complete required steps"}
+          <Badge tone={canStartWeek1 ? "ok" : "warn"}>
+            {canStartWeek1
+              ? firstShipAt && onboardingTrack === "quick_start"
+                ? "First patch shipped — Week 1 unlocked"
+                : "Ready to start Week 1"
+              : "Complete required steps"}
           </Badge>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={() => closeLaunchReadiness()}>
@@ -243,7 +273,7 @@ export function LaunchReadinessStepper() {
               variant="primary"
               size="sm"
               iconRight={<ArrowRight size={14} />}
-              disabled={!readiness.canStartWeek1}
+              disabled={!canStartWeek1}
               data-testid="launch-readiness-start-week1"
               onClick={() => {
                 closeLaunchReadiness();

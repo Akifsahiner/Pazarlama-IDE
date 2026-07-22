@@ -16,7 +16,9 @@ export type WorkspaceHandoffAction =
   | "human_proof"
   | "operator_proof"
   | "export_outreach"
-  | "focus_lane_b";
+  | "focus_lane_b"
+  | "preview_diff"
+  | "mark_local_verify";
 
 export interface HandoffPayload {
   intent: ConversationIntent;

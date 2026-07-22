@@ -41,6 +41,15 @@ import {
 } from "@shared/quickStartWedge";
 import logoUrl from "@renderer/assets/logo.png";
 import { QuickStartForkCard } from "@renderer/features/onboarding/QuickStartForkCard";
+import {
+  CURSOR_WOW,
+  revealBeatDelayMs,
+  revealBeatsForTrack,
+  revealInitialDelayMs,
+  shouldShowQuickStartFork,
+  type RevealBeatId,
+} from "@shared/instantWow";
+import { HumanExecutionContractBanner } from "@renderer/components/HumanExecutionContractBanner";
 import { ThesisChip } from "@renderer/components/ThesisChip";
 
 interface Move {
@@ -50,9 +59,7 @@ interface Move {
   tone: "accent" | "sales";
 }
 
-type RevealBeat = "name" | "stack" | "routes" | "readme" | "gaps" | "thesis" | "moves";
-
-const REVEAL_BEATS: RevealBeat[] = ["name", "stack", "routes", "readme", "gaps", "thesis", "moves"];
+type RevealBeat = RevealBeatId;
 
 const BEAT_LABEL: Record<RevealBeat, string> = {
   name: "Product",
@@ -64,11 +71,17 @@ const BEAT_LABEL: Record<RevealBeat, string> = {
   moves: "Ready",
 };
 
-function RevealProgressRail({ current }: { current: RevealBeat }) {
-  const idx = REVEAL_BEATS.indexOf(current);
+function RevealProgressRail({
+  current,
+  beats,
+}: {
+  current: RevealBeat;
+  beats: RevealBeat[];
+}) {
+  const idx = beats.indexOf(current);
   return (
     <nav aria-label="Intelligence reveal progress" className="mb-8 flex flex-wrap justify-center gap-1">
-      {REVEAL_BEATS.map((beat, i) => {
+      {beats.map((beat, i) => {
         const done = i < idx;
         const active = i === idx;
         return (
@@ -108,6 +121,7 @@ export function ProjectReveal() {
   const beginFirstHourWow = useApp((s) => s.beginFirstHourWow);
   const beginQuickStartShip = useApp((s) => s.beginQuickStartShip);
   const beginCmoWeek1 = useApp((s) => s.beginCmoWeek1);
+  const setOnboardingTrack = useApp((s) => s.setOnboardingTrack);
   const firstShipAt = useApp((s) => s.firstShipAt);
   const onboardingTrack = useApp((s) => s.onboardingTrack);
   const channelThesis = useApp((s) => s.channelThesis ?? s.marketingProfile?.channel_thesis);
@@ -122,6 +136,8 @@ export function ProjectReveal() {
     productActivation,
     measurementReady: assessMeasurementBaseline(marketingProfile, project).ready,
     measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
+    firstShipAt,
+    onboardingTrack,
   });
   const strategicIntakeOpen = useApp((s) => s.strategicIntakeOpen);
   const openStrategicIntake = useApp((s) => s.openStrategicIntake);
@@ -133,6 +149,11 @@ export function ProjectReveal() {
   const hasFolder = project?.source.kind === "folder";
 
   const [beat, setBeat] = useState<RevealBeat>("name");
+
+  const revealBeats = useMemo(
+    () => revealBeatsForTrack(onboardingTrack ?? "quick_start"),
+    [onboardingTrack],
+  );
 
   const enterHome = () => useApp.setState({ phase: "workspace", route: "home" });
 
@@ -151,25 +172,26 @@ export function ProjectReveal() {
       setBeat("moves");
       return;
     }
-    setBeat("name");
+    setBeat(revealBeats[0] ?? "name");
     let i = 0;
     const timers: ReturnType<typeof setTimeout>[] = [];
+    const delay = revealBeatDelayMs(onboardingTrack, reducedMotion);
     const tick = () => {
-      if (i >= REVEAL_BEATS.length - 1) return;
+      if (i >= revealBeats.length - 1) return;
       timers.push(
         setTimeout(() => {
           i += 1;
-          setBeat(REVEAL_BEATS[i]!);
+          setBeat(revealBeats[i]!);
           tick();
-        }, 520),
+        }, delay),
       );
     };
-    timers.push(setTimeout(tick, 450));
+    timers.push(setTimeout(tick, revealInitialDelayMs(reducedMotion)));
     return () => timers.forEach(clearTimeout);
-  }, [project?.id, reducedMotion]);
+  }, [project?.id, reducedMotion, onboardingTrack, revealBeats]);
 
-  const beatIdx = REVEAL_BEATS.indexOf(beat);
-  const show = (b: RevealBeat) => beatIdx >= REVEAL_BEATS.indexOf(b);
+  const beatIdx = revealBeats.indexOf(beat);
+  const show = (b: RevealBeat) => beatIdx >= revealBeats.indexOf(b);
 
   const gaps = useMemo(() => (project ? inferMarketingGaps(project) : []), [project]);
   const shipTarget = useMemo(() => (project ? resolveFirstShipTarget(project) : null), [project]);
@@ -278,7 +300,7 @@ export function ProjectReveal() {
           className="mx-auto mb-6 h-12 w-12 rounded-[var(--radius-lg)] opacity-80 shadow-[var(--shadow-2)]"
         />
 
-        <RevealProgressRail current={beat} />
+        <RevealProgressRail current={beat} beats={revealBeats} />
 
         <AnimatePresence mode="popLayout">
           {show("name") && (
@@ -487,8 +509,17 @@ export function ProjectReveal() {
                 })}
               </div>
 
+              <div className="mb-6 text-center">
+                <p className="text-body font-medium text-text">{CURSOR_WOW.headline}</p>
+                <p className="mt-1 text-body-sm text-text-2">{CURSOR_WOW.subhead}</p>
+              </div>
+
+              <div className="mb-4">
+                <HumanExecutionContractBanner compact />
+              </div>
+
               <div className="mt-9 flex flex-col gap-3">
-                {!firstShipAt && quickStart && (
+                {shouldShowQuickStartFork({ onboardingTrack, firstShipAt }) && (
                   <QuickStartForkCard compact />
                 )}
                 {!connected && (
@@ -512,7 +543,7 @@ export function ProjectReveal() {
                       onClick={() => beginQuickStartShip()}
                       data-testid="reveal-ship-first-win"
                     >
-                      Ship first win — hero & meta
+                      {CURSOR_WOW.primaryCta}
                     </Button>
                   ) : primaryCta === "start_week1" ? (
                     <Button
@@ -553,8 +584,8 @@ export function ProjectReveal() {
                     </Button>
                   )}
                   {primaryCta === "ship_first_win" && channelThesis && (
-                    <Button variant="secondary" onClick={openStrategicIntake}>
-                      Full CMO setup
+                    <Button variant="secondary" onClick={() => setOnboardingTrack("full_cmo")}>
+                      {CURSOR_WOW.secondaryCta}
                     </Button>
                   )}
                   {firstShipAt && channelThesis && (

@@ -194,6 +194,7 @@ import {
   type ShipPipelineState,
 } from "@shared/shipPipeline";
 import { buildShipRecovery, type ShipRecoveryAction } from "@shared/shipPipelineRecovery";
+import { buildLocalVerifyRecovery } from "@shared/localVerifyFallback";
 import { appendExecutionMetric, type ExecutionMetricsRollup } from "@shared/executionMetrics";
 import type { FirstShipLedger } from "@shared/types";
 import {
@@ -238,11 +239,12 @@ import {
 import {
   assessMeasurementBaseline,
 } from "@shared/measurementBaseline";
-import { resolveLaunchReadinessSteps } from "@shared/launchReadiness";
+import { isWeek1Ready } from "@shared/launchReadiness";
 import {
   buildShipReceiptFromApply,
   markShipReceiptVerifyRunning,
   markShipReceiptVerifySkipped,
+  markShipReceiptVerifyLocalPassed,
 } from "@shared/shipReceipt";
 import { finalizeVerifyRun, planVerifyAfterApply } from "@shared/executionKernelBridge";
 import { runShipQualityLint } from "@shared/shipQualityLint";
@@ -890,6 +892,7 @@ interface AppState {
   navigate: (route: Route, settingsSection?: string) => void;
   setWorkspaceHandoff: (handoff: import("@shared/workspaceHandoff").WorkspaceHandoff) => void;
   dismissWorkspaceHandoff: () => void;
+  confirmLocalShipVerify: () => void;
   checkConnection: () => Promise<void>;
   updateSettings: (patch: Partial<Settings>) => Promise<void>;
   continueOffline: () => void;
@@ -4841,6 +4844,23 @@ export const useApp = create<AppState>((set, get) => {
 
     dismissWorkspaceHandoff: () => set({ workspaceHandoff: undefined }),
 
+    confirmLocalShipVerify: () => {
+      const { lastShipReceipt, activeProjectId } = get();
+      if (!lastShipReceipt) return;
+      const passed = markShipReceiptVerifyLocalPassed(lastShipReceipt);
+      if (activeProjectId) persistShipReceiptLocal(activeProjectId, passed);
+      set({
+        lastShipReceipt: passed,
+        shipRecovery: undefined,
+        workspaceHandoff: undefined,
+      });
+      get().appendEvent({
+        role: "system",
+        kind: "status",
+        text: "Local verify recorded — diff reviewed. Live browser proof optional when Computer Use connects.",
+      });
+    },
+
     loadMarketingProfile: async (projectId) => {
       const { settings, auth } = get();
       try {
@@ -6355,15 +6375,17 @@ export const useApp = create<AppState>((set, get) => {
         });
       }
       const baseline = assessMeasurementBaseline(marketingProfile, project);
-      const readiness = resolveLaunchReadinessSteps({
+      const week1Ready = isWeek1Ready({
         founderFit: marketingProfile?.founder_fit,
         productActivation:
           get().productActivation ?? marketingProfile?.product_activation,
         revenueProfile: get().revenueProfile ?? marketingProfile?.revenue_profile,
         measurementReady: baseline.ready,
         measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
+        firstShipAt: get().firstShipAt,
+        onboardingTrack: get().onboardingTrack,
       });
-      if (!readiness.canStartWeek1) {
+      if (!week1Ready) {
         set({ launchReadinessOpen: true });
         appendEvent({
           role: "system",
@@ -9956,16 +9978,22 @@ export const useApp = create<AppState>((set, get) => {
           } else if (!get().capabilityMatrix.canBrowse && requiresVerify) {
             const skipped = markShipReceiptVerifySkipped(shipReceipt);
             if (pid) persistShipReceiptLocal(pid, skipped);
+            const target = get().project ? resolveFirstShipTarget(get().project!) : undefined;
+            const localRecovery = buildLocalVerifyRecovery({
+              heroPath: target?.heroPath,
+              previewUrl: previewUrl ?? undefined,
+            });
             set({
               lastShipReceipt: skipped,
-              shipRecovery: buildShipRecovery("verify_unavailable"),
+              shipRecovery: localRecovery,
               workspaceHandoff: {
-                eyebrow: "Verify live",
-                title: "Connect Computer Use to verify",
-                reason:
-                  "Changes are applied — connect backend + Computer Use to capture live CTA proof.",
-                primaryLabel: "Open settings",
-                primaryAction: "settings",
+                eyebrow: "Verify locally",
+                title: localRecovery.title,
+                reason: localRecovery.detail,
+                primaryLabel: "Review diff",
+                primaryAction: "preview_diff",
+                secondaryLabel: "Mark verified",
+                secondaryAction: "mark_local_verify",
               },
             });
           } else if (requiresVerify && !previewUrl) {
