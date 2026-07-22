@@ -11,6 +11,7 @@ import {
 import { applyMechanismToChannelThesis } from "./cmoGrowthEngine";
 import { evaluateThesisQuality } from "./cmoThesisQualityEngine";
 import { capWeek1Priorities } from "./cmoExecutionBind";
+import type { GrowthMemoryState } from "./cmoGrowthMemory";
 import type { GrowthMechanismId } from "./cmoGrowthMechanismKnowledge";
 import {
   enrichThesisWeek1Priorities,
@@ -704,6 +705,27 @@ function appendCycleRationale(
     );
   }
   return [...extra, ...base];
+}
+
+/** Horizon 2 — compound growth memory into Week N+1 priority mutations. */
+export function applyMemoryToWeek1Priorities(
+  thesis: ChannelThesis,
+  memory?: GrowthMemoryState | null,
+): ChannelThesis {
+  const mutations = memory?.pending_replan?.ops_mutations;
+  if (!mutations?.length) return thesis;
+  const priorities = [...thesis.week1_priorities];
+  for (const mutation of mutations) {
+    const idx = mutation.priority_index;
+    if (idx < 0 || idx >= priorities.length) continue;
+    priorities[idx] = {
+      ...priorities[idx]!,
+      what: mutation.what,
+      why: mutation.why || priorities[idx]!.why,
+      done_when: mutation.done_when || priorities[idx]!.done_when,
+    };
+  }
+  return { ...thesis, week1_priorities: capWeek1Priorities(priorities) };
 }
 
 /** Build channel thesis from scan + profile — P0 intake engine. */

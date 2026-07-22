@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { appendKpiSnapshot, buildKpiTrendSeries, hasTrendData } from "./kpiTrendSeries";
+import { appendKpiSnapshot, buildKpiTrendSeries, countFlatPulseCheckpoints, hasTrendData } from "./kpiTrendSeries";
 import type { ManualKpi } from "./types";
 
 describe("kpiTrendSeries", () => {
@@ -77,5 +77,16 @@ describe("kpiTrendSeries", () => {
     const day3 = points.find((p) => p.day_index === 3);
     assert.equal(day3?.value, 500);
     assert.equal(day3?.source, "manual");
+  });
+
+  it("countFlatPulseCheckpoints counts sub-50% days at Day 3+", () => {
+    const flat = countFlatPulseCheckpoints(
+      [
+        { day_index: 3, value: 100, source: "manual" },
+        { day_index: 5, value: 120, source: "manual" },
+      ],
+      500,
+    );
+    assert.equal(flat, 2);
   });
 });

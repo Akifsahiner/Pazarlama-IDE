@@ -12,6 +12,7 @@ import { evaluateHookPerformance, getNextDistributionSlot } from "./cmoDistribut
 import type { InfluencerOperatorWorkspace } from "./cmoInfluencerOperator";
 import type { CmoOpsCadence, PivotVerdict } from "./cmoOpsCadence";
 import {
+  hasGa4Connected,
   evaluateWeek1MetricsWithGa4Priority,
   readGa4MetricValue,
   resolveOpsKpiGate,
@@ -21,6 +22,24 @@ import { KPI_PRESETS } from "./kpiPresets";
 import type { MeasurementBaselineAssessment } from "./measurementBaseline";
 import { assessMeasurementBaseline } from "./measurementBaseline";
 import type { MarketingProfile } from "./types";
+
+export type PulseCommandKind =
+  | "distribution_kill"
+  | "distribution_post"
+  | "submit_proof"
+  | "start_next_cycle"
+  | "sync_ga4";
+
+export interface PulseCommandAction {
+  kind: PulseCommandKind;
+  label: string;
+  testId: string;
+  hookId?: string;
+  slotId?: string;
+  taskId?: string;
+  cycleMode?: "pivot" | "double_down";
+  thesisId?: ChannelThesisId;
+}
 
 export type PulseCheckpointDay = 3 | 5 | 7;
 
@@ -187,6 +206,102 @@ function resolveActionSuggestion(input: EvaluateDayPulseInput): string {
   if (task) return task.what;
   if (thesis?.week1_priorities[0]?.what) return thesis.week1_priorities[0].what;
   return "Keep executing Week 1 ops — log proof when live";
+}
+
+/** Structured pulse action for command surface dispatch (Horizon 2 / Part 16). */
+export function resolvePulseCommandAction(
+  input: EvaluateDayPulseInput & {
+    profile?: MarketingProfile | null;
+    flatCheckpointCount?: number;
+  },
+): PulseCommandAction | null {
+  const checkpoint = resolveActivePulseCheckpoint(input.cadence.day_index);
+  if (!checkpoint) return null;
+
+  const assessment = evaluateWeek1MetricsWithGa4Priority(
+    input.cadence,
+    input.profile,
+    input.thesis,
+    input.distributionOperator,
+    input.influencerOperator,
+    input.delegateOperator,
+  );
+
+  if (input.distributionOperator) {
+    const verdict = evaluateHookPerformance(input.distributionOperator);
+    const next = getNextDistributionSlot(input.distributionOperator);
+    if (verdict.kind === "kill" && verdict.hook_id) {
+      const killed = input.distributionOperator.hooks.find((h) => h.id === verdict.hook_id);
+      return {
+        kind: "distribution_kill",
+        hookId: verdict.hook_id,
+        label: `Kill hook — rewrite ${killed?.label ?? "loser"}`,
+        testId: "command-surface-pulse-kill-hook",
+      };
+    }
+    if (next && (verdict.kind === "scale" || verdict.kind === "double_down")) {
+      const hook = input.distributionOperator.hooks.find((h) => h.id === next.hook_id);
+      if (assessment.primaryValue == null && assessment.loggedCount <= 0) {
+        return null;
+      }
+      return {
+        kind: "distribution_post",
+        hookId: next.hook_id,
+        slotId: next.id,
+        label: hook ? `Post ${hook.label} — scale pattern` : "Post winning hook today",
+        testId: "command-surface-pulse-scale-post",
+      };
+    }
+  }
+
+  if (
+    assessment.verdict === "flat" &&
+    (input.flatCheckpointCount ?? 0) >= 2 &&
+    input.cadence.pivot_suggestion?.suggested_thesis_ids[0]
+  ) {
+    return {
+      kind: "start_next_cycle",
+      cycleMode: "pivot",
+      thesisId: input.cadence.pivot_suggestion.suggested_thesis_ids[0],
+      label: "Flat at 2+ checkpoints — preview Week 2 pivot",
+      testId: "command-surface-pulse-pivot",
+    };
+  }
+
+  if (assessment.primaryValue == null && assessment.loggedCount <= 0) {
+    const proofTask = input.cadence.tasks.find(
+      (t) =>
+        (t.owner === "user" || t.owner === "delegate") &&
+        t.status !== "done" &&
+        t.status !== "skipped",
+    );
+    if (proofTask) {
+      return {
+        kind: "submit_proof",
+        taskId: proofTask.id,
+        label: "Log KPI proof — pulse needs a number",
+        testId: "command-surface-pulse-log-kpi",
+      };
+    }
+    if (hasGa4Connected(input.profile ?? null) && input.profile?.ga4_oauth?.connected_at) {
+      return {
+        kind: "sync_ga4",
+        label: "Sync GA4 for pulse read",
+        testId: "command-surface-pulse-sync-ga4",
+      };
+    }
+  }
+
+  if (assessment.verdict === "promising" && assessment.pctOfTarget != null && assessment.pctOfTarget >= 50) {
+    return {
+      kind: "start_next_cycle",
+      cycleMode: "double_down",
+      label: "Double down — KPI on track",
+      testId: "command-surface-pulse-double-down",
+    };
+  }
+
+  return null;
 }
 
 function formatPrimaryKpiDisplay(

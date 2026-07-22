@@ -23,6 +23,7 @@ export function useCommandSurfaceDispatch() {
   const promptApplyFirstChange = useApp((s) => s.promptApplyFirstChange);
   const laneDWorkspace = useApp((s) => s.laneDWorkspace ?? s.marketingProfile?.lane_d_workspace);
   const setExecutionRecordDetailTab = useApp((s) => s.setExecutionRecordDetailTab);
+  const syncGa4Metrics = useApp((s) => s.syncGa4Metrics);
 
   return (
     resolved: CommandSurfaceAction,
@@ -91,6 +92,10 @@ export function useCommandSurfaceDispatch() {
         break;
       case "week_review":
         focusWarRoomAnchor("cmo-ops-board");
+        break;
+      case "sync_ga4":
+        void syncGa4Metrics();
+        setExecutionRecordDetailTab("record");
         break;
       case "product_loop":
         if (resolved.siteLevel) {

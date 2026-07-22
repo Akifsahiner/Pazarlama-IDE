@@ -9,6 +9,7 @@ import {
   createInitialContinuousState,
   isContinuousReplanReady,
   resolveNextCycleThesisId,
+  shouldSilentArchiveCycle,
 } from "./cmoContinuous";
 import { evaluateWeek1Metrics } from "./cmoProofLoop";
 import type { ProjectProfile } from "./types";
@@ -177,6 +178,31 @@ describe("cmoContinuous", () => {
     );
     assert.equal(
       isContinuousReplanReady(state, cadence, "planning", true),
+      false,
+    );
+  });
+
+  it("shouldSilentArchiveCycle when ops terminal and week close ready", () => {
+    const thesis = buildCmoIntake({ project: baseProject(), persona: "marketing" });
+    let cadence = createOpsCadenceFromThesis(thesis);
+    cadence = {
+      ...cadence,
+      week_review: { ...cadence.week_review, status: "pending" },
+      tasks: cadence.tasks.map((t) => ({
+        ...t,
+        status: "done" as const,
+        proof: { completed_at: new Date().toISOString(), kpi_value: 100 },
+      })),
+    };
+    assert.equal(
+      shouldSilentArchiveCycle({ cadence, weekCloseReady: true }),
+      true,
+    );
+    assert.equal(
+      shouldSilentArchiveCycle({
+        cadence: { ...cadence, tasks: cadence.tasks.map((t, i) => (i === 0 ? { ...t, status: "pending" as const } : t)) },
+        weekCloseReady: true,
+      }),
       false,
     );
   });

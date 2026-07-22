@@ -5,7 +5,7 @@
 import type { ChannelThesis, ChannelThesisId, CmoIntakeContext } from "./cmoIntake";
 import type { CampaignPhase, CampaignSession } from "./campaignSession";
 import type { CmoOpsCadence, CmoPivotSuggestion } from "./cmoOpsCadence";
-import type { Week1MetricAssessment } from "./cmoProofLoop";
+import { allOpsTasksTerminal, type Week1MetricAssessment } from "./cmoProofLoop";
 import type { PivotVerdict } from "./cmoOpsCadence";
 import type { BudgetSnapshot } from "./cmoBudgetPlane";
 import type { RevenueSnapshot } from "./cmoRevenuePlane";
@@ -466,6 +466,21 @@ export function isContinuousReplanReady(
   }
 
   return false;
+}
+
+/** Horizon 2 — silent archive when ops terminal + KPI gates pass (no essay required). */
+export function shouldSilentArchiveCycle(input: {
+  cadence: CmoOpsCadence;
+  continuous?: CmoContinuousState | null;
+  weekCloseReady?: boolean;
+}): boolean {
+  if (!input.weekCloseReady) return false;
+  if (!allOpsTasksTerminal(input.cadence)) return false;
+  if (input.cadence.week_review.status === "completed") return false;
+  if (input.continuous?.cycles.some((c) => c.cycle_index === input.cadence.week_index)) {
+    return false;
+  }
+  return true;
 }
 
 export function applyNextCycleStarted(
