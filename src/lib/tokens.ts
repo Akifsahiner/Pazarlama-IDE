@@ -7,10 +7,10 @@ export { DOWNLOAD_OPTIONS, RELEASE_LATEST, downloadUrl } from "./download";
 export const heroCopy = {
   eyebrow: "For founders who ship",
   headlineLine1: "Ship your product.",
-  headlineLine2Before: "We'll handle the",
-  accentWord: "launch.",
+  headlineLine2Before: "We'll run your",
+  accentWord: "growth ops.",
   subheadline:
-    "Connect once (or preview offline), open your project folder, and get a 30-day launch plan you approve — agent tasks, diffs, and browser research you apply yourself.",
+    "Open the same repo you built in Cursor. We read your codebase, ship marketing diffs you approve, and tell you exactly what to do each day — posts, outreach, and KPI proof you execute.",
   cta: "Download Marketing IDE",
   secondaryCta: "View pricing",
 } as const;
@@ -25,12 +25,12 @@ export const firstRunFunnel = {
   eyebrow: "First launch",
   title: "Your first hour in the app",
   subtitle:
-    "Download is step zero — connect, scan, plan, and run your first task within sixty minutes.",
+    "Download is step zero — connect, scan, ship one patch, then Week 1 daily ops with owners and proof.",
   steps: [
     {
       title: "Connect",
       description:
-        "Start the bundled local AI stack or sign in — or skip and preview a scan-based outline offline.",
+        "Start the bundled local AI stack or sign in — or scan offline first.",
       icon: "Server",
       accent: "blue" as const,
     },
@@ -41,14 +41,14 @@ export const firstRunFunnel = {
       accent: "orange" as const,
     },
     {
-      title: "Scan & reveal",
-      description: "Routes, stack, gaps — then one click into Plan Studio (no second handoff).",
+      title: "Scan & ship",
+      description: "We detect your landing file — one approved diff in ~10 minutes.",
       icon: "ScanSearch",
       accent: "green" as const,
     },
     {
-      title: "Plan & execute",
-      description: "Day 1 task by minute 40 — diffs you approve, browser research, KPIs you log.",
+      title: "Week 1 ops",
+      description: "Daily tasks with bottleneck, owner, done-when — repo ship or post kit ready.",
       icon: "GitBranch",
       accent: "blue" as const,
     },
@@ -56,17 +56,17 @@ export const firstRunFunnel = {
 } as const;
 
 export const outcomeStrip = {
-  line: "From finished code to launched and selling — without hiring a marketing or sales team.",
+  line: "From finished code to daily growth ops — without hiring a marketing team.",
   badges: [
-    { label: "Edit site as diffs", accent: "blue" as const },
-    { label: "Verify in a live browser", accent: "orange" as const },
-    { label: "Research & draft outreach — you send", accent: "green" as const },
+    { label: "Ship diffs in your repo", accent: "blue" as const },
+    { label: "One task per day", accent: "orange" as const },
+    { label: "Scripts ready — you publish", accent: "green" as const },
   ],
 } as const;
 
 export const founderQuote = {
   quote:
-    "I built my product in a month, then sat on it for half a year because I had no idea how to launch. Marketing IDE turned that fear into a checklist I could actually ship.",
+    "I built my product in a month, then sat on it for half a year because I had no idea what to do today. Marketing IDE turned that into one patch, then one daily task I could actually finish.",
   author: "Every developer who can build but not launch",
 } as const;
 
@@ -205,14 +205,14 @@ export const sections = {
         accent: "orange" as const,
       },
       {
-        title: "Plan",
-        description: "A 30-day task graph with dependencies and clear metrics.",
+        title: "Ship",
+        description: "First marketing patch as a Cursor-style diff — approve and apply in your repo.",
         icon: "GitBranch",
         accent: "green" as const,
       },
       {
-        title: "Execute",
-        description: "Every change arrives as a diff. Preview, approve, apply.",
+        title: "Operate",
+        description: "Week 1 ops table — one daily task with owner, done-when, and proof.",
         icon: "Play",
         accent: "blue" as const,
       },
@@ -227,8 +227,8 @@ export const sections = {
   },
   workspace: {
     eyebrow: "The workspace",
-    title: "Your launch workspace, not another chatbot",
-    subtitle: "Strategy, tasks, diffs, and results — all in one canvas.",
+    title: "Your growth ops desk, not another chatbot",
+    subtitle: "Execution Record, repo diffs, post kits, and honest KPI proof — one next action at a time.",
     snapshot: {
       label: "Product Snapshot",
       productType: "B2B SaaS",
@@ -288,10 +288,10 @@ export const sections = {
           "Marketing IDE reads your repo and live site to build a real product profile.",
       },
       {
-        value: "30",
-        label: "Day launch plan",
+        value: "1",
+        label: "Task per day",
         description:
-          "Every plan is an executable task graph, not a static PDF you forget.",
+          "Morning brief with bottleneck, today, why, and done-when — zero ambiguity.",
       },
       {
         value: "1-click",
@@ -308,12 +308,12 @@ export const sections = {
       {
         question: "Do I need to connect before I can use it?",
         answer:
-          "No. Scan, product reveal, and a preview launch outline work offline. Connect (bundled local stack or hosted sign-in) unlocks full AI plan generation, agent runs, and browser research.",
+          "No. Scan and product reveal work offline. Connect unlocks AI diffs, Week 1 ops, agent runs, and browser research.",
       },
       {
         question: "Is Marketing IDE a chatbot?",
         answer:
-          "No. The center of the app is a living launch workspace — projects, plans, diffs, and results. Chat is just one way to give commands; the real work happens on the canvas.",
+          "No. The center is Execution Record — one daily CMO task with repo diffs or human-ready post kits. Chat directs work; the record owns accountability.",
       },
       {
         question: "What happens when I open my project folder?",
@@ -343,8 +343,8 @@ export const sections = {
     ],
   },
   footerCta: {
-    title: "Built it? Now launch it.",
+    title: "Built it? Now grow it.",
     subtitle:
-      "Download Marketing IDE — connect or preview offline, open your folder, ship your launch plan.",
+      "Download Marketing IDE — open your folder, ship your first patch, run Week 1 ops.",
   },
 } as const;

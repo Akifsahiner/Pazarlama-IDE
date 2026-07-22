@@ -40,7 +40,14 @@ import { isCommandSurfaceActive } from "@shared/cmoCommandSurface";
 import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
 import { isWeek1Ready } from "@shared/launchReadiness";
 import { shouldDeferFullCmoIntake, isQuickStartTrack } from "@shared/quickStartWedge";
-import { ShipFirstWinBanner } from "./ShipFirstWinBanner";
+import { resolveFirstShipTarget } from "@shared/firstHourWow";
+import {
+  resolveFirstRunPrimaryAction,
+  shouldShowGtmKnowledgeStrip,
+  shouldShowPlanProgressCard,
+  shouldShowSuggestedMovesGrid,
+} from "@shared/northStarFunnel";
+import { OneNextActionCard } from "@renderer/components/OneNextActionCard";
 import { ShipWinCard } from "@renderer/features/workspace/ShipWinCard";
 import { nextActionableTask } from "@shared/planProgress";
 import type { CampaignSession } from "@shared/types";
@@ -133,11 +140,13 @@ export function HomePage() {
     (s) => s.influencerOperator ?? s.marketingProfile?.influencer_operator,
   );
   const beginCmoWeek1 = useApp((s) => s.beginCmoWeek1);
-  const beginFirstHour = useApp((s) => s.beginFirstHour);
+  const beginQuickStartShip = useApp((s) => s.beginQuickStartShip);
   const firstShipLedger = useApp((s) => s.firstShipLedger);
   const onboardingTrack = useApp((s) => s.onboardingTrack);
+  const setOnboardingTrack = useApp((s) => s.setOnboardingTrack);
   const openStrategicIntake = useApp((s) => s.openStrategicIntake);
   const openLaunchReadiness = useApp((s) => s.openLaunchReadiness);
+  const openConnectFlow = useApp((s) => s.openConnectFlow);
   const executionRecord = useActiveExecutionRecord();
 
   const baselineReady = assessMeasurementBaseline(marketingProfile, project).ready;
@@ -171,6 +180,79 @@ export function HomePage() {
     new Date(firstShipLedger.at).toDateString() === new Date().toDateString();
 
   const commandSurfaceActive = isCommandSurfaceActive({ growthControlPlane, opsCadence });
+
+  const shipTarget = useMemo(
+    () => (project ? resolveFirstShipTarget(project) : { heroPath: undefined as string | undefined, stackLine: "" }),
+    [project],
+  );
+  const primaryRunAction = useMemo(
+    () =>
+      resolveFirstRunPrimaryAction({
+        firstShipAt,
+        heroPath: shipTarget.heroPath,
+        channelThesis,
+        marketingProfile,
+        week1Ready,
+        onboardingTrack,
+        opsCadence,
+        connected,
+        persona,
+      }),
+    [
+      channelThesis,
+      connected,
+      firstShipAt,
+      marketingProfile,
+      onboardingTrack,
+      opsCadence,
+      persona,
+      shipTarget.heroPath,
+      week1Ready,
+    ],
+  );
+
+  const runPrimaryAction = () => {
+    switch (primaryRunAction.id) {
+      case "ship_first_patch":
+        beginQuickStartShip();
+        break;
+      case "complete_cmo_strategy":
+        openStrategicIntake();
+        break;
+      case "complete_launch_setup":
+        openLaunchReadiness();
+        break;
+      case "start_week1":
+        beginCmoWeek1();
+        break;
+      case "connect":
+        openConnectFlow();
+        break;
+      case "continue_week1_ops":
+      case "open_workspace":
+      default:
+        navigate("workspace");
+        break;
+    }
+  };
+
+  const showOneNextAction = !commandSurfaceActive;
+  const showSuggestedMoves = shouldShowSuggestedMovesGrid({
+    opsCadence,
+    commandSurfaceActive,
+    firstShipAt,
+    onboardingTrack,
+  });
+  const showGtmStrip = shouldShowGtmKnowledgeStrip({
+    opsCadence,
+    firstShipAt,
+    onboardingTrack,
+  });
+  const showPlanProgress = shouldShowPlanProgressCard({
+    opsCadence,
+    planHourStarted: Boolean(plan && planProgress),
+  });
+
   const distOperatorActive =
     !!distributionOperator &&
     isDistributionOperatorGate({
@@ -314,7 +396,6 @@ export function HomePage() {
 
   const primary = persona === "sales" ? salesMoves : marketingMoves;
   const secondary = persona === "sales" ? marketingMoves : salesMoves;
-  const planHourStarted = Boolean(plan && planProgress);
   const nextPlanTask =
     plan && planProgress ? nextActionableTask(plan, planProgress.byTaskId) : null;
   const planDone = planProgress?.computed.done ?? 0;
@@ -364,7 +445,18 @@ export function HomePage() {
         )}
       </Card>
 
-      {!firstShipAt && hasFolder && <ShipFirstWinBanner />}
+      {showOneNextAction && (
+        <OneNextActionCard
+          action={primaryRunAction}
+          onPrimary={runPrimaryAction}
+          onTertiary={
+            primaryRunAction.id === "ship_first_patch"
+              ? () => setOnboardingTrack("full_cmo")
+              : undefined
+          }
+          testId="home-one-next-action"
+        />
+      )}
 
       {firstShipAt && firstShipLedger && (
         <>
@@ -460,7 +552,6 @@ export function HomePage() {
               strategicDecision={marketingProfile?.strategic_decision}
               thesisQualityReport={marketingProfile?.thesis_quality_report}
               onStartWeek1={week1Ready ? () => beginCmoWeek1() : undefined}
-              onFullPlan={() => beginFirstHour()}
             />
           )
         ) : (
@@ -479,7 +570,7 @@ export function HomePage() {
         />
       )}
 
-      {planHourStarted && !campaignSession && !opsCadence && (
+      {showPlanProgress && !campaignSession && (
         <FirstHourProgressCard
           done={planDone}
           total={planTotal}
@@ -517,11 +608,13 @@ export function HomePage() {
         onWorkspace={() => navigate("workspace")}
       />
 
-      <div className="mt-8">
-        <GtmKnowledgeStrip />
-      </div>
+      {showGtmStrip && (
+        <div className="mt-8">
+          <GtmKnowledgeStrip />
+        </div>
+      )}
 
-      {!planHourStarted && (
+      {showSuggestedMoves && (
         <>
           <div className="mt-8">
             <h2 className="mb-3 text-h3 text-text">Suggested moves</h2>

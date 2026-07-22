@@ -195,6 +195,10 @@ import {
 } from "@shared/shipPipeline";
 import { buildShipRecovery, type ShipRecoveryAction } from "@shared/shipPipelineRecovery";
 import { buildLocalVerifyRecovery } from "@shared/localVerifyFallback";
+import {
+  PLAN_STUDIO_WEEK1_BLOCK_REASON,
+  shouldBlockPlanStudio,
+} from "@shared/northStarFunnel";
 import { appendExecutionMetric, type ExecutionMetricsRollup } from "@shared/executionMetrics";
 import type { FirstShipLedger } from "@shared/types";
 import {
@@ -5443,6 +5447,17 @@ export const useApp = create<AppState>((set, get) => {
     beginFirstHour: () => {
       const { project, runtime } = get();
       if (!project) return;
+      const opsCadence = get().opsCadence ?? get().marketingProfile?.ops_cadence;
+      if (shouldBlockPlanStudio({ opsCadence })) {
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: PLAN_STUDIO_WEEK1_BLOCK_REASON,
+        });
+        set({ phase: "workspace", route: "workspace" });
+        get().setActiveCanvas("run");
+        return;
+      }
       clearFirstHourAutoHandoff();
       track("begin_first_hour");
       set({
@@ -8076,6 +8091,17 @@ export const useApp = create<AppState>((set, get) => {
     previewPlanOutline: () => {
       const { project } = get();
       if (!project) return;
+      const opsCadence = get().opsCadence ?? get().marketingProfile?.ops_cadence;
+      if (shouldBlockPlanStudio({ opsCadence })) {
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: PLAN_STUDIO_WEEK1_BLOCK_REASON,
+        });
+        set({ route: "workspace" });
+        get().setActiveCanvas("run");
+        return;
+      }
       get().startCampaignSession();
       get().advanceCampaignPhase({ type: "plan_generate_start" });
       const outline = buildOfflinePlanOutline(project, { persona: get().settings.persona });
@@ -8521,6 +8547,17 @@ export const useApp = create<AppState>((set, get) => {
     generatePlan: async () => {
       const { project, settings, planLoading, auth, activeProjectId, connection } = get();
       if (!project || planLoading) return;
+      const opsCadence = get().opsCadence ?? get().marketingProfile?.ops_cadence;
+      if (shouldBlockPlanStudio({ opsCadence })) {
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: PLAN_STUDIO_WEEK1_BLOCK_REASON,
+        });
+        set({ route: "workspace" });
+        get().setActiveCanvas("run");
+        return;
+      }
 
       // Same guards as sendMessage so users see useful banners instead of fetch noise.
       if (!canRunAgent(get().runtime)) {
@@ -10792,6 +10829,21 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     setWorkSurface: (surface, opts) => {
+      if (surface === "campaign-plan") {
+        const opsCadence = get().opsCadence ?? get().marketingProfile?.ops_cadence;
+        if (shouldBlockPlanStudio({ opsCadence })) {
+          appendEvent({
+            role: "system",
+            kind: "status",
+            text: PLAN_STUDIO_WEEK1_BLOCK_REASON,
+          });
+          set((s) => ({
+            route: "workspace",
+            canvas: { ...s.canvas, mode: "run" },
+          }));
+          return;
+        }
+      }
       set((s) => ({
         canvas: {
           ...s.canvas,

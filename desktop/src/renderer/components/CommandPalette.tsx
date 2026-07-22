@@ -147,11 +147,11 @@ export function CommandPalette() {
           void window.api.shell.openInEditor({ editor: "vscode", path: projectRoot, folder: true });
         },
       },
-      { id: "surface-plan", label: "Open Plan Studio", hint: "Surface", keywords: "campaign playbook launch", icon: Wand2, enabled: hasProject, run: () => { setWorkSurface("campaign-plan"); navigate("workspace"); } },
+      { id: "surface-plan", label: "Open Plan Studio (backstage)", hint: "Surface", keywords: "campaign playbook launch reference", icon: Wand2, enabled: hasProject, run: () => { setWorkSurface("campaign-plan"); navigate("workspace"); } },
       { id: "surface-funnel", label: "Open Funnel", hint: "Surface", icon: BarChart3, enabled: hasProject, run: () => { setWorkSurface("funnel"); navigate("workspace"); } },
       { id: "surface-research", label: "Open Research Map", hint: "Surface", keywords: "findings competitors", icon: MapIcon, enabled: hasProject, run: () => { setWorkSurface("research-map"); navigate("workspace"); } },
       { id: "surface-content", label: "Open Content Set", hint: "Surface", keywords: "assets copy", icon: Library, enabled: hasProject, run: () => { setWorkSurface("content-set"); navigate("workspace"); } },
-      { id: "plan", label: "Generate plan", hint: "Agent", keywords: "launch playbook", icon: Wand2, enabled: hasProject && connected, run: () => { void generatePlan(); navigate("workspace"); } },
+      { id: "plan", label: "Generate 30-day plan (backstage)", hint: "Agent", keywords: "launch playbook reference", icon: Wand2, enabled: hasProject && connected, run: () => { void generatePlan(); navigate("workspace"); } },
       { id: "browser", label: "Browser task", hint: "Agent", keywords: "computer use operator research google", icon: Globe, enabled: connected, run: () => {
         navigate("workspace");
         runBrowserTask(

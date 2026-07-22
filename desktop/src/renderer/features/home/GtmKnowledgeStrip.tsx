@@ -1,17 +1,21 @@
 import { ArrowRight, Sparkles } from "lucide-react";
 import { TESTIMONIAL_PLAYBOOKS, TACTIC_TEACHING, playbookTitle } from "@shared/gtmCatalog";
+import { shouldBlockPlanStudio } from "@shared/northStarFunnel";
 import { useApp } from "@renderer/state/store";
 import { Button } from "@renderer/components/ui/Button";
 
 /** Home strip — testimonial playbooks with one-line tactics. */
 export function GtmKnowledgeStrip() {
   const plan = useApp((s) => s.plan);
+  const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
   const generatePlan = useApp((s) => s.generatePlan);
   const previewPlanOutline = useApp((s) => s.previewPlanOutline);
   const connected = useApp((s) => s.runtime === "connected");
   const setWorkSurface = useApp((s) => s.setWorkSurface);
   const setActivePlaybook = useApp((s) => s.setActivePlaybook);
   const navigate = useApp((s) => s.navigate);
+
+  if (shouldBlockPlanStudio({ opsCadence })) return null;
 
   const openPlaybook = (playbookId: string) => {
     navigate("workspace");
@@ -34,7 +38,7 @@ export function GtmKnowledgeStrip() {
         </div>
         {!plan && (
           <Button variant="secondary" className="h-7 text-micro" onClick={startPlan}>
-            {connected ? "Generate launch plan" : "Preview plan outline"}
+            {connected ? "Full 30-day plan (backstage)" : "Preview plan outline"}
           </Button>
         )}
       </div>

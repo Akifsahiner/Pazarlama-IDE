@@ -6,7 +6,7 @@ export const FIRST_TEN_MINUTES = [
 ] as const;
 
 export const FIRST_HOUR_MILESTONES = [
-  { minutes: "0–15", label: "First patch", detail: "Hero route detected, scout answer with citations, one applied change" },
-  { minutes: "15–30", label: "Plan ready", detail: "AI plan or scan outline with Day 1 highlighted" },
-  { minutes: "30–60", label: "Launch loop", detail: "Run Day 1 tasks, browser research, or export assets" },
+  { minutes: "0–15", label: "First patch", detail: "Hero route detected, one applied diff in your repo" },
+  { minutes: "15–30", label: "Seal strategy", detail: "Founder-fit intake personalizes Week 1 ops" },
+  { minutes: "30–60", label: "Week 1 loop", detail: "Daily ops task — repo ship or post kit + proof" },
 ] as const;

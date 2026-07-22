@@ -209,6 +209,8 @@ export function NextActionBar({ scope }: { scope: NextActionScope }) {
         planProgress: s.planProgress,
         campaignSession: s.marketingProfile?.campaign_session ?? null,
         opsCadence: s.opsCadence ?? s.marketingProfile?.ops_cadence ?? null,
+        firstShipAt: s.firstShipAt,
+        onboardingTrack: s.onboardingTrack,
         laneBWorkspace: s.laneBWorkspace ?? s.marketingProfile?.lane_b_workspace ?? null,
         channelThesis: s.channelThesis ?? s.marketingProfile?.channel_thesis ?? null,
         cmoContinuous: s.cmoContinuous ?? s.marketingProfile?.cmo_continuous ?? null,
