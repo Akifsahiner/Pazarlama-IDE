@@ -180,6 +180,7 @@ export function canDispatchOpsTask(
   if (!governance) return true;
   const blockedKinds = new Set([
     "run_system",
+    "retry_execution",
     "submit_proof",
     "lane_b_proof",
     "operator_proof",

@@ -41,7 +41,9 @@ export type ExecutionProvenanceSource =
   | "brain_action"
   | "auto_chain"
   | "replay"
-  | "week_review";
+  | "week_review"
+  | "human_kit"
+  | "e2e";
 
 export interface ExecutionProvenance {
   source: ExecutionProvenanceSource;
@@ -221,11 +223,11 @@ export function executionTaskStatusToRecordLifecycle(
     case "measuring":
       return "measured";
     case "paused":
-      return "running";
+      return "paused";
     case "cancelled":
       return "closed";
     case "failed":
-      return "running";
+      return "failed";
     default:
       return "queued";
   }
@@ -398,6 +400,9 @@ export function dispatchExecutionTask(
     throw new Error(`Execution instance not found: ${taskId}`);
   }
   if (inst.status === "running") {
+    return { kernel, instance: inst, noop: true };
+  }
+  if (inst.status === "awaiting_approval" || inst.status === "verifying") {
     return { kernel, instance: inst, noop: true };
   }
   if (inst.status !== "ready" && inst.status !== "failed") {
@@ -615,7 +620,8 @@ export function projectKernelToOpsCadence(
   return { ...cadence, tasks };
 }
 
-/** Project kernel lifecycle → plan progress rows. */
+/** Project kernel lifecycle → plan progress rows.
+ * @deprecated Week 1 execution SoT is ops cadence + kernel — plan scope deferred. */
 export function projectKernelToPlanProgress(
   kernel: ExecutionKernelState,
   byTaskId: Record<string, PlanTaskProgressRow>,

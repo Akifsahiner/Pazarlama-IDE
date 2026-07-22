@@ -19,7 +19,8 @@ When the user asks about "the app", they mean **`desktop/`** unless they specify
 **P0 intake spec:** [`CMO_INTAKE_SPEC.md`](CMO_INTAKE_SPEC.md)  
 **P17 growth engine:** [`CMO_GROWTH_ENGINE_SPEC.md`](CMO_GROWTH_ENGINE_SPEC.md)  
 **Revenue plane (P16):** [`CMO_REVENUE_PLANE_SPEC.md`](CMO_REVENUE_PLANE_SPEC.md)  
-**Continuous decision (Faz 7/8/9 redirect):** [`CMO_CONTINUOUS_DECISION_SPEC.md`](CMO_CONTINUOUS_DECISION_SPEC.md)
+**Continuous decision (Faz 7/8/9 redirect):** [`CMO_CONTINUOUS_DECISION_SPEC.md`](CMO_CONTINUOUS_DECISION_SPEC.md)  
+**Execution kernel + trust engine (Faz 10):** [`CMO_EXECUTION_KERNEL_SPEC.md`](CMO_EXECUTION_KERNEL_SPEC.md) · [`CMO_EXECUTION_USER_PROMISE.md`](CMO_EXECUTION_USER_PROMISE.md)
 
 Marketing IDE = **Software CMO** (not a checklist or SEO sidebar). Diagnose → channel thesis → daily/weekly ops with the user → ship in repo (Lane A) → prepare & direct human execution for social/ads/influencer (Lane B) → delegate briefs (Lane C) → pause marketing and resolve product bottlenecks (Lane D) → measure revenue and attribution (P16) → pivot forever. Do **not** shrink features to commodity meta-tag work; do **not** auto-post to social. Every feature must pass the CMO checklist in that doc.
 

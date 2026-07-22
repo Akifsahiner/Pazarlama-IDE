@@ -69,6 +69,25 @@ test.describe("CMO lifecycle prod agent @cmo-prod", () => {
 
       await completeOpsCadenceWithAgent(page);
 
+      const kernelAfterOps = await page.evaluate(() => {
+        const state = window.__useApp?.getState();
+        const cadence = state?.opsCadence;
+        const kernel = state?.executionKernel;
+        const systemTasks = cadence?.tasks.filter((t) => t.owner === "system") ?? [];
+        const terminal = systemTasks.filter((t) => t.status === "done").length;
+        const instances = systemTasks.map((t) => ({
+          id: t.id,
+          kernelStatus: kernel?.instances[t.id]?.status,
+          opsStatus: t.status,
+        }));
+        return { terminal, total: systemTasks.length, instances };
+      });
+      expect(kernelAfterOps.terminal).toBe(kernelAfterOps.total);
+      for (const row of kernelAfterOps.instances) {
+        expect(["completed", "measuring"]).toContain(row.kernelStatus);
+        expect(row.opsStatus).toBe("done");
+      }
+
       await completeWeekReviewViaUi(
         page,
         "Week 1 prod E2E: agent executed system tasks; user proof submitted with live URLs.",

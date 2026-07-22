@@ -28,6 +28,7 @@ import { getNextMonetizationTask, type MonetizationWorkspace } from "./cmoRevenu
 import { withNarrativePrefix } from "./cmoNarrativeContext";
 import type { CmoOpsCadence } from "./cmoOpsCadence";
 import { evaluateWeek1MetricsWithGa4Priority, isWeekCloseReady } from "./cmoProofLoop";
+import { canRetryExecution } from "./executionRetryPolicy";
 
 type TodayWithoutWhy = Omit<GrowthTodayMove, "why"> & { why?: string };
 
@@ -380,6 +381,7 @@ export type CommandSurfaceAction =
   | { kind: "lane_b_proof"; itemId: string; label: string; testId: string }
   | { kind: "focus_war_room"; anchor: string; label: string; testId: string }
   | { kind: "focus_backstage"; anchor: string; label: string; testId: string }
+  | { kind: "retry_execution"; taskId: string; label: string; testId: string }
   | { kind: "none"; reason: string };
 
 export interface ResolveCommandSurfaceActionInput extends BuildCommandSurfaceModelInput {
@@ -510,6 +512,21 @@ export function resolveCommandSurfaceAction(
     executionKernel: input.executionKernel,
     cadence: input.cadence,
   });
+
+  if (input.executionKernel && input.cadence) {
+    for (const task of input.cadence.tasks) {
+      const inst = input.executionKernel.instances[task.id];
+      if (inst?.status === "failed" && canRetryExecution(inst)) {
+        return {
+          kind: "retry_execution",
+          taskId: task.id,
+          label: `Retry — ${task.what.slice(0, 48)}`,
+          testId: "command-surface-retry-failed",
+        };
+      }
+    }
+  }
+
   if (kernelReady && input.cadence) {
     const kTask = input.cadence.tasks.find((t) => t.id === kernelReady.taskId);
     if (kTask?.owner === "system") {

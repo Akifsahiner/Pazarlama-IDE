@@ -67,13 +67,19 @@ See `executionHandlers.ts` — 13 `MarketingExecutionMode` values + `week_review
 ## Eval exit criteria
 
 - 0 bypass paths (grep gate)
-- Reload preserves lifecycle + attempt
+- Reload preserves lifecycle + attempt + run_id
 - Retry produces 0 duplicate tasks/assets
 - 13 modes + week_review handler coverage 100%
+- Founder journey rubric 40/40 (`eval:founder-journey-rubric`)
+- User promise documented in [`CMO_EXECUTION_USER_PROMISE.md`](CMO_EXECUTION_USER_PROMISE.md)
+
+## User promise
+
+See [`CMO_EXECUTION_USER_PROMISE.md`](CMO_EXECUTION_USER_PROMISE.md) — reload, retry, fail, and pause/resume behavior contract.
 
 ## Verification
 
 ```bash
-cd desktop && npm run typecheck && npm run test:shared
+cd desktop && npm run typecheck && npm run test:shared && npm run test:faz10-trust-engine
 cd server && npm run eval:execution-kernel
 ```

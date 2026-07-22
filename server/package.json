@@ -23,6 +23,7 @@
     "eval:thesis-quality": "node --import tsx evals/thesis-quality-matrix.mjs",
     "eval:task-contract": "node --import tsx evals/task-contract-matrix.mjs",
     "eval:execution-kernel": "node --import tsx evals/execution-kernel-matrix.mjs",
+    "eval:founder-journey-rubric": "node --import tsx evals/founder-journey-rubric.mjs",
     "browser:install": "playwright install chromium"
   },
   "dependencies": {

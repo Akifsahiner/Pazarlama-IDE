@@ -127,6 +127,10 @@ function TaskActions({ task, cadence }: { task: CmoOpsTask; cadence: CmoOpsCaden
   const openOpsProofModal = useApp((s) => s.openOpsProofModal);
   const startOpsSystemTask = useApp((s) => s.startOpsSystemTask);
   const skipOpsTask = useApp((s) => s.skipOpsTask);
+  const pauseExecutionTask = useApp((s) => s.pauseExecutionTask);
+  const cancelExecutionTask = useApp((s) => s.cancelExecutionTask);
+  const retryExecutionTask = useApp((s) => s.retryExecutionTask);
+  const executionKernel = useApp((s) => s.executionKernel ?? s.marketingProfile?.execution_kernel);
   const setActiveCanvas = useApp((s) => s.setActiveCanvas);
   const run = useApp((s) => s.run);
 
@@ -170,9 +174,27 @@ function TaskActions({ task, cadence }: { task: CmoOpsTask; cadence: CmoOpsCaden
 
   if (task.owner === "system") {
     const linked = task.linked_run_id && run?.runId === task.linked_run_id;
+    const inst = executionKernel?.instances[task.id];
+    const isFailed = inst?.status === "failed";
+    const isActive =
+      inst?.status === "running" ||
+      inst?.status === "awaiting_approval" ||
+      inst?.status === "paused" ||
+      linked ||
+      run?.status === "running";
     return (
       <div className="flex flex-wrap gap-1.5">
-        {linked || run?.status === "running" ? (
+        {isFailed && (
+          <Button
+            variant="primary"
+            size="sm"
+            data-testid="ops-task-retry"
+            onClick={() => retryExecutionTask(task.id)}
+          >
+            Retry
+          </Button>
+        )}
+        {isActive ? (
           <Button variant="subtle" size="sm" onClick={() => setActiveCanvas("run")}>
             View run
           </Button>
@@ -186,14 +208,28 @@ function TaskActions({ task, cadence }: { task: CmoOpsTask; cadence: CmoOpsCaden
             Start in IDE
           </Button>
         ) : null}
-        {isNow && (
+        {isActive && inst?.status !== "paused" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            data-testid="ops-task-pause"
+            onClick={() => pauseExecutionTask(task.id)}
+          >
+            Pause
+          </Button>
+        )}
+        {(isNow || isActive) && (
           <Button
             variant="ghost"
             size="sm"
             data-testid="ops-task-skip"
-            onClick={() => skipOpsTask(task.id, "Deferred")}
+            onClick={() =>
+              isActive && !isFailed
+                ? cancelExecutionTask(task.id)
+                : skipOpsTask(task.id, "Deferred")
+            }
           >
-            Skip
+            {isActive && !isFailed ? "Cancel" : "Skip"}
           </Button>
         )}
       </div>

@@ -10,8 +10,10 @@ import {
   pauseExecutionTask,
   resumeExecutionTask,
   cancelExecutionTask,
+  failExecutionTask,
   projectKernelToOpsCadence,
   opsStatusFromKernel,
+  executionTaskStatusToRecordLifecycle,
   weekReviewGovernanceId,
 } from "./executionKernel";
 import { createOpsCadenceFromThesis } from "./cmoOpsCadence";
@@ -147,5 +149,26 @@ describe("executionKernel", () => {
       at: new Date().toISOString(),
     });
     assert.equal(kernel.instances[task.id]?.status, "cancelled");
+  });
+
+  it("failExecutionTask records error and failed status", () => {
+    const thesis = buildCmoIntake({
+      project: baseProject(),
+      persona: "marketing",
+      profile: { company_stage: "prelaunch" } as never,
+    });
+    const cadence = createOpsCadenceFromThesis(thesis);
+    let kernel = bootstrapExecutionKernel({ cadence, projectId: "p1" });
+    const task = cadence.tasks[0]!;
+    kernel.instances[task.id] = { ...kernel.instances[task.id]!, status: "running", run_id: "run-1" };
+    const prov = { source: "auto_chain" as const, at: new Date().toISOString() };
+    kernel = failExecutionTask(kernel, task.id, "NO_PATCHES", prov);
+    assert.equal(kernel.instances[task.id]?.status, "failed");
+    assert.equal(kernel.instances[task.id]?.last_error, "NO_PATCHES");
+  });
+
+  it("maps failed and paused kernel status to record lifecycle", () => {
+    assert.equal(executionTaskStatusToRecordLifecycle("failed"), "failed");
+    assert.equal(executionTaskStatusToRecordLifecycle("paused"), "paused");
   });
 });

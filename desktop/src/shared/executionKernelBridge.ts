@@ -20,6 +20,7 @@ import {
   findVerifyingOpsTaskId,
   pauseExecutionTask,
   projectKernelToOpsCadence,
+  replayTaskTimeline,
   resumeExecutionTask,
   retryExecutionTask,
   transitionExecutionStatus,
@@ -255,6 +256,88 @@ export function kernelFail(
   return failExecutionTask(kernel, taskId, error, provenanceFrom("auto_chain"));
 }
 
+/** Resolve ops task to fail — verify > run_id match > active fallback. */
+export function resolveFailedKernelTaskId(
+  kernel: ExecutionKernelState,
+  runId?: string | null,
+): string | null {
+  const verifying = findVerifyingOpsTaskId(kernel);
+  if (verifying) return verifying;
+  if (runId) {
+    for (const inst of Object.values(kernel.instances)) {
+      if (
+        inst.scope === "ops" &&
+        inst.run_id === runId &&
+        ["running", "awaiting_approval", "verifying", "paused", "applied"].includes(inst.status)
+      ) {
+        return inst.id;
+      }
+    }
+  }
+  return findActiveOpsTaskId(kernel);
+}
+
+export function failActiveKernelTaskForRun(input: {
+  kernel: ExecutionKernelState;
+  runId?: string | null;
+  error: string;
+}): { kernel: ExecutionKernelState; taskId: string | null } {
+  const taskId = resolveFailedKernelTaskId(input.kernel, input.runId);
+  if (!taskId) return { kernel: input.kernel, taskId: null };
+  const inst = input.kernel.instances[taskId];
+  if (!inst || inst.status === "failed" || inst.status === "completed" || inst.status === "cancelled") {
+    return { kernel: input.kernel, taskId: null };
+  }
+  return { kernel: kernelFail(input.kernel, taskId, input.error), taskId };
+}
+
+export function mergeReplayTimeline(input: {
+  kernel: ExecutionKernelState;
+  taskId: string;
+  runEvents?: import("./types").RunEvent[];
+  runId?: string | null;
+}): import("./executionKernel").ReplayTimelineEntry[] {
+  const kernelEntries = replayTaskTimeline(input.kernel, input.taskId);
+  const runTypes = new Set([
+    "run.failed",
+    "run.completed",
+    "run.started",
+    "file.patch_created",
+    "preview.ready",
+    "approval.required",
+  ]);
+  const runEntries = (input.runEvents ?? [])
+    .filter((e) => runTypes.has(e.type))
+    .filter((e) => !input.runId || e.runId === input.runId)
+    .map((e) => ({
+      at: e.timestamp,
+      kind: "run" as const,
+      title: e.title || e.type.replace(/\./g, " "),
+      detail: e.summary,
+    }));
+  return [...kernelEntries, ...runEntries]
+    .sort((a, b) => a.at.localeCompare(b.at))
+    .slice(-12);
+}
+
+export function dispatchHumanExecutionTask(input: {
+  cadence: CmoOpsCadence;
+  kernel: ExecutionKernelState | null | undefined;
+  ref: import("./humanExecutionPlan").HumanExecutionRef;
+  dispatch: (taskId: string) => string | null;
+}): string | null {
+  const taskId = findOpsTaskIdForHumanRef(input.cadence, input.ref);
+  if (!taskId) return null;
+  const inst = input.kernel?.instances[taskId];
+  if (inst && (inst.status === "ready" || inst.status === "failed")) {
+    return input.dispatch(taskId);
+  }
+  if (!inst || inst.status === "proposed") {
+    return input.dispatch(taskId);
+  }
+  return null;
+}
+
 export function hydrateKernelFromProfile(input: {
   cadence: CmoOpsCadence;
   projectId: string;
@@ -313,7 +396,7 @@ export function findLinkedOpsTaskForRubric(
   return findOpsTaskIdForHumanRef(cadence, { source: "delegate", item_id: rubricId });
 }
 
-export { findActiveOpsTaskId, findVerifyingOpsTaskId, weekReviewGovernanceId };
+export { findActiveOpsTaskId, findOpsTaskIdForHumanRef, findVerifyingOpsTaskId, weekReviewGovernanceId };
 export type { ExecutionDispatchPayload, LaneARunPlan };
 
 /** Faz 4 — apply → verify → complete helpers (kept alongside Part 10 kernel bridge). */

@@ -225,7 +225,6 @@ import {
   createOpsCadenceFromThesis,
   getNowTask,
   hydrateOpsCadenceFromJson,
-  markOpsTaskInProgress,
   skipOpsTask as skipOpsTaskCore,
   tryAutoCompleteSystemTask,
   attachBrowserEvidenceToSystemTask,
@@ -324,18 +323,21 @@ import {
   syncKernelAndCadence,
   completeVerifyingOpsTask,
   completeWeekReviewGovernance,
+  dispatchHumanExecutionTask,
+  failActiveKernelTaskForRun,
   findActiveOpsTaskId,
   findLinkedOpsTaskForRubric,
   hydrateKernelFromProfile,
+  mergeReplayTimeline,
   weekReviewGovernanceId,
 } from "@shared/executionKernelBridge";
 import {
   assertKernelOpsSync,
   getActiveExecutionInstance,
   hydrateExecutionKernelFromJson,
-  replayTaskTimeline,
   type ExecutionKernelState,
   type ExecutionProvenanceSource,
+  type ReplayTimelineEntry,
 } from "@shared/executionKernel";
 import { buildTaskRunEvent } from "@shared/executionKernelRunEvents";
 import {
@@ -995,7 +997,7 @@ interface AppState {
   pauseExecutionTask: (taskId: string) => void;
   resumeExecutionTask: (taskId: string) => void;
   cancelExecutionTask: (taskId: string) => void;
-  replayExecutionTask: (taskId: string) => ReturnType<typeof replayTaskTimeline>;
+  replayExecutionTask: (taskId: string) => ReplayTimelineEntry[];
   completeOpsTask: (
     taskId: string,
     proof: import("@shared/cmoOpsCadence").OpsProofInput,
@@ -1732,6 +1734,16 @@ export const useApp = create<AppState>((set, get) => {
     }
   };
 
+  const failKernelForRun = (runId: string | undefined, error: string) => {
+    const cadence = get().opsCadence;
+    const kernel = get().executionKernel;
+    if (!cadence || !kernel) return;
+    const result = failActiveKernelTaskForRun({ kernel, runId, error });
+    if (result.taskId) {
+      syncExecutionKernelState(result.kernel, cadence);
+    }
+  };
+
   const bootstrapKernelForCadence = (cadence: CmoOpsCadence): ExecutionKernelState => {
     const pid = get().activeProjectId ?? "local";
     return ensureExecutionKernel({
@@ -1843,6 +1855,13 @@ export const useApp = create<AppState>((set, get) => {
           }),
           nextCadence,
         );
+      } else if (kernel && !finalized.passed) {
+        const failResult = failActiveKernelTaskForRun({
+          kernel,
+          runId: input.runId,
+          error: finalized.pipelineError ?? "Verify failed",
+        });
+        syncExecutionKernelState(failResult.kernel, nextCadence);
       } else if (kernel) {
         syncExecutionKernelState(kernel, nextCadence);
       } else {
@@ -2020,6 +2039,16 @@ export const useApp = create<AppState>((set, get) => {
   };
 
   const openHumanExecutionProof = (ref: HumanExecutionRef) => {
+    const cadence = get().opsCadence;
+    const kernel = get().executionKernel;
+    if (cadence) {
+      dispatchHumanExecutionTask({
+        cadence,
+        kernel,
+        ref,
+        dispatch: (taskId) => get().dispatchExecutionTask(taskId, "human_kit"),
+      });
+    }
     get().openHumanTaskKitDrawer(ref);
   };
 
@@ -3756,6 +3785,7 @@ export const useApp = create<AppState>((set, get) => {
         /* handled in browse mirror block */
       } else {
       appendEvent({ role: "agent", kind: "error", text: event.summary ?? "Run failed." });
+      failKernelForRun(event.runId, event.summary ?? "Run failed.");
       const taskId = get().activePlanTaskId ?? current.planTaskId;
       if (taskId) {
         set({ activePlanTaskId: taskId });
@@ -6697,6 +6727,11 @@ export const useApp = create<AppState>((set, get) => {
       const cadence = get().opsCadence;
       const kernel = get().executionKernel;
       if (!cadence || !kernel) return;
+      const inst = kernel.instances[taskId];
+      const run = get().run;
+      if (inst?.run_id && run?.runId === inst.run_id) {
+        get().interruptRun();
+      }
       syncExecutionKernelState(kernelPause(kernel, taskId), cadence);
     },
 
@@ -6719,7 +6754,16 @@ export const useApp = create<AppState>((set, get) => {
     replayExecutionTask: (taskId) => {
       const kernel = get().executionKernel;
       if (!kernel) return [];
-      return replayTaskTimeline(kernel, taskId);
+      const inst = kernel.instances[taskId];
+      const run = get().run;
+      const runEvents =
+        inst?.run_id && run?.runId === inst.run_id ? run.events : undefined;
+      return mergeReplayTimeline({
+        kernel,
+        taskId,
+        runEvents,
+        runId: inst?.run_id,
+      });
     },
 
     startOpsSystemTask: (taskId) => {
@@ -6729,7 +6773,7 @@ export const useApp = create<AppState>((set, get) => {
       if (!task || task.owner !== "system") return;
 
       if (get().e2eDryRunExecution) {
-        syncOpsCadenceState(markOpsTaskInProgress(cadence, taskId));
+        get().dispatchExecutionTask(taskId, "e2e");
         const err = get().completeOpsTask(taskId, {
           note: "E2E dry-run: Lane A shipped without live agent execution.",
           commit_sha: "e2e0000",
@@ -6748,7 +6792,7 @@ export const useApp = create<AppState>((set, get) => {
       if (!cadence) return;
 
       if (get().e2eDryRunExecution) {
-        syncOpsCadenceState(markOpsTaskInProgress(cadence, plan.opsTaskId));
+        get().dispatchExecutionTask(plan.opsTaskId, "e2e");
         const err = get().completeOpsTask(plan.opsTaskId, {
           note: "E2E dry-run: Lane A run plan completed without live agent.",
           commit_sha: "e2e0000",
@@ -6759,7 +6803,7 @@ export const useApp = create<AppState>((set, get) => {
         return;
       }
 
-      syncOpsCadenceState(markOpsTaskInProgress(cadence, plan.opsTaskId));
+      get().dispatchExecutionTask(plan.opsTaskId, "ops_board");
       const laneA = get().laneAWorkspace;
       if (laneA) {
         syncLaneAState(markLaneAItemInProgress(laneA, plan.opsTaskId));
@@ -7785,7 +7829,7 @@ export const useApp = create<AppState>((set, get) => {
           kind: "error",
           text:
             err instanceof StreamHttpError && err.status === 501
-              ? "GA4 OAuth is not configured on this server yet. Log KPIs manually in Plan Studio."
+              ? "GA4 OAuth is not configured on this server yet. Log KPIs in ops proof."
               : errorMessage(err),
         });
       }
@@ -7836,7 +7880,7 @@ export const useApp = create<AppState>((set, get) => {
           kind: "error",
           text:
             err instanceof StreamHttpError && err.status === 501
-              ? "GA4 is not configured on this server. Log KPIs manually in Plan Studio."
+              ? "GA4 is not configured on this server. Log KPIs in ops proof."
               : errorMessage(err),
         });
       }
@@ -9364,11 +9408,21 @@ export const useApp = create<AppState>((set, get) => {
         const cadence = get().opsCadence;
         const opsTaskId = opts?.opsTaskId;
         if (cadence && opsTaskId && !planTaskId) {
-          syncOpsCadenceState(markOpsTaskInProgress(cadence, opsTaskId, runId));
-          const kernel = get().executionKernel;
-          if (kernel) {
-            syncExecutionKernelState(kernelSetRunId(kernel, opsTaskId, runId), cadence);
+          let kernel = get().executionKernel ?? bootstrapKernelForCadence(cadence);
+          const inst = kernel.instances[opsTaskId];
+          if (inst && inst.status !== "running" && inst.status !== "awaiting_approval") {
+            const plan = planKernelDispatch({
+              kernel,
+              cadence,
+              taskId: opsTaskId,
+              source: "auto_chain",
+              thesis: get().channelThesis ?? get().marketingProfile?.channel_thesis,
+              project: get().project,
+              laneAWorkspace: get().laneAWorkspace,
+            });
+            if (!("error" in plan)) kernel = plan.kernel;
           }
+          syncExecutionKernelState(kernelSetRunId(kernel, opsTaskId, runId), cadence);
           const laneA = get().laneAWorkspace;
           if (laneA) {
             syncLaneAState(markLaneAItemInProgress(laneA, opsTaskId, runId));
@@ -9376,15 +9430,27 @@ export const useApp = create<AppState>((set, get) => {
         } else if (cadence && !planTaskId) {
           const nowOps = getNowTask(cadence);
           if (nowOps?.owner === "system") {
-            syncOpsCadenceState(markOpsTaskInProgress(cadence, nowOps.id, runId));
-            const kernel = get().executionKernel;
-            if (kernel) {
-              syncExecutionKernelState(kernelSetRunId(kernel, nowOps.id, runId), cadence);
+            let kernel = get().executionKernel ?? bootstrapKernelForCadence(cadence);
+            const inst = kernel.instances[nowOps.id];
+            if (inst && inst.status !== "running" && inst.status !== "awaiting_approval") {
+              const plan = planKernelDispatch({
+                kernel,
+                cadence,
+                taskId: nowOps.id,
+                source: "auto_chain",
+                thesis: get().channelThesis ?? get().marketingProfile?.channel_thesis,
+                project: get().project,
+                laneAWorkspace: get().laneAWorkspace,
+              });
+              if (!("error" in plan)) kernel = plan.kernel;
             }
+            syncExecutionKernelState(kernelSetRunId(kernel, nowOps.id, runId), cadence);
           }
         }
       } catch (err) {
-        appendEvent({ role: "agent", kind: "error", text: errorMessage(err) });
+        const msg = errorMessage(err);
+        appendEvent({ role: "agent", kind: "error", text: msg });
+        failKernelForRun(get().run?.runId, msg);
         set((s) => (s.run ? { run: { ...s.run, status: "failed" } } : {}));
       }
     },

@@ -43,6 +43,8 @@ export type ExecutionRecordLifecycle =
   | "intake"
   | "queued"
   | "running"
+  | "paused"
+  | "failed"
   | "verifying"
   | "awaiting_approval"
   | "awaiting_proof"
@@ -138,6 +140,8 @@ const LIFECYCLE_LABELS: Record<ExecutionRecordLifecycle, string> = {
   intake: "Setup",
   queued: "Queued",
   running: "Running",
+  paused: "Paused",
+  failed: "Failed — retry available",
   verifying: "Verifying live page",
   awaiting_approval: "Awaiting approval",
   awaiting_proof: "Awaiting proof",
