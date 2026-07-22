@@ -426,6 +426,10 @@ export function validateInfluencerProof(
   }
 
   if (targetStage === "replied") {
+    const hasUrl = proof.thread_url && URL_RE.test(proof.thread_url.trim());
+    if (!hasUrl || proof.thread_url!.trim().length < 8) {
+      errors.push("Thread URL required (min 8 chars) — paste the DM or email thread link.");
+    }
     if (!proof.reply_received) {
       errors.push("Log reply interest — this pitch test closes on replies, not send volume alone.");
     }

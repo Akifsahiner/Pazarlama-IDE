@@ -11,10 +11,7 @@ import type { LaneBWorkspace } from "./cmoLaneB";
 import type { CmoOpsCadence, CmoOpsTask } from "./cmoOpsCadence";
 import { opsQueueBlocksLaneWork } from "./cmoOpsCadence";
 import type { HumanExecutionRef } from "./humanExecutionPlan";
-import {
-  buildHumanExecutionAsset,
-  resolveHumanExecutionAssetForTask,
-} from "./buildHumanExecutionAsset";
+import { resolveHumanExecutionAssetForTask } from "./buildHumanExecutionAsset";
 import type { HumanExecutionAsset } from "./humanExecutionAsset";
 import { getNextDelegateRubricDay } from "./cmoDelegateOperator";
 

@@ -16,6 +16,7 @@ export function useCommandSurfaceDispatch() {
   const openMonetizationIssueModal = useApp((s) => s.openMonetizationIssueModal);
   const openWeekReviewModal = useApp((s) => s.openWeekReviewModal);
   const startNextCmoCycle = useApp((s) => s.startNextCmoCycle);
+  const openHumanTaskKitDrawer = useApp((s) => s.openHumanTaskKitDrawer);
   const openLaneBProofModal = useApp((s) => s.openLaneBProofModal);
   const focusWarRoomAnchor = useApp((s) => s.focusWarRoomAnchor);
   const beginQuickStartShip = useApp((s) => s.beginQuickStartShip);
@@ -43,10 +44,17 @@ export function useCommandSurfaceDispatch() {
         openOpsProofModal(resolved.taskId);
         setExecutionRecordDetailTab("proof");
         break;
-      case "lane_b_proof":
-        openLaneBProofModal(resolved.itemId);
+      case "lane_b_proof": {
+        const cadence = useApp.getState().opsCadence ?? useApp.getState().marketingProfile?.ops_cadence;
+        const task = cadence?.tasks.find((t) => t.human_execution_ref?.item_id === resolved.itemId);
+        if (task?.human_execution_ref) {
+          openHumanTaskKitDrawer(task.human_execution_ref);
+        } else {
+          openLaneBProofModal(resolved.itemId);
+        }
         setExecutionRecordDetailTab("proof");
         break;
+      }
       case "start_next_cycle": {
         const err = startNextCmoCycle({
           mode: resolved.mode,
@@ -64,7 +72,13 @@ export function useCommandSurfaceDispatch() {
         break;
       case "export":
         if (resolved.exportKind === "outreach") {
-          focusWarRoomAnchor("lane-b-panel-wrap");
+          const cadence = useApp.getState().opsCadence ?? useApp.getState().marketingProfile?.ops_cadence;
+          const task = cadence?.tasks.find((t) => t.human_execution_ref?.export_kind === "outreach_csv");
+          if (task?.human_execution_ref) {
+            openHumanTaskKitDrawer(task.human_execution_ref);
+          } else {
+            focusWarRoomAnchor("lane-b-panel");
+          }
         }
         break;
       case "week_review":
@@ -84,7 +98,16 @@ export function useCommandSurfaceDispatch() {
         if (resolved.billingIssue) openMonetizationIssueModal(resolved.taskId);
         else openMonetizationTaskModal(resolved.taskId);
         break;
-      case "operator_proof":
+      case "operator_proof": {
+        const cadence = useApp.getState().opsCadence ?? useApp.getState().marketingProfile?.ops_cadence;
+        const task = cadence?.tasks.find(
+          (t) => t.human_execution_ref?.item_id === resolved.touchId,
+        );
+        if (task?.human_execution_ref) {
+          openHumanTaskKitDrawer(task.human_execution_ref);
+          setExecutionRecordDetailTab("proof");
+          break;
+        }
         if (resolved.operator === "distribution") {
           openDistributionProofModal(resolved.touchId);
           setExecutionRecordDetailTab("proof");
@@ -97,6 +120,7 @@ export function useCommandSurfaceDispatch() {
           setExecutionRecordDetailTab("proof");
         }
         break;
+      }
       default:
         break;
     }

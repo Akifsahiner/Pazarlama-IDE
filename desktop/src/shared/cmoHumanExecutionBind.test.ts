@@ -42,6 +42,8 @@ describe("cmoHumanExecutionBind", () => {
     assert.ok(human.length > 0);
     for (const task of human) {
       assert.ok(task.human_execution_ref, `missing ref on ${task.id}`);
+      assert.ok(task.human_execution_asset, `missing asset on ${task.id}`);
+      assert.ok(task.human_execution_asset!.copy_blocks.length > 0);
     }
     assert.equal(validateHumanTaskCoverage(result.cadence).ok, true);
     assert.ok(

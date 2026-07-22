@@ -13,7 +13,9 @@ import { WorkSurfaceShell } from "../canvas/WorkSurfaceShell";
 import { WorkSurfaceBody } from "../canvas/work/WorkSurfaceBody";
 import { ProofDetailView } from "./ProofDetailView";
 import { DoneWhenChecklistHeader } from "./DoneWhenChecklistHeader";
+import { DistributionHookDayGrid } from "./DistributionHookDayGrid";
 import type { ExecutionRecordView } from "@shared/executionRecord";
+import { isDistributionOperatorGate } from "@shared/cmoDistributionOperator";
 import { Radio } from "lucide-react";
 
 const TAB_OPTIONS: { value: ExecutionRecordDetailTab; label: string }[] = [
@@ -40,6 +42,20 @@ export function ExecutionDetailPanel({
   const channelThesis = useApp((s) => s.channelThesis ?? s.marketingProfile?.channel_thesis);
   const lastShipReceipt = useApp((s) => s.lastShipReceipt);
   const shipPipeline = useApp((s) => s.shipPipeline);
+  const distributionOperator = useApp(
+    (s) => s.distributionOperator ?? s.marketingProfile?.distribution_operator,
+  );
+  const growthControlPlane = useApp(
+    (s) => s.growthControlPlane ?? s.marketingProfile?.growth_control_plane,
+  );
+
+  const distOperatorActive =
+    Boolean(distributionOperator) &&
+    isDistributionOperatorGate({
+      thesis: channelThesis,
+      opsCadence: opsCadence ?? undefined,
+      growthPlane: growthControlPlane ?? undefined,
+    });
 
   const runActive =
     run?.status === "running" || run?.status === "planning" || run?.status === "created";
@@ -137,6 +153,9 @@ export function ExecutionDetailPanel({
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto">
+            {distOperatorActive && distributionOperator && activeTab === "proof" && (
+              <DistributionHookDayGrid workspace={distributionOperator} />
+            )}
             <ProofDetailView
               receipt={proofView?.receipt}
               taskLabel={proofView?.taskLabel}

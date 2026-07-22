@@ -19,6 +19,7 @@ import { CmoBackstage } from "@renderer/features/workspace/CmoBackstage";
 import { DistributionProofModal } from "@renderer/features/workspace/DistributionProofModal";
 import { InfluencerProofModal } from "@renderer/features/workspace/InfluencerProofModal";
 import { InfluencerDealModal } from "@renderer/features/workspace/InfluencerDealModal";
+import { HumanTaskKitDrawer } from "@renderer/features/workspace/executionRecord/HumanTaskKitDrawer";
 import { isDistributionOperatorGate } from "@shared/cmoDistributionOperator";
 import { isInfluencerOperatorGate } from "@shared/cmoInfluencerOperator";
 import { isDelegateOperatorGate, resolveDelegateOperator } from "@shared/cmoDelegateOperator";
@@ -118,6 +119,7 @@ export function Workspace() {
       <DistributionProofModal />
       <InfluencerProofModal />
       <InfluencerDealModal />
+      <HumanTaskKitDrawer />
       {historyOpen && (
         <div className="absolute left-0 top-0 z-[var(--z-overlay)] h-full w-64 border-r border-line shadow-[var(--shadow-3)]">
           <SessionHistory onClose={() => toggleHistory(false)} />

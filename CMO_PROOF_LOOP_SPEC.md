@@ -94,3 +94,23 @@ cd desktop && npm run typecheck
 
 See [`CMO_LANE_B_SPEC.md`](CMO_LANE_B_SPEC.md) for P3 (DONE).
 - GA4 before/after delta on apply receipt
+
+## Progressive human proof (Faz 5 — Human Lane)
+
+Lane B / operator / ops human tasks use a **URL-before-KPI** state machine (`humanProofProgress.ts`):
+
+| Step | Gate | Lifecycle |
+|------|------|-----------|
+| `draft` | — | `awaiting_proof` |
+| `posted` | URL ≥ 8 chars or valid http(s) | `awaiting_proof` |
+| `metrics` | KPI optional; `measure_deferred` allowed | `measuring` |
+| `complete` | posted gate passed (+ KPI if `done_when` requires) | ops/Lane B done |
+
+**Rules:**
+
+- "I posted" without URL is rejected (`humanExecutionContractLint.ts`, drawer stepper)
+- KPI section disabled until posted URL passes `validatePostedUrl()`
+- `HumanTaskKitDrawer` is primary proof UX; `OpsTaskProofModal` retains URL-first gate for non-kit tasks
+- Influencer reply stage requires thread URL (min 8 chars) — not note-only
+
+**Anchors:** `HumanTaskKitDrawer.tsx`, `store.ts` (`markHumanTaskPosted`, `logHumanTaskMetrics`, `completeHumanTaskKit`), `CMO_HUMAN_EXECUTION_BIND_SPEC.md`.

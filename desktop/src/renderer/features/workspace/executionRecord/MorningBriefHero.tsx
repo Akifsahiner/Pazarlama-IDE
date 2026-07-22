@@ -7,6 +7,7 @@ import { Badge } from "@renderer/components/ui/Badge";
 import { CommandSurfaceField } from "@renderer/features/workspace/CommandSurfaceField";
 import { CommandSurfaceGovernanceBanner } from "@renderer/features/workspace/CommandSurfaceGovernanceBanner";
 import { useApp } from "@renderer/state/store";
+import { evaluateHookPerformance } from "@shared/cmoDistributionOperator";
 
 export function MorningBriefHero({
   brief,
@@ -27,6 +28,12 @@ export function MorningBriefHero({
   const id = useId();
   const toggleWarRoomExpanded = useApp((s) => s.toggleWarRoomExpanded);
   const warRoomExpanded = useApp((s) => s.warRoomExpanded);
+  const distributionOperator = useApp(
+    (s) => s.distributionOperator ?? s.marketingProfile?.distribution_operator,
+  );
+  const distVerdict = distributionOperator
+    ? evaluateHookPerformance(distributionOperator)
+    : undefined;
   const focusWarRoomAnchor = useApp((s) => s.focusWarRoomAnchor);
 
   const productLoop = brief.governance?.kind === "product_loop";
@@ -100,6 +107,14 @@ export function MorningBriefHero({
         )}
         {brief.footer.operatorSummary && !productLoop && (
           <Badge tone="accent">{brief.footer.operatorSummary}</Badge>
+        )}
+        {distVerdict && !productLoop && (
+          <Badge
+            tone={distVerdict.kind === "kill" ? "warn" : distVerdict.kind === "scale" ? "ok" : "neutral"}
+            data-testid="morning-brief-verdict-chip"
+          >
+            {distVerdict.kind.replace("_", " ")}
+          </Badge>
         )}
         {brief.mechanismLabel && !productLoop && (
           <span title={brief.footer.mechanismAntiPattern}>

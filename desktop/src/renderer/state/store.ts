@@ -302,6 +302,8 @@ import {
   resolveHumanProofAction,
   type HumanExecutionRef,
 } from "@shared/cmoHumanExecutionBind";
+import { canCompleteHumanProof } from "@shared/humanProofProgress";
+import { outreachTrackerToCsv } from "@shared/cmoOutreachExport";
 import {
   buildProductActivationProfile,
   canResumeMarketing,
@@ -738,6 +740,9 @@ interface AppState {
   /** P3 — Lane B workspace (posting / outreach / runbook). */
   laneBWorkspace?: LaneBWorkspace;
   pendingLaneBProofItemId?: string;
+  /** Faz 5 — Human Task Kit drawer (Post Kit / outreach pack). */
+  pendingHumanTaskKitRef?: import("@shared/humanExecutionPlan").HumanExecutionRef;
+  humanProofDrafts?: Record<string, import("@shared/humanExecutionAsset").HumanProofDraft>;
   /** P6 — Lane A workspace (IDE ships — repo / browser / drafts). */
   laneAWorkspace?: LaneAWorkspace;
   /** P7 — Growth control plane (binding + today + red list). */
@@ -976,6 +981,16 @@ interface AppState {
     itemId: string,
     patch: { target_name?: string; target_handle?: string },
   ) => void;
+  /** Faz 5 — Human Task Kit drawer + progressive proof. */
+  openHumanTaskKitDrawer: (ref: HumanExecutionRef) => void;
+  dismissHumanTaskKitDrawer: () => void;
+  markHumanTaskPosted: (ref: HumanExecutionRef, url: string, note?: string) => string | null;
+  logHumanTaskMetrics: (
+    ref: HumanExecutionRef,
+    input: { kpi_value?: number; note?: string; measure_deferred?: boolean },
+  ) => void;
+  completeHumanTaskKit: (ref: HumanExecutionRef) => string | null;
+  exportOutreachCsvFromKit: () => void;
   /** P5 / P10 — Lane C delegate actions. */
   openDelegateBriefModal: (briefId: string) => void;
   dismissDelegateBriefModal: () => void;
@@ -1759,6 +1774,7 @@ export const useApp = create<AppState>((set, get) => {
   }) => {
     const result = bindHumanExecutionForCadence({
       ...input,
+      projectName: get().project?.name,
       strict: import.meta.env.DEV,
     });
     if (result.missingRefs.length > 0 && import.meta.env.DEV) {
@@ -1820,25 +1836,7 @@ export const useApp = create<AppState>((set, get) => {
   };
 
   const openHumanExecutionProof = (ref: HumanExecutionRef) => {
-    if (ref.export_kind === "outreach_csv") {
-      get().focusWarRoomAnchor("lane-b-panel-wrap");
-      return;
-    }
-    if (ref.proof_surface === "lane_b_modal") {
-      set({ pendingLaneBProofItemId: ref.item_id });
-      return;
-    }
-    if (ref.proof_surface === "operator_modal") {
-      if (ref.source === "distribution") {
-        set({ pendingDistributionProofSlotId: ref.item_id });
-      } else if (ref.source === "influencer") {
-        set({ pendingInfluencerProofTouchId: ref.item_id });
-      } else {
-        set({ pendingDelegateRubricId: ref.item_id });
-      }
-      return;
-    }
-    set({ pendingOpsProofTaskId: ref.item_id });
+    get().openHumanTaskKitDrawer(ref);
   };
 
   const handoffForHumanOpsTask = (
@@ -7009,8 +7007,103 @@ export const useApp = create<AppState>((set, get) => {
       return null;
     },
 
-    openLaneBProofModal: (itemId) => set({ pendingLaneBProofItemId: itemId }),
+    openLaneBProofModal: (itemId) => {
+      const cadence = get().opsCadence;
+      const task = cadence?.tasks.find((t) => t.human_execution_ref?.item_id === itemId);
+      if (task?.human_execution_ref) {
+        get().openHumanTaskKitDrawer(task.human_execution_ref);
+        return;
+      }
+      set({ pendingLaneBProofItemId: itemId });
+    },
     dismissLaneBProofModal: () => set({ pendingLaneBProofItemId: undefined }),
+
+    openHumanTaskKitDrawer: (ref) => {
+      set({ pendingHumanTaskKitRef: ref, executionRecordDetailTab: "proof" });
+    },
+    dismissHumanTaskKitDrawer: () => set({ pendingHumanTaskKitRef: undefined }),
+
+    markHumanTaskPosted: (ref, url, note) => {
+      const key = ref.item_id;
+      const drafts = { ...(get().humanProofDrafts ?? {}) };
+      drafts[key] = {
+        ...(drafts[key] ?? {}),
+        posted_url: url,
+        posted_at: new Date().toISOString(),
+        note,
+      };
+      set({ humanProofDrafts: drafts });
+      return null;
+    },
+
+    logHumanTaskMetrics: (ref, input) => {
+      const key = ref.item_id;
+      const drafts = { ...(get().humanProofDrafts ?? {}) };
+      drafts[key] = {
+        ...(drafts[key] ?? {}),
+        kpi_value: input.kpi_value,
+        note: input.note ?? drafts[key]?.note,
+        measure_deferred: input.measure_deferred,
+      };
+      set({ humanProofDrafts: drafts });
+    },
+
+    completeHumanTaskKit: (ref) => {
+      const draft = get().humanProofDrafts?.[ref.item_id];
+      const cadence = get().opsCadence;
+      const task = cadence?.tasks.find((t) => t.human_execution_ref?.item_id === ref.item_id);
+      const requireKpi = task ? /\bkpi\b|\bmetric\b/i.test(task.done_when) : false;
+      const gate = canCompleteHumanProof(draft, requireKpi);
+      if (!gate.ok) return gate.error ?? "Cannot complete yet.";
+
+      const url = draft?.posted_url?.trim();
+      const note = draft?.note;
+
+      if (ref.source === "lane_b" || ref.proof_surface === "lane_b_modal") {
+        const err = get().completeLaneBItem(ref.item_id, { url, note, metric: draft?.kpi_value != null ? String(draft.kpi_value) : undefined });
+        if (err) return err;
+      } else if (ref.source === "distribution") {
+        const err = get().completeDistributionSlot(ref.item_id, {
+          post_url: url,
+          views_24h: draft?.kpi_value,
+          note,
+        });
+        if (err) return err;
+      } else if (ref.source === "influencer") {
+        const err = get().completeInfluencerTouch(ref.item_id, "pitched", {
+          thread_url: url,
+          reply_note: note,
+        });
+        if (err) return err;
+      } else if (ref.source === "delegate") {
+        const err = get().completeDelegateRubricDay(ref.item_id, {
+          checked_ids: [],
+          proof_url: url,
+          proof_note: note,
+        });
+        if (err) return err;
+      } else if (task) {
+        const err = get().completeOpsTask(task.id, {
+          urls: url ? [url] : undefined,
+          note,
+          kpi_value: draft?.kpi_value,
+        });
+        if (err) return err;
+      }
+
+      const nextDrafts = { ...(get().humanProofDrafts ?? {}) };
+      delete nextDrafts[ref.item_id];
+      set({ humanProofDrafts: nextDrafts, pendingHumanTaskKitRef: undefined });
+      return null;
+    },
+
+    exportOutreachCsvFromKit: () => {
+      const laneB = get().laneBWorkspace;
+      if (!laneB) return;
+      const csv = outreachTrackerToCsv(laneB);
+      void navigator.clipboard.writeText(csv).catch(() => {});
+      appendEvent({ role: "system", kind: "status", text: "Outreach CSV copied to clipboard." });
+    },
 
     completeLaneBItem: (itemId, proof) => {
       const workspace = get().laneBWorkspace;

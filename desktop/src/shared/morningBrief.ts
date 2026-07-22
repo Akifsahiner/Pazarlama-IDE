@@ -113,8 +113,16 @@ export function resolveQueuedHint(cadence: CmoOpsCadence): MorningBriefQueuedHin
   if (!blocked) return undefined;
 
   const blockerIdx = ordered.findIndex((t) => t.id === firstIncomplete.id);
+  const blockingTask = ordered.find(
+    (t) =>
+      t.status !== "done" &&
+      t.status !== "skipped" &&
+      t.priority_index < firstIncomplete.priority_index,
+  );
   return {
-    message: `Queued — finish Task #${blockerIdx + 1} first`,
+    message: blockingTask
+      ? `Queued — finish "${blockingTask.what}" first`
+      : `Queued — finish Task #${blockerIdx + 1} first`,
     blockedTaskId: firstIncomplete.id,
   };
 }
