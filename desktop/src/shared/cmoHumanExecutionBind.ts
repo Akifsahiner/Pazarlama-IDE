@@ -13,6 +13,11 @@ import { opsQueueBlocksLaneWork } from "./cmoOpsCadence";
 import type { HumanExecutionRef } from "./humanExecutionPlan";
 import { resolveHumanExecutionAssetForTask } from "./buildHumanExecutionAsset";
 import type { HumanExecutionAsset } from "./humanExecutionAsset";
+import {
+  lintHumanExecutionAsset,
+  lintHumanOpsTaskDoneWhen,
+  type HumanContractFinding,
+} from "./humanExecutionContractLint";
 import { getNextDelegateRubricDay } from "./cmoDelegateOperator";
 
 export type { HumanExecutionRef, HumanExportKind, HumanExecutionSource, HumanProofSurface } from "./humanExecutionPlan";
@@ -197,6 +202,7 @@ export interface BindHumanCadenceResult {
   distributionOperator?: DistributionOperatorWorkspace;
   influencerOperator?: InfluencerOperatorWorkspace;
   missingRefs: string[];
+  contractFindings: HumanContractFinding[];
 }
 
 export function bindHumanExecutionForCadence(input: {
@@ -210,6 +216,7 @@ export function bindHumanExecutionForCadence(input: {
   strict?: boolean;
 }): BindHumanCadenceResult {
   const missingRefs: string[] = [];
+  const contractFindings: HumanContractFinding[] = [];
   let laneB = input.laneB ? { ...input.laneB, items: [...input.laneB.items] } : undefined;
   let distributionOperator = input.distributionOperator
     ? {
@@ -276,6 +283,8 @@ export function bindHumanExecutionForCadence(input: {
         delegateOperator: input.delegateOperator,
         projectName: input.projectName,
       });
+      contractFindings.push(...lintHumanOpsTaskDoneWhen(task));
+      contractFindings.push(...lintHumanExecutionAsset(asset, input.thesis.id));
       return {
         ...task,
         expected_proof_kind: task.expected_proof_kind ?? kind,
@@ -290,12 +299,20 @@ export function bindHumanExecutionForCadence(input: {
     throw new Error(`Human ops tasks missing execution ref: ${missingRefs.join(", ")}`);
   }
 
+  const blockFindings = contractFindings.filter((f) => f.severity === "block");
+  if (input.strict && blockFindings.length > 0) {
+    throw new Error(
+      `Human bind contract lint failed: ${blockFindings.map((f) => f.detail).join(" | ")}`,
+    );
+  }
+
   return {
     cadence: { ...input.cadence, tasks },
     laneB,
     distributionOperator,
     influencerOperator,
     missingRefs,
+    contractFindings,
   };
 }
 

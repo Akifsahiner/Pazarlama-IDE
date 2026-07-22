@@ -44,7 +44,8 @@ describe("buildHumanExecutionAsset", () => {
     });
     assert.ok(asset.copy_blocks.length > 0);
     assert.equal(asset.kind, "distribution_slot");
-    assert.ok((asset.hook_grid_count ?? 0) >= 1);
+    assert.ok((asset.hook_grid_count ?? 0) >= 20);
+    assert.ok((asset.hook_grid_rows?.length ?? 0) >= 20);
     assert.ok(asset.honesty_note?.includes("never auto-post"));
   });
 

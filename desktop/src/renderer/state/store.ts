@@ -987,7 +987,15 @@ interface AppState {
   markHumanTaskPosted: (ref: HumanExecutionRef, url: string, note?: string) => string | null;
   logHumanTaskMetrics: (
     ref: HumanExecutionRef,
-    input: { kpi_value?: number; note?: string; measure_deferred?: boolean },
+    input: {
+      kpi_value?: number;
+      retention_3s_pct?: number;
+      views_24h?: number;
+      reply_interest?: "cold" | "warm" | "hot";
+      reply_received?: boolean;
+      note?: string;
+      measure_deferred?: boolean;
+    },
   ) => void;
   completeHumanTaskKit: (ref: HumanExecutionRef) => string | null;
   exportOutreachCsvFromKit: () => void;
@@ -5671,8 +5679,15 @@ export const useApp = create<AppState>((set, get) => {
     },
     clearMorningUnlockToast: () => set({ morningUnlockToast: undefined }),
 
-    openDistributionProofModal: (slotId) =>
-      set({ pendingDistributionProofSlotId: slotId }),
+    openDistributionProofModal: (slotId) => {
+      const cadence = get().opsCadence ?? get().marketingProfile?.ops_cadence;
+      const task = cadence?.tasks.find((t) => t.human_execution_ref?.item_id === slotId);
+      if (task?.human_execution_ref) {
+        get().openHumanTaskKitDrawer(task.human_execution_ref);
+        return;
+      }
+      set({ pendingDistributionProofSlotId: slotId });
+    },
     dismissDistributionProofModal: () =>
       set({ pendingDistributionProofSlotId: undefined }),
 
@@ -5747,7 +5762,15 @@ export const useApp = create<AppState>((set, get) => {
       recomputeGrowthPlane();
     },
 
-    openInfluencerProofModal: (touchId) => set({ pendingInfluencerProofTouchId: touchId }),
+    openInfluencerProofModal: (touchId) => {
+      const cadence = get().opsCadence ?? get().marketingProfile?.ops_cadence;
+      const task = cadence?.tasks.find((t) => t.human_execution_ref?.item_id === touchId);
+      if (task?.human_execution_ref) {
+        get().openHumanTaskKitDrawer(task.human_execution_ref);
+        return;
+      }
+      set({ pendingInfluencerProofTouchId: touchId });
+    },
     dismissInfluencerProofModal: () => set({ pendingInfluencerProofTouchId: undefined }),
     openInfluencerDealModal: (touchId) => set({ pendingInfluencerDealTouchId: touchId }),
     dismissInfluencerDealModal: () => set({ pendingInfluencerDealTouchId: undefined }),
@@ -7042,6 +7065,10 @@ export const useApp = create<AppState>((set, get) => {
       drafts[key] = {
         ...(drafts[key] ?? {}),
         kpi_value: input.kpi_value,
+        retention_3s_pct: input.retention_3s_pct,
+        views_24h: input.views_24h,
+        reply_interest: input.reply_interest,
+        reply_received: input.reply_received,
         note: input.note ?? drafts[key]?.note,
         measure_deferred: input.measure_deferred,
       };
@@ -7065,14 +7092,26 @@ export const useApp = create<AppState>((set, get) => {
       } else if (ref.source === "distribution") {
         const err = get().completeDistributionSlot(ref.item_id, {
           post_url: url,
-          views_24h: draft?.kpi_value,
+          views_24h: draft?.views_24h ?? draft?.kpi_value,
+          retention_3s_pct: draft?.retention_3s_pct,
           note,
         });
         if (err) return err;
       } else if (ref.source === "influencer") {
-        const err = get().completeInfluencerTouch(ref.item_id, "pitched", {
+        const inf = get().influencerOperator ?? get().marketingProfile?.influencer_operator;
+        const touch = inf?.touches.find((t) => t.id === ref.item_id);
+        const stage =
+          touch?.pipeline_stage === "research" || touch?.pipeline_stage === "pitched"
+            ? touch.pipeline_stage === "research"
+              ? "pitched"
+              : "replied"
+            : "pitched";
+        const err = get().completeInfluencerTouch(ref.item_id, stage, {
           thread_url: url,
+          note,
           reply_note: note,
+          reply_received: stage === "replied" ? (draft?.reply_received ?? true) : undefined,
+          reply_interest: stage === "replied" ? draft?.reply_interest : undefined,
         });
         if (err) return err;
       } else if (ref.source === "delegate") {
@@ -7142,7 +7181,15 @@ export const useApp = create<AppState>((set, get) => {
     dismissDelegateBriefModal: () => set({ pendingDelegateBriefId: undefined }),
     openDelegateHireModal: (briefId) => set({ pendingDelegateHireBriefId: briefId }),
     dismissDelegateHireModal: () => set({ pendingDelegateHireBriefId: undefined }),
-    openDelegateRubricModal: (rubricId) => set({ pendingDelegateRubricId: rubricId }),
+    openDelegateRubricModal: (rubricId) => {
+      const cadence = get().opsCadence ?? get().marketingProfile?.ops_cadence;
+      const task = cadence?.tasks.find((t) => t.human_execution_ref?.item_id === rubricId);
+      if (task?.human_execution_ref) {
+        get().openHumanTaskKitDrawer(task.human_execution_ref);
+        return;
+      }
+      set({ pendingDelegateRubricId: rubricId });
+    },
     dismissDelegateRubricModal: () => set({ pendingDelegateRubricId: undefined }),
 
     handOffDelegateBrief: (briefId, input) => {

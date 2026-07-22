@@ -48,7 +48,7 @@ export function lintHumanExecutionAsset(
     if (hookCount < 20) {
       findings.push({
         id: "cluely-hook-grid",
-        severity: "warn",
+        severity: "block",
         label: "Hook grid below Week 1 volume",
         detail: `Cluely viral path expects ≥20 hook slots; got ${hookCount}.`,
       });

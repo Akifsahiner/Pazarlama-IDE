@@ -251,14 +251,21 @@ function buildViralSlots(
     { day: 1, hookIdx: 2, platform: "youtube_shorts" },
     { day: 2, hookIdx: 2, platform: "tiktok" },
     { day: 2, hookIdx: 0, platform: "reels" },
+    { day: 2, hookIdx: 1, platform: "youtube_shorts" },
     { day: 3, hookIdx: 1, platform: "tiktok" },
     { day: 3, hookIdx: 0, platform: "youtube_shorts" },
+    { day: 3, hookIdx: 2, platform: "reels" },
     { day: 4, hookIdx: 2, platform: "reels" },
     { day: 4, hookIdx: 1, platform: "youtube_shorts" },
+    { day: 4, hookIdx: 0, platform: "tiktok" },
     { day: 5, hookIdx: 0, platform: "tiktok" },
     { day: 5, hookIdx: 1, platform: "reels" },
+    { day: 5, hookIdx: 2, platform: "youtube_shorts" },
     { day: 6, hookIdx: 2, platform: "tiktok" },
+    { day: 6, hookIdx: 1, platform: "youtube_shorts" },
+    { day: 6, hookIdx: 0, platform: "reels" },
     { day: 7, hookIdx: 0, platform: "reels" },
+    { day: 7, hookIdx: 1, platform: "youtube_shorts" },
   ];
 
   if (opts?.doubleDown && hookIds.length === 1) {
@@ -668,6 +675,35 @@ export function evaluateHookPerformance(
     evidence,
     computed_at: now,
   };
+}
+
+/** Faz 5 — live P8 kill suggestion for Post Kit (3 posts all <20% 3s retention). */
+export function computeHookKillSuggestion(
+  workspace: DistributionOperatorWorkspace,
+  hookId?: string,
+): { headline: string; detail: string; hook_id?: string } | undefined {
+  const hooks = hookId
+    ? workspace.hooks.filter((h) => h.id === hookId)
+    : workspace.hooks;
+  for (const hook of hooks) {
+    const measured = workspace.slots.filter(
+      (s) =>
+        s.hook_id === hook.id &&
+        s.slot_kind === "post" &&
+        s.proof?.retention_3s_pct != null,
+    );
+    if (measured.length < 3) continue;
+    const allLow = measured.every((s) => (s.proof!.retention_3s_pct ?? 0) < 20);
+    if (allLow) {
+      return {
+        hook_id: hook.id,
+        headline: `Kill ${hook.label} — rewrite hook`,
+        detail:
+          "3 posts all below 20% 3s retention. Write a new formula — don't tweak music only.",
+      };
+    }
+  }
+  return undefined;
 }
 
 export function evaluateHookPerformanceWithProfile(

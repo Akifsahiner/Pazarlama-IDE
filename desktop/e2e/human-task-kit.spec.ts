@@ -9,7 +9,7 @@ const mainEntry = path.join(process.cwd(), "out", "main", "index.js");
 test.describe("Human Task Kit @cmo @human-lane", () => {
   test.setTimeout(180_000);
 
-  test("execution record and detail panel mount for human lane", async () => {
+  test("primary CTA opens drawer, Copy All, Mark Posted unlocks metrics", async () => {
     const app = await electron.launch({
       args: [mainEntry],
       env: {
@@ -25,8 +25,26 @@ test.describe("Human Task Kit @cmo @human-lane", () => {
       await bootstrapCmoIntakeAndStartWeek1(page);
 
       await expect(page.getByTestId("execution-record-card")).toBeVisible({ timeout: 60_000 });
-      await expect(page.getByTestId("morning-brief-grid")).toBeVisible();
-      await expect(page.getByTestId("execution-detail-panel")).toBeVisible();
+
+      const primaryCta = page
+        .getByTestId("command-surface-distribution-proof")
+        .or(page.getByTestId("command-surface-lane-b-proof"))
+        .or(page.getByTestId("command-surface-submit-proof"))
+        .or(page.getByTestId("command-surface-runbook-step"))
+        .first();
+
+      await expect(primaryCta).toBeVisible({ timeout: 30_000 });
+      await primaryCta.click();
+
+      const drawer = page.getByTestId("human-task-kit-drawer");
+      await expect(drawer).toBeVisible({ timeout: 15_000 });
+
+      await page.getByTestId("human-kit-copy-all").click();
+
+      await page.getByTestId("human-kit-post-url").fill("https://tiktok.com/@user/video/1234567890");
+      await page.getByTestId("human-kit-mark-posted").click();
+
+      await expect(page.getByTestId("human-kit-log-metrics")).toBeVisible({ timeout: 10_000 });
     } finally {
       await app.close();
     }

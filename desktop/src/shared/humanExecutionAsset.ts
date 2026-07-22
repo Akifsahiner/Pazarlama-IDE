@@ -49,8 +49,16 @@ export interface HumanExecutionAsset {
   source_ref: HumanExecutionRef;
   /** Distribution-only: hook grid row count for Cluely eval (≥20). */
   hook_grid_count?: number;
+  /** Distribution-only: Week 1 hook×day grid rows for Post Kit visibility. */
+  hook_grid_rows?: Array<{ hook_label: string; day: number; platform: string; slot_id: string }>;
   /** Distribution-only: kill suggestion when 3 posts all below threshold. */
   kill_suggestion?: { headline: string; detail: string };
+  /** Launch runbook: navigable T-offset steps. */
+  runbook_steps?: Array<{ offset: string; title: string; item_id: string; is_current?: boolean }>;
+  /** Outbound pack: next targets from Lane B. */
+  outreach_targets?: Array<{ name: string; handle?: string }>;
+  /** Influencer kit: current pipeline stage for drawer rail. */
+  influencer_stage?: string;
 }
 
 export interface HumanProofDraft {
@@ -60,6 +68,10 @@ export interface HumanProofDraft {
   kpi_value?: number;
   kpi_id?: string;
   measure_deferred?: boolean;
+  retention_3s_pct?: number;
+  views_24h?: number;
+  reply_interest?: "cold" | "warm" | "hot";
+  reply_received?: boolean;
 }
 
 export type HumanProofProgressStep = "draft" | "posted" | "metrics" | "complete";

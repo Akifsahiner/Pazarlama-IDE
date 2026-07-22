@@ -9,8 +9,12 @@ import { createLaneBWorkspaceFromThesis } from "../../desktop/src/shared/cmoLane
 import { createDistributionOperatorFromThesis } from "../../desktop/src/shared/cmoDistributionOperator.ts";
 import { createInfluencerOperatorFromThesis } from "../../desktop/src/shared/cmoInfluencerOperator.ts";
 import { bindHumanExecutionForCadence } from "../../desktop/src/shared/cmoHumanExecutionBind.ts";
-import { validatePostedUrl } from "../../desktop/src/shared/humanProofProgress.ts";
+import {
+  canAdvanceToMetrics,
+  validatePostedUrl,
+} from "../../desktop/src/shared/humanProofProgress.ts";
 import { resolveCurrentRunbookStep } from "../../desktop/src/shared/cmoLaneB.ts";
+import { RUNBOOK_COPY_BLOCKS } from "../../desktop/src/shared/humanExecutionRunbookCopy.ts";
 
 const THESIS_IDS = [
   "viral_short_form",
@@ -89,22 +93,41 @@ for (const thesisId of THESIS_IDS) {
     }
 
     if (thesisId === "viral_short_form" && distributionOperator) {
-      const asset = humanTasks[0]?.human_execution_asset;
-      assert.ok((asset?.hook_grid_count ?? 0) >= 1, "viral hook grid");
+      const postSlots = distributionOperator.slots.filter((s) => s.slot_kind === "post");
+      assert.ok(postSlots.length >= 20, "viral post slot count");
+      const asset = humanTasks.find((t) => t.human_execution_asset?.kind === "distribution_slot")
+        ?.human_execution_asset ?? humanTasks[0]?.human_execution_asset;
+      assert.ok((asset?.hook_grid_count ?? 0) >= 20, "viral hook grid count");
+      assert.ok((asset?.hook_grid_rows?.length ?? 0) >= 20, "viral hook grid rows on asset");
     }
 
     if (thesisId === "outbound_sales") {
       const asset = humanTasks[0]?.human_execution_asset;
       assert.ok(asset?.honesty_note?.includes("email"), "outbound honesty note");
+      assert.ok(asset?.copy_blocks.length >= 3, "outbound 3-email sequence");
+      assert.ok((asset?.outreach_targets?.length ?? 0) >= 1, "outbound targets");
     }
 
     if (thesisId === "product_hunt_launch") {
       const step = resolveCurrentRunbookStep(laneB);
       assert.ok(step?.runbook_offset, "PH runbook step");
+      const runbookAsset = humanTasks.find((t) => t.human_execution_asset?.kind === "launch_runbook")
+        ?.human_execution_asset;
+      if (runbookAsset) {
+        assert.ok((runbookAsset.runbook_steps?.length ?? 0) >= 4, "runbook timeline steps");
+        const t7Blocks = RUNBOOK_COPY_BLOCKS["T-7d"];
+        assert.ok(t7Blocks?.length > 0, "T-7d copy blocks exist");
+      }
     }
 
-    const urlGate = validatePostedUrl("https://example.com/post");
-    assert.ok(urlGate.ok, "progressive URL gate");
+    if (thesisId === "influencer_partnerships") {
+      const asset = humanTasks.find((t) => t.human_execution_asset?.influencer_stage)?.human_execution_asset;
+      assert.ok(asset?.copy_blocks.length >= 3, "influencer pitch A/B/C blocks");
+    }
+
+    assert.equal(validatePostedUrl("short").ok, false, "URL gate rejects short");
+    assert.equal(canAdvanceToMetrics(null), false, "metrics blocked without draft");
+    assert.equal(canAdvanceToMetrics({ posted_url: "https://example.com/p" }), true);
 
     ok(`${thesisId} human asset bind`);
   } catch (err) {

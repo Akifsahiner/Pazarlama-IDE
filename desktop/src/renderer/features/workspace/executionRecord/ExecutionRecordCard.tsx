@@ -173,6 +173,14 @@ export function ExecutionRecordCard({
             {record.approvalHeroLine}
           </p>
         )}
+        {record.lifecycle === "queued" && brief?.queuedHint && (
+          <p
+            className="mb-3 rounded-[var(--radius-md)] border border-line bg-surface-2/40 px-3 py-2 text-body-sm text-text-2"
+            data-testid="execution-record-queued-hint"
+          >
+            {brief.queuedHint.message}
+          </p>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <ExecutionRecordStatusPill
             lifecycle={record.lifecycle}

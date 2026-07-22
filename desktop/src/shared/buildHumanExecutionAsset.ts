@@ -5,6 +5,7 @@ import type { ChannelThesis } from "./cmoIntake";
 import type { DelegateOperatorWorkspace } from "./cmoDelegateOperator";
 import { getNextDelegateRubricDay } from "./cmoDelegateOperator";
 import type { DistributionHook, DistributionOperatorWorkspace } from "./cmoDistributionOperator";
+import { computeHookKillSuggestion } from "./cmoDistributionOperator";
 import type { InfluencerOperatorWorkspace } from "./cmoInfluencerOperator";
 import type { LaneBItem, LaneBWorkspace } from "./cmoLaneB";
 import { getNextLaneBItem, resolveCurrentRunbookStep } from "./cmoLaneB";
@@ -76,26 +77,29 @@ function computeKillSuggestion(
   hook: DistributionHook | undefined,
 ): HumanExecutionAsset["kill_suggestion"] {
   if (!hook) return undefined;
-  const measured = dist.slots.filter(
-    (s) =>
-      s.hook_id === hook.id &&
-      s.slot_kind === "post" &&
-      s.proof?.retention_3s_pct != null,
-  );
-  if (measured.length < 3) return undefined;
-  const allLow = measured.every((s) => (s.proof!.retention_3s_pct ?? 0) < 20);
-  if (!allLow) return undefined;
-  return {
-    headline: `Kill ${hook.label} — rewrite hook`,
-    detail: "3 posts all below 20% 3s retention. Write a new formula — don't tweak music only.",
-  };
+  return computeHookKillSuggestion(dist, hook.id);
+}
+
+function buildHookGridRows(dist: DistributionOperatorWorkspace): HumanExecutionAsset["hook_grid_rows"] {
+  return dist.slots
+    .filter((s) => s.slot_kind === "post")
+    .map((s) => {
+      const hook = dist.hooks.find((h) => h.id === s.hook_id);
+      return {
+        hook_label: hook?.label ?? s.hook_id,
+        day: s.day_index,
+        platform: s.platform,
+        slot_id: s.id,
+      };
+    });
 }
 
 function buildFromDistributionSlot(input: BuildHumanExecutionAssetInput): HumanExecutionAsset {
   const dist = input.distributionOperator!;
   const slot = dist.slots.find((s) => s.id === input.ref.item_id);
   const hook = dist.hooks.find((h) => h.id === slot?.hook_id) ?? dist.hooks[0];
-  const hookGridCount = dist.slots.filter((s) => s.slot_kind === "post").length;
+  const hookGridRows = buildHookGridRows(dist);
+  const hookGridCount = hookGridRows?.length ?? 0;
   const copyBlocks: HumanCopyBlock[] = [];
   if (hook) {
     copyBlocks.push(
@@ -121,6 +125,7 @@ function buildFromDistributionSlot(input: BuildHumanExecutionAssetInput): HumanE
     frozen_at: input.now ?? new Date().toISOString(),
     source_ref: input.ref,
     hook_grid_count: hookGridCount,
+    hook_grid_rows: hookGridRows,
     kill_suggestion: computeKillSuggestion(dist, hook),
   };
 }
@@ -130,12 +135,22 @@ function buildFromInfluencerTouch(input: BuildHumanExecutionAssetInput): HumanEx
   const touch = inf.touches.find((t) => t.id === input.ref.item_id);
   const pitch = inf.pitches.find((p) => p.id === touch?.pitch_id) ?? inf.pitches[0];
   const copyBlocks: HumanCopyBlock[] = [];
-  if (pitch) {
+  for (const p of inf.pitches) {
+    copyBlocks.push(
+      block(
+        p.id,
+        `${p.label} DM`,
+        p.script_scaffold.replace("{handle}", touch?.target_handle ?? "[handle]"),
+        touch?.platform ?? "dm",
+      ),
+    );
+  }
+  if (copyBlocks.length === 0 && pitch) {
     copyBlocks.push(
       block(
         "pitch",
         `${pitch.label} DM`,
-        pitch.script_scaffold.replace("[creator]", touch?.target_handle ?? "[handle]"),
+        pitch.script_scaffold.replace("{handle}", touch?.target_handle ?? "[handle]"),
         touch?.platform ?? "dm",
       ),
     );
@@ -154,6 +169,7 @@ function buildFromInfluencerTouch(input: BuildHumanExecutionAssetInput): HumanEx
     honesty_note: "You send DMs from your account — we prepare copy only.",
     frozen_at: input.now ?? new Date().toISOString(),
     source_ref: input.ref,
+    influencer_stage: touch?.pipeline_stage ?? "research",
   };
 }
 
@@ -182,6 +198,14 @@ function buildLaunchRunbookAsset(
 ): HumanExecutionAsset {
   const offset = item.runbook_offset ?? "T-0";
   const current = resolveCurrentRunbookStep(input.laneB!);
+  const runbookSteps = input.laneB!.items
+    .filter((i) => i.runbook_offset)
+    .map((i) => ({
+      offset: i.runbook_offset!,
+      title: i.title,
+      item_id: i.id,
+      is_current: current?.id === i.id,
+    }));
   return {
     id: `asset.${input.ref.item_id}`,
     kind: "launch_runbook",
@@ -198,6 +222,7 @@ function buildLaunchRunbookAsset(
     honesty_note: "You post manually on launch day.",
     frozen_at: input.now ?? new Date().toISOString(),
     source_ref: input.ref,
+    runbook_steps: runbookSteps,
   };
 }
 
@@ -205,15 +230,33 @@ function buildOutreachPackAsset(
   input: BuildHumanExecutionAssetInput,
   item: LaneBItem,
 ): HumanExecutionAsset {
+  const product = input.projectName ?? "a tool";
   const copyBlocks: HumanCopyBlock[] = [
     block("icp", "ICP one-liner", input.thesis.headline ?? input.task.what),
     block(
       "email-1",
-      "Email 1",
-      `Hi {{first_name}},\n\nI noticed [signal]. We built ${input.projectName ?? "a tool"} that [value]. Worth a look?\n\n— [You]`,
+      "Email 1 — opener",
+      `Hi {{first_name}},\n\nI noticed [signal]. We built ${product} that [value]. Worth a look?\n\n— [You]`,
+      "email",
+    ),
+    block(
+      "email-2",
+      "Email 2 — follow-up",
+      `Hi {{first_name}},\n\nQuick bump — [specific outcome] for teams like yours. Happy to share a 2-min demo.\n\n— [You]`,
+      "email",
+    ),
+    block(
+      "email-3",
+      "Email 3 — breakup",
+      `Hi {{first_name}},\n\nLast note from me — if [pain] isn't a priority, no worries. Should I close the loop?\n\n— [You]`,
       "email",
     ),
   ];
+  const outreachTargets =
+    input.laneB?.items
+      .filter((i) => i.target_name && i.status !== "done" && i.status !== "skipped")
+      .slice(0, 5)
+      .map((i) => ({ name: i.target_name!, handle: i.target_handle })) ?? [];
   return {
     id: `asset.${input.ref.item_id}`,
     kind: "outreach_pack",
@@ -224,6 +267,7 @@ function buildOutreachPackAsset(
     honesty_note: "You send from your email tool — we never auto-send.",
     frozen_at: input.now ?? new Date().toISOString(),
     source_ref: input.ref,
+    outreach_targets: outreachTargets,
   };
 }
 
