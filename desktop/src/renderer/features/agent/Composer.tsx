@@ -20,6 +20,8 @@ import type { LucideIcon } from "lucide-react";
 import { resolveIntent } from "@shared/conversationIntent";
 import { normalizePlan } from "@shared/planPlaybooks";
 import { formatCostCents, formatTokenCount } from "@shared/contextBudget";
+import { summarizeUsage } from "@shared/usageDisplay";
+import { normalizeTier } from "@shared/tierFeatures";
 import { useApp } from "@renderer/state/store";
 import { buildAgentHistory } from "@renderer/state/agentHistory";
 import { Segmented } from "@renderer/components/ui/Segmented";
@@ -142,9 +144,13 @@ export function Composer({ variant = "default", onExpandRequest }: ComposerProps
     planSnapshotJson: plan ? normalizePlan(plan) ?? plan : undefined,
   });
 
-  const agentRemaining =
+  const usageSummary =
     auth.usage && auth.quota
-      ? Math.max(0, auth.quota.agent_limit - auth.usage.agent)
+      ? summarizeUsage({
+          usage: auth.usage,
+          quota: auth.quota,
+          tier: normalizeTier(auth.user?.tier),
+        })
       : null;
   const monthCost = auth.usage?.cost_cents ?? 0;
   const monthTokens =
@@ -571,22 +577,31 @@ export function Composer({ variant = "default", onExpandRequest }: ComposerProps
                   <Sparkles size={10} /> Senior review
                 </span>
               )}
-            {auth.usage && auth.quota && (
+            {usageSummary && (
               <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-text-3">
                 <span className="tabular-nums">
-                  {agentRemaining != null && auth.quota.agent_limit < 9999
-                    ? `${agentRemaining} agent turns left`
-                    : "Agent quota"}
-                  {monthTokens > 0 || monthCost > 0
-                    ? ` · ${formatTokenCount(monthTokens)} · ${formatCostCents(monthCost)} this month`
-                    : null}
+                  {usageSummary.hasAiAccess ? (
+                    <>
+                      {usageSummary.remainingPct != null
+                        ? `${100 - usageSummary.primaryPct}% included usage left`
+                        : "Included usage"}
+                      {usageSummary.agentTurnsRemaining != null
+                        ? ` · ${usageSummary.agentTurnsRemaining} agent turns`
+                        : null}
+                      {monthTokens > 0 || monthCost > 0
+                        ? ` · ${formatTokenCount(monthTokens)} · ${formatCostCents(monthCost)}`
+                        : null}
+                    </>
+                  ) : (
+                    "Upgrade to Pro for AI agent runs"
+                  )}
                 </span>
                 <button
                   type="button"
                   className="underline underline-offset-2 hover:text-text-2"
                   onClick={() => navigate("settings", "usage")}
                 >
-                  Usage
+                  Usage & plan
                 </button>
               </div>
             )}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { DownloadPageClient } from "@/components/download/DownloadPageClient";
+import { DownloadSteps } from "@/components/download/DownloadSteps";
 
 export const metadata = {
   title: "Download — Marketing IDE",
@@ -25,6 +26,7 @@ export default function DownloadPage() {
             device and highlight the right installer.
           </p>
           <DownloadPageClient />
+          <DownloadSteps />
           <p className="mt-10 text-sm text-ink-3">
             <Link href="/" className="text-accent hover:underline">
               ← Back to home

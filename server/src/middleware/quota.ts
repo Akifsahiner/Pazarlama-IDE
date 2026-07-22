@@ -13,6 +13,15 @@ export class QuotaExceededError extends Error {
   }
 }
 
+export class CostBudgetExceededError extends Error {
+  readonly code = "cost_budget_exceeded" as const;
+
+  constructor() {
+    super("Monthly included API usage budget exceeded");
+    this.name = "CostBudgetExceededError";
+  }
+}
+
 /** Throws {@link QuotaExceededError} when the user has hit their monthly limit. */
 export async function assertQuota(userId: string, resource: QuotaResource): Promise<void> {
   if (!persistenceEnabled) return;
@@ -31,4 +40,16 @@ export async function assertQuota(userId: string, resource: QuotaResource): Prom
     resource === "plan" ? used.plan : resource === "agent" ? used.agent : used.browser_min;
 
   if (current >= limit) throw new QuotaExceededError(resource);
+}
+
+/** Throws when monthly API cost exceeds the tier's included budget (Cursor-style cap). */
+export async function assertCostBudget(userId: string): Promise<void> {
+  if (!persistenceEnabled) return;
+
+  const { quota } = await profiles.getOrCreate(userId);
+  const budget = Number(quota.cost_budget_cents ?? 0);
+  if (budget <= 0) return;
+
+  const used = await usage.summary(userId);
+  if (used.cost_cents >= budget) throw new CostBudgetExceededError();
 }

@@ -1,9 +1,9 @@
 import type { TierFeature, TierId } from "../tier/tiers.js";
 import { TierRequiredError } from "./tierGate.js";
-import { QuotaExceededError } from "./quota.js";
+import { CostBudgetExceededError, QuotaExceededError } from "./quota.js";
 
 export interface TierErrorBody {
-  error: "tier_required" | "quota_exceeded";
+  error: "tier_required" | "quota_exceeded" | "cost_budget_exceeded";
   feature?: TierFeature;
   tier?: TierId;
   upgradeTo?: TierId;
@@ -30,6 +30,14 @@ export function sendMeteringError(
       error: "quota_exceeded",
       resource: err.resource,
       message: err.message,
+    } satisfies TierErrorBody);
+    return true;
+  }
+  if (err instanceof CostBudgetExceededError) {
+    reply.code(429).send({
+      error: "cost_budget_exceeded",
+      message:
+        "Monthly included API usage reached. Upgrade your plan or wait until next billing cycle.",
     } satisfies TierErrorBody);
     return true;
   }

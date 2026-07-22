@@ -43,6 +43,7 @@ interface HttpError {
   code?:
     | "rate_limited"
     | "quota_exceeded"
+    | "cost_budget_exceeded"
     | "tier_required"
     | "model_error"
     | "timeout"
@@ -76,6 +77,13 @@ async function parseHttpError(res: Response): Promise<HttpError> {
   }
   if (serverCode === "quota_exceeded") {
     return { message: "Monthly quota exceeded.", code: "quota_exceeded", status: res.status };
+  }
+  if (serverCode === "cost_budget_exceeded") {
+    return {
+      message: "Monthly included API usage reached. Upgrade or wait until next cycle.",
+      code: "cost_budget_exceeded",
+      status: res.status,
+    };
   }
   if (serverCode === "tier_required") {
     const upgrade = (parsed as { upgradeTo?: string }).upgradeTo;

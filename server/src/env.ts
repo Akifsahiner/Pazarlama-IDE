@@ -58,7 +58,19 @@ const schema = z.object({
   // HS256 secret used to verify Supabase access tokens. Empty = JWT auth disabled.
   SUPABASE_JWT_SECRET: z.string().default(""),
 
-  // Stripe billing (Faz A). Empty = checkout returns billing_not_configured.
+  // Billing provider: "paddle" (production) or "stripe" (legacy). Auto-detects when empty.
+  BILLING_PROVIDER: z.enum(["", "paddle", "stripe"]).default(""),
+  BILLING_SUCCESS_URL: z.string().default("marketingide://billing/success"),
+  BILLING_CANCEL_URL: z.string().default("marketingide://billing/cancel"),
+
+  // Paddle Billing (production default). Empty = checkout returns billing_not_configured.
+  PADDLE_API_KEY: z.string().default(""),
+  PADDLE_WEBHOOK_SECRET: z.string().default(""),
+  PADDLE_ENVIRONMENT: z.enum(["sandbox", "production"]).default("sandbox"),
+  PADDLE_PRICE_PRO: z.string().default(""),
+  PADDLE_PRICE_TEAM: z.string().default(""),
+
+  // Stripe billing (legacy). Empty = ignored when Paddle is configured.
   STRIPE_SECRET_KEY: z.string().default(""),
   STRIPE_WEBHOOK_SECRET: z.string().default(""),
   STRIPE_PRICE_PRO: z.string().default(""),

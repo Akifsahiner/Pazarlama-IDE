@@ -3,7 +3,12 @@ import { persistenceEnabled } from "../db/client.js";
 import * as profiles from "../db/repos/profiles.js";
 import * as usage from "../db/repos/usage.js";
 import { normalizeTier, tierDefinition } from "../tier/tiers.js";
-import { billingConfigured } from "../billing/stripe.js";
+import { billingConfigured, billingProvider } from "../billing/provider.js";
+
+function utcNextMonthStartISO(): string {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString();
+}
 
 export async function meRoutes(app: FastifyInstance): Promise<void> {
   app.get("/me", async (req, reply) => {
@@ -21,6 +26,7 @@ export async function meRoutes(app: FastifyInstance): Promise<void> {
         features: [...def.features],
         tierLabel: def.label,
         billingConfigured: billingConfigured(),
+        billingProvider: billingProvider(),
         usage: {
           plan: 0,
           agent: 0,
@@ -33,6 +39,9 @@ export async function meRoutes(app: FastifyInstance): Promise<void> {
           plan_limit: 9999,
           agent_limit: 9999,
           browser_min_limit: 9999,
+          cost_budget_cents: 999_999,
+          period_start: new Date().toISOString().slice(0, 10),
+          resets_at: utcNextMonthStartISO(),
         },
       };
     }
@@ -47,6 +56,7 @@ export async function meRoutes(app: FastifyInstance): Promise<void> {
       features: [...def.features],
       tierLabel: def.label,
       billingConfigured: billingConfigured(),
+      billingProvider: billingProvider(),
       usage: {
         plan: used.plan,
         agent: used.agent,
@@ -59,6 +69,9 @@ export async function meRoutes(app: FastifyInstance): Promise<void> {
         plan_limit: quota.plan_limit,
         agent_limit: quota.agent_limit,
         browser_min_limit: quota.browser_min_limit,
+        cost_budget_cents: Number(quota.cost_budget_cents ?? 0),
+        period_start: quota.period_start?.slice(0, 10),
+        resets_at: utcNextMonthStartISO(),
       },
     };
   });

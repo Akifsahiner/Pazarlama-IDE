@@ -17,21 +17,28 @@ export interface TierDefinition {
   id: TierId;
   label: string;
   features: ReadonlySet<TierFeature>;
-  quota: { plan_limit: number; agent_limit: number; browser_min_limit: number };
+  quota: {
+    plan_limit: number;
+    agent_limit: number;
+    browser_min_limit: number;
+    /** Included API usage budget per month (USD cents at provider list rates). */
+    cost_budget_cents: number;
+  };
 }
 
 const FREE: TierDefinition = {
   id: "free",
   label: "Free",
   features: new Set(),
-  quota: { plan_limit: 0, agent_limit: 0, browser_min_limit: 0 },
+  quota: { plan_limit: 0, agent_limit: 0, browser_min_limit: 0, cost_budget_cents: 0 },
 };
 
 const PRO: TierDefinition = {
   id: "pro",
   label: "Pro",
   features: new Set<TierFeature>(["ai_plan", "ai_agent", "ai_browser", "connector_meta"]),
-  quota: { plan_limit: 20, agent_limit: 200, browser_min_limit: 30 },
+  // ~$15 included API usage on $20/mo subscription (margin at list rates).
+  quota: { plan_limit: 20, agent_limit: 200, browser_min_limit: 30, cost_budget_cents: 1500 },
 };
 
 const TEAM: TierDefinition = {
@@ -45,7 +52,7 @@ const TEAM: TierDefinition = {
     "connector_meta",
     "client_reports",
   ]),
-  quota: { plan_limit: 60, agent_limit: 600, browser_min_limit: 90 },
+  quota: { plan_limit: 60, agent_limit: 600, browser_min_limit: 90, cost_budget_cents: 4000 },
 };
 
 const ENTERPRISE: TierDefinition = {
@@ -59,7 +66,7 @@ const ENTERPRISE: TierDefinition = {
     "connector_meta",
     "client_reports",
   ]),
-  quota: { plan_limit: 200, agent_limit: 2000, browser_min_limit: 300 },
+  quota: { plan_limit: 200, agent_limit: 2000, browser_min_limit: 300, cost_budget_cents: 15_000 },
 };
 
 const TIERS: Record<TierId, TierDefinition> = {

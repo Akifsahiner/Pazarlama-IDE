@@ -60,6 +60,19 @@ export function Shell() {
     return () => registerBackgroundErrorToast(() => {});
   }, [toast]);
 
+  const runtime = useApp((s) => s.runtime);
+  const authEnabled = useApp((s) => s.auth.authEnabled);
+  const authState = useApp((s) => s.auth.state);
+  const loadMe = useApp((s) => s.loadMe);
+
+  // Keep usage meter fresh while connected (Cursor-style ambient sync).
+  useEffect(() => {
+    if (runtime !== "connected" || !authEnabled || authState !== "signed-in") return;
+    void loadMe();
+    const id = window.setInterval(() => void loadMe(), 5 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, [runtime, authEnabled, authState, loadMe]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <CmoWeekReviewModal />

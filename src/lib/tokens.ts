@@ -12,7 +12,7 @@ export const heroCopy = {
   subheadline:
     "Connect once (or preview offline), open your project folder, and get a 30-day launch plan you approve — agent tasks, diffs, and browser research you apply yourself.",
   cta: "Download Marketing IDE",
-  secondaryCta: "See your first hour",
+  secondaryCta: "View pricing",
 } as const;
 
 export const trustItems = [
@@ -71,9 +71,10 @@ export const founderQuote = {
 } as const;
 
 export const navLinks = [
-  { label: "How it works", href: "#how-it-works" },
-  { label: "Workspace", href: "#workspace" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "How it works", href: "/#how-it-works" },
+  { label: "Workspace", href: "/#workspace" },
+  { label: "FAQ", href: "/#faq" },
 ] as const;
 
 export const featureBento = {

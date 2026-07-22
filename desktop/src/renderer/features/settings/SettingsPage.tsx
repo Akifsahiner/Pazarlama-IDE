@@ -144,6 +144,7 @@ export function SettingsSections({
   const signOut = useApp((s) => s.signOut);
   const startCheckout = useApp((s) => s.startCheckout);
   const openBillingPortal = useApp((s) => s.openBillingPortal);
+  const navigate = useApp((s) => s.navigate);
   const connection = useApp((s) => s.connection);
   const [advancedOpen, setAdvancedOpen] = useState(isSelfHostServerUrl(settings.serverUrl));
   const [bundledAvailable, setBundledAvailable] = useState(false);
@@ -214,11 +215,18 @@ export function SettingsSections({
                 <div className="text-body-sm font-medium text-text">Billing</div>
                 <p className="text-caption text-text-3">
                   {auth.billingConfigured
-                    ? "Manage your plan with Stripe Checkout / Customer Portal."
-                    : "Stripe is not configured on this server — ask your admin to add billing keys."}
+                    ? "Manage your subscription via Paddle — upgrade, cancel, or update payment."
+                    : "Billing is not configured on this server — ask your admin to add Paddle keys."}
                 </p>
               </div>
               <div className="flex shrink-0 gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("settings", "usage")}
+                >
+                  View usage
+                </Button>
                 {(auth.user?.tier === "free" || !auth.user?.tier) && (
                   <Button
                     variant="primary"
@@ -247,8 +255,8 @@ export function SettingsSections({
       {show("usage") && (
       <Section
         id="usage"
-        title="Usage & quota"
-        desc="Monthly limits for plan generation, agent turns, and browser minutes."
+        title="Usage & plan"
+        desc="Your subscription package, included usage, reset date, and token efficiency — Cursor-style."
         standalone={standalone}
       >
         <UsageQuotaSection />

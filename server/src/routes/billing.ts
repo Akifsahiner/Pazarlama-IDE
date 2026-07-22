@@ -1,14 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { env } from "../env.js";
-import * as profiles from "../db/repos/profiles.js";
 import {
   billingConfigured,
-  checkoutUrls,
-  getStripe,
-  priceIdForTier,
-  tierFromPriceId,
-} from "../billing/stripe.js";
+  billingProvider,
+  createCheckoutSession,
+  createPortalSession,
+  handleBillingWebhook,
+} from "../billing/provider.js";
 
 const checkoutBody = z.object({
   tier: z.enum(["pro", "team"]).default("pro"),
@@ -25,11 +23,6 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
       reply.code(503).send({ error: "billing_not_configured" });
       return;
     }
-    const stripe = getStripe();
-    if (!stripe) {
-      reply.code(503).send({ error: "billing_not_configured" });
-      return;
-    }
 
     const parsed = checkoutBody.safeParse(req.body ?? {});
     if (!parsed.success) {
@@ -37,46 +30,22 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
       return;
     }
 
-    const priceId = priceIdForTier(parsed.data.tier);
-    if (!priceId) {
-      reply.code(503).send({
-        error: "billing_not_configured",
-        detail: `Missing Stripe price for ${parsed.data.tier}`,
-      });
-      return;
-    }
-
-    const { profile } = await profiles.getOrCreate(user.id, user.email);
-    let customerId = profile.stripe_customer_id ?? undefined;
-
-    if (!customerId) {
-      const customer = await stripe.customers.create({
+    try {
+      const result = await createCheckoutSession({
+        userId: user.id,
         email: user.email,
-        metadata: { user_id: user.id },
+        tier: parsed.data.tier,
       });
-      customerId = customer.id;
-      await profiles.setStripeCustomerId(user.id, customerId);
+      return { url: result.url, sessionId: result.sessionId, provider: billingProvider() };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("Missing") && msg.includes("price")) {
+        reply.code(503).send({ error: "billing_not_configured", detail: msg });
+        return;
+      }
+      app.log.error({ err }, "billing_checkout_failed");
+      reply.code(500).send({ error: "checkout_failed", detail: msg });
     }
-
-    const urls = checkoutUrls();
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      customer: customerId,
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: urls.success,
-      cancel_url: urls.cancel,
-      client_reference_id: user.id,
-      metadata: { user_id: user.id, tier: parsed.data.tier },
-      subscription_data: {
-        metadata: { user_id: user.id, tier: parsed.data.tier },
-      },
-    });
-
-    if (!session.url) {
-      reply.code(500).send({ error: "checkout_url_missing" });
-      return;
-    }
-    return { url: session.url, sessionId: session.id };
   });
 
   app.post("/billing/portal", async (req, reply) => {
@@ -89,29 +58,27 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
       reply.code(503).send({ error: "billing_not_configured" });
       return;
     }
-    const stripe = getStripe();
-    if (!stripe) {
-      reply.code(503).send({ error: "billing_not_configured" });
-      return;
-    }
 
-    const { profile } = await profiles.getOrCreate(user.id, user.email);
-    if (!profile.stripe_customer_id) {
-      reply.code(400).send({ error: "no_stripe_customer" });
-      return;
+    try {
+      const result = await createPortalSession({
+        userId: user.id,
+        email: user.email,
+      });
+      return { url: result.url, provider: billingProvider() };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("no_paddle_customer") || msg.includes("no_stripe_customer")) {
+        reply.code(400).send({ error: msg });
+        return;
+      }
+      app.log.error({ err }, "billing_portal_failed");
+      reply.code(500).send({ error: "portal_failed", detail: msg });
     }
-
-    const urls = checkoutUrls();
-    const portal = await stripe.billingPortal.sessions.create({
-      customer: profile.stripe_customer_id,
-      return_url: urls.success,
-    });
-    return { url: portal.url };
   });
 }
 
 /**
- * Stripe webhook with raw body. Registered as a scoped plugin so the JSON
+ * Billing webhook with raw body. Registered as a scoped plugin so the JSON
  * parser does not consume the payload before signature verification.
  */
 export async function billingWebhookRoutes(app: FastifyInstance): Promise<void> {
@@ -124,19 +91,8 @@ export async function billingWebhookRoutes(app: FastifyInstance): Promise<void> 
   );
 
   app.post("/billing/webhook", async (req, reply) => {
-    if (!env.STRIPE_SECRET_KEY || !env.STRIPE_WEBHOOK_SECRET) {
+    if (!billingConfigured()) {
       reply.code(503).send({ error: "billing_not_configured" });
-      return;
-    }
-    const stripe = getStripe();
-    if (!stripe) {
-      reply.code(503).send({ error: "billing_not_configured" });
-      return;
-    }
-
-    const sig = req.headers["stripe-signature"];
-    if (typeof sig !== "string") {
-      reply.code(400).send({ error: "missing_signature" });
       return;
     }
 
@@ -146,19 +102,21 @@ export async function billingWebhookRoutes(app: FastifyInstance): Promise<void> 
       return;
     }
 
-    let event;
-    try {
-      event = stripe.webhooks.constructEvent(rawBody, sig, env.STRIPE_WEBHOOK_SECRET);
-    } catch (err) {
-      app.log.warn({ err }, "stripe_webhook_signature_failed");
-      reply.code(400).send({ error: "invalid_signature" });
-      return;
-    }
+    const provider = billingProvider();
+    const signature =
+      provider === "paddle"
+        ? (req.headers["paddle-signature"] as string | undefined)
+        : (req.headers["stripe-signature"] as string | undefined);
 
     try {
-      await handleStripeEvent(event);
+      await handleBillingWebhook({ rawBody, signature, provider });
     } catch (err) {
-      app.log.error({ err, type: event.type }, "stripe_webhook_handler_failed");
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("invalid") && msg.includes("signature")) {
+        reply.code(400).send({ error: "invalid_signature" });
+        return;
+      }
+      app.log.error({ err, provider }, "billing_webhook_handler_failed");
       reply.code(500).send({ error: "handler_failed" });
       return;
     }
@@ -167,71 +125,5 @@ export async function billingWebhookRoutes(app: FastifyInstance): Promise<void> 
   });
 }
 
-async function handleStripeEvent(event: import("stripe").Stripe.Event): Promise<void> {
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as import("stripe").Stripe.Checkout.Session;
-      const userId =
-        session.client_reference_id ||
-        session.metadata?.user_id ||
-        undefined;
-      if (!userId) return;
-
-      const subscriptionId =
-        typeof session.subscription === "string"
-          ? session.subscription
-          : session.subscription?.id;
-      const customerId =
-        typeof session.customer === "string" ? session.customer : session.customer?.id;
-
-      let priceId: string | null = session.metadata?.tier
-        ? priceIdForTier(session.metadata.tier === "team" ? "team" : "pro")
-        : null;
-
-      const stripe = getStripe();
-      if (stripe && subscriptionId && !priceId) {
-        const sub = await stripe.subscriptions.retrieve(subscriptionId);
-        priceId = sub.items.data[0]?.price?.id ?? null;
-      }
-
-      const tier = tierFromPriceId(priceId) === "free"
-        ? (session.metadata?.tier === "team" ? "team" : "pro")
-        : tierFromPriceId(priceId);
-
-      await profiles.updateTier(userId, tier === "free" ? "pro" : tier, {
-        stripe_customer_id: customerId ?? undefined,
-        stripe_subscription_id: subscriptionId ?? undefined,
-        stripe_price_id: priceId,
-      });
-      break;
-    }
-    case "customer.subscription.updated":
-    case "customer.subscription.deleted": {
-      const sub = event.data.object as import("stripe").Stripe.Subscription;
-      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
-
-      let resolvedUserId: string | undefined = sub.metadata?.user_id;
-      if (!resolvedUserId && customerId) {
-        const row = await profiles.findByStripeCustomerId(customerId);
-        resolvedUserId = row?.id;
-      }
-      if (!resolvedUserId) return;
-
-      const priceId = sub.items.data[0]?.price?.id ?? null;
-      const active =
-        event.type !== "customer.subscription.deleted" &&
-        (sub.status === "active" || sub.status === "trialing");
-
-      const mapped = tierFromPriceId(priceId);
-      const tier = active ? (mapped === "free" ? "pro" : mapped) : "free";
-      await profiles.updateTier(resolvedUserId, tier, {
-        stripe_customer_id: customerId,
-        stripe_subscription_id: active ? sub.id : null,
-        stripe_price_id: active ? priceId : null,
-      });
-      break;
-    }
-    default:
-      break;
-  }
-}
+/** Legacy export for tests that import handleStripeEvent — now unified in webhook module. */
+export { handleBillingWebhook };
