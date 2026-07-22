@@ -447,6 +447,28 @@ export function evaluateWeek1MetricsWithGa4Priority(
       : base.pctOfTarget;
 
   let verdict = base.verdict;
+  if (base.loggedCount === 0) {
+    const hasGa4Only =
+      ga4Value != null && kpiSourceUsed === "ga4" && hasGa4Connected(profile);
+    const hasOperatorSignal =
+      Boolean(distributionOperator?.verdict) ||
+      Boolean(influencerOperator?.verdict) ||
+      Boolean(delegateOperator?.verdict);
+    if (!hasGa4Only && !hasOperatorSignal) {
+      verdict = "insufficient_data";
+      return {
+        ...base,
+        verdict,
+        primaryValue,
+        pctOfTarget,
+        ga4Value,
+        manualValue,
+        kpiSourceUsed,
+        ga4SyncedAt: profile?.connector_snapshots?.ga4?.fetched_at,
+      };
+    }
+  }
+
   if (primaryValue === 0) verdict = "flat";
   else if (pctOfTarget != null && pctOfTarget < 20 && primaryValue != null) verdict = "flat";
   else if (primaryValue != null && primaryValue > 0) {

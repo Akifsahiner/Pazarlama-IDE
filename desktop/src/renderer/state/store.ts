@@ -264,7 +264,7 @@ import {
   readGa4MetricValue,
 } from "@shared/cmoProofLoop";
 import { appendKpiSnapshot } from "@shared/kpiTrendSeries";
-import { parseSocialMetricsImport } from "@shared/socialMetricsImport";
+import { parseSocialMetricsImport, mergeDistributionImportHints } from "@shared/socialMetricsImport";
 import { kpiFromPreset } from "@shared/kpiPresets";
 import {
   applyNextCycleStarted,
@@ -4917,7 +4917,7 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     importSocialMetrics: (raw, platform, dayIndex) => {
-      const { opsCadence, marketingProfile } = get();
+      const { opsCadence, marketingProfile, distributionOperator } = get();
       const day =
         dayIndex ?? opsCadence?.day_index ?? marketingProfile?.ops_cadence?.day_index ?? 3;
       const result = parseSocialMetricsImport(raw, platform, day);
@@ -4926,6 +4926,18 @@ export const useApp = create<AppState>((set, get) => {
       }
       for (const kpi of result.kpis) {
         void get().upsertManualKpi(kpi);
+      }
+      const op = distributionOperator ?? marketingProfile?.distribution_operator;
+      if (op && result.distributionHints?.length) {
+        const merged = mergeDistributionImportHints(op, result.distributionHints, day);
+        if (merged !== op) {
+          syncDistributionOperatorState(merged);
+          appendEvent({
+            role: "system",
+            kind: "status",
+            text: "Distribution slot metrics updated from analytics import.",
+          });
+        }
       }
       recomputeGrowthPlane();
       return result.errors.length > 0 ? result.errors.join("; ") : null;

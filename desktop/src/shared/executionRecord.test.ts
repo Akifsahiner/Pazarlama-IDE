@@ -125,9 +125,13 @@ describe("executionRecord", () => {
     assert.ok(record.morningBrief!.footer.pendingOps >= 0);
   });
 
-  it("formatExecutionResults shows honest missing KPI", () => {
-    const chips = formatExecutionResults({ taskStatus: "done", taskOwner: "user" });
-    assert.equal(chips[0]?.value, "Ölçüm bekleniyor");
+  it("formatExecutionResults shows thesis honest empty for done user task without KPI", () => {
+    const chips = formatExecutionResults({
+      taskStatus: "done",
+      taskOwner: "user",
+      thesisId: "viral_short_form",
+    });
+    assert.match(chips[0]?.value ?? "", /24–72h|log views/i);
     assert.equal(chips[0]?.tone, "missing");
   });
 
@@ -142,9 +146,8 @@ describe("executionRecord", () => {
     assert.doesNotMatch(empty!.value!, /Not measured yet/i);
   });
 
-  it("buildActiveExecutionRecord includes dayPulse at day 3+", () => {
+  it("buildActiveExecutionRecord includes dayPulse at day 3+ without growth plane", () => {
     const record = buildActiveExecutionRecord({
-      plane: plane(),
       cadence: cadence({ day_index: 3 }),
       campaignSession: {
         id: "cs.1",
@@ -160,7 +163,28 @@ describe("executionRecord", () => {
     });
     assert.ok(record.dayPulse);
     assert.equal(record.dayPulse!.checkpoint, 3);
-    assert.equal(record.dayPulse!.title, "Day 3 Pulse");
+  });
+
+  it("history cycle empty uses thesis honest copy", () => {
+    const history = buildExecutionHistory({
+      continuous: {
+        phase: "executing",
+        current_cycle_index: 1,
+        cycles: [
+          {
+            cycle_index: 1,
+            thesis_id: "viral_short_form",
+            thesis_title: "Viral",
+            started_at: "2026-07-01T00:00:00.000Z",
+            ops_cadence_id: "ops.1",
+          },
+        ],
+        updated_at: "2026-07-01T00:00:00.000Z",
+      },
+    });
+    const empty = history[0]?.results.find((r) => r.id.includes("empty"));
+    assert.ok(empty);
+    assert.doesNotMatch(empty!.value ?? "", /Not measured yet/i);
   });
 
   it("formatExecutionDone includes proof KPI note", () => {

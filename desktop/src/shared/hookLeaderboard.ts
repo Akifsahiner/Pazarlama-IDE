@@ -2,9 +2,9 @@
  * Faz 6 — ranked hook leaderboard for distribution operator on Execution Record.
  */
 import type { DistributionOperatorWorkspace } from "./cmoDistributionOperator";
-import { computeHookKillSuggestion } from "./cmoDistributionOperator";
+import { shouldKillHook } from "./cmoDistributionOperator";
 
-export type HookLeaderboardVerdict = "leading" | "kill" | "pending";
+export type HookLeaderboardVerdict = "leading" | "trailing" | "kill" | "pending";
 
 export interface HookLeaderboardRow {
   hook_id: string;
@@ -42,7 +42,7 @@ export function buildHookLeaderboard(
 ): HookLeaderboardRow[] {
   const rows: HookLeaderboardRow[] = workspace.hooks.map((hook) => {
     const stats = hookStats(workspace, hook.id);
-    const kill = computeHookKillSuggestion(workspace, hook.id);
+    const kill = shouldKillHook(workspace, hook.id);
     let verdict: HookLeaderboardVerdict = "pending";
     if (kill) {
       verdict = "kill";
@@ -61,7 +61,7 @@ export function buildHookLeaderboard(
     };
   });
 
-  const scored = rows.filter((r) => r.verdict !== "pending" && r.verdict !== "kill");
+  const scored = rows.filter((r) => r.verdict === "leading");
   if (scored.length > 1) {
     scored.sort((a, b) => {
       const scoreA = (a.retention_3s_pct ?? 0) * 10 + (a.views_24h ?? 0) / 100;
@@ -71,7 +71,7 @@ export function buildHookLeaderboard(
     const topId = scored[0]?.hook_id;
     for (const row of rows) {
       if (row.verdict === "leading" && row.hook_id !== topId) {
-        row.verdict = "pending";
+        row.verdict = "trailing";
       }
     }
   }

@@ -2,12 +2,14 @@ import { useId } from "react";
 import { LayoutList, Play, Radio } from "lucide-react";
 import type { MorningBriefView } from "@shared/morningBrief";
 import type { CommandSurfaceAction } from "@shared/cmoCommandSurface";
+import type { DayPulseView } from "@shared/measurementPulse";
 import { Button } from "@renderer/components/ui/Button";
 import { Badge } from "@renderer/components/ui/Badge";
 import { CommandSurfaceField } from "@renderer/features/workspace/CommandSurfaceField";
 import { CommandSurfaceGovernanceBanner } from "@renderer/features/workspace/CommandSurfaceGovernanceBanner";
 import { useApp } from "@renderer/state/store";
 import { evaluateHookPerformance } from "@shared/cmoDistributionOperator";
+import { Ga4SyncChip } from "./Ga4SyncChip";
 
 export function MorningBriefHero({
   brief,
@@ -16,6 +18,7 @@ export function MorningBriefHero({
   dispatchAllowed = true,
   compact = false,
   verifying = false,
+  dayPulse,
 }: {
   brief: MorningBriefView;
   primaryAction: Exclude<CommandSurfaceAction, { kind: "none" }> | null;
@@ -24,6 +27,7 @@ export function MorningBriefHero({
   dispatchAllowed?: boolean;
   compact?: boolean;
   verifying?: boolean;
+  dayPulse?: DayPulseView | null;
 }) {
   const id = useId();
   const toggleWarRoomExpanded = useApp((s) => s.toggleWarRoomExpanded);
@@ -120,6 +124,14 @@ export function MorningBriefHero({
           <span title={brief.footer.mechanismAntiPattern}>
             <Badge tone="accent">{brief.mechanismLabel}</Badge>
           </span>
+        )}
+        {dayPulse?.visible && (
+          <Badge tone={dayPulse.primaryKpi.tone === "ok" ? "ok" : "neutral"} data-testid="morning-brief-pulse-chip">
+            Pulse · {dayPulse.primaryKpi.display}
+          </Badge>
+        )}
+        {(dayPulse?.visible || brief.footer.pendingOps > 0) && !productLoop && (
+          <Ga4SyncChip compact />
         )}
       </div>
 

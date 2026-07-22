@@ -26,11 +26,17 @@ import type { RunEvent, RunStatus } from "./types";
 import {
   evaluateDayPulse,
   resolveHonestEmptyKpiCopy,
+  resolvePulseKpiPresetId,
   type DayPulseView,
 } from "./measurementPulse";
 import { buildHookLeaderboard, type HookLeaderboardRow } from "./hookLeaderboard";
 import { buildKpiTrendSeries, type KpiTrendPoint } from "./kpiTrendSeries";
-import { readGa4MetricValue, resolveOpsKpiGate, hasGa4Connected } from "./cmoProofLoop";
+import {
+  evaluateWeek1MetricsWithGa4Priority,
+  readGa4MetricValue,
+  resolveOpsKpiGate,
+  hasGa4Connected,
+} from "./cmoProofLoop";
 
 export type ExecutionRecordLifecycle =
   | "intake"
@@ -356,7 +362,7 @@ export function formatExecutionResults(input: {
     chips.push({
       id: "kpi-pending",
       label: "KPI",
-      value: "Ölçüm bekleniyor",
+      value: resolveHonestEmptyKpiCopy(input.thesisId ?? input.cadence?.thesis_id),
       tone: "missing",
     });
   }
@@ -543,34 +549,44 @@ export function buildActiveExecutionRecord(
       ? `Awaiting approval — ${input.approvalFileCount} file(s) to review → Apply to ship`
       : undefined;
 
-  const dayPulse =
-    input.cadence && input.plane
-      ? evaluateDayPulse({
-          cadence: input.cadence,
-          profile: input.marketingProfile,
-          thesis: input.channelThesis,
-          distributionOperator: input.distributionOperator,
-          influencerOperator: input.influencerOperator,
-          delegateOperator: input.delegateOperator,
-        })
+  const pulseAssessment =
+    input.cadence
+      ? evaluateWeek1MetricsWithGa4Priority(
+          input.cadence,
+          input.marketingProfile,
+          input.channelThesis,
+          input.distributionOperator,
+          input.influencerOperator,
+          input.delegateOperator,
+        )
       : null;
+
+  const dayPulse = input.cadence
+    ? evaluateDayPulse({
+        cadence: input.cadence,
+        profile: input.marketingProfile,
+        thesis: input.channelThesis,
+        distributionOperator: input.distributionOperator,
+        influencerOperator: input.influencerOperator,
+        delegateOperator: input.delegateOperator,
+      })
+    : null;
 
   const hookLeaderboard = input.distributionOperator
     ? buildHookLeaderboard(input.distributionOperator)
     : undefined;
 
+  const kpiTrendPreset =
+    input.cadence && pulseAssessment
+      ? resolvePulseKpiPresetId(input.cadence, pulseAssessment)
+      : undefined;
+
   const kpiTrend =
-    dayPulse?.primaryKpi && input.cadence
+    dayPulse?.primaryKpi && input.cadence && kpiTrendPreset
       ? buildKpiTrendSeries(
           input.cadence,
           input.marketingProfile,
-          input.cadence.thesis_id === "viral_short_form"
-            ? "short_form_views"
-            : input.cadence.thesis_id === "outbound_sales"
-              ? "outbound_replies"
-              : input.cadence.thesis_id === "landing_conversion"
-                ? "targeted_visitors"
-                : "targeted_visitors",
+          kpiTrendPreset,
           input.distributionOperator,
         )
       : undefined;
@@ -647,6 +663,9 @@ function historyEntryFromTask(
       proof: task.proof,
       taskStatus: task.status,
       taskOwner: task.owner,
+      thesisId: input.channelThesis?.id ?? input.cadence?.thesis_id,
+      marketingProfile: input.marketingProfile,
+      cadence: input.cadence,
     }),
     learned: learned?.trim() || undefined,
     closedAt: task.proof?.completed_at ?? input.cadence?.started_at ?? new Date().toISOString(),
@@ -673,7 +692,7 @@ function historyEntryFromCycle(cycle: CmoCycleRecord): ExecutionHistoryEntry {
     results.push({
       id: `cycle-${cycle.cycle_index}-empty`,
       label: "Sonuç",
-      value: "Not measured yet",
+      value: resolveHonestEmptyKpiCopy(cycle.thesis_id),
       tone: "missing",
     });
   }

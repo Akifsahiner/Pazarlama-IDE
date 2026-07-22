@@ -65,4 +65,48 @@ describe("hookLeaderboard", () => {
     assert.equal(leading!.hook_label, hookA.label);
     assert.equal(leading!.retention_3s_pct, 62);
   });
+
+  it("shouldKillHook at 3 posts below 20% retention", () => {
+    const thesis = buildCmoIntake({
+      project: {
+        id: "p1",
+        source: { kind: "folder", path: "/p" },
+        name: "Co",
+        framework: "Next",
+        routes: [],
+        hasAnalytics: false,
+        excludedPaths: [],
+        scannedFileCount: 10,
+      },
+      persona: "marketing",
+      context: { force_thesis_id: "viral_short_form" },
+    });
+    const ws = createDistributionOperatorFromThesis(thesis, { week_index: 1 });
+    assert.ok(ws);
+    const hook = ws.hooks[1]!;
+    const posts = ws.slots.filter((s) => s.hook_id === hook.id && s.slot_kind === "post");
+    let next = ws;
+    for (let i = 0; i < 3; i++) {
+      next = {
+        ...next,
+        slots: next.slots.map((s) =>
+          s.id === posts[i]!.id
+            ? {
+                ...s,
+                status: "measured" as const,
+                proof: {
+                  completed_at: new Date().toISOString(),
+                  post_url: `https://tiktok.com/${i}`,
+                  retention_3s_pct: 12,
+                  views_24h: 50,
+                },
+              }
+            : s,
+        ),
+      };
+    }
+    const rows = buildHookLeaderboard(next);
+    const killed = rows.find((r) => r.hook_id === hook.id);
+    assert.equal(killed?.verdict, "kill");
+  });
 });

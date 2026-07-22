@@ -13,6 +13,7 @@ import type { InfluencerOperatorWorkspace } from "./cmoInfluencerOperator";
 import type { CmoOpsCadence, PivotVerdict } from "./cmoOpsCadence";
 import {
   evaluateWeek1MetricsWithGa4Priority,
+  readGa4MetricValue,
   resolveOpsKpiGate,
   type Week1MetricAssessment,
 } from "./cmoProofLoop";
@@ -76,12 +77,26 @@ const HONEST_EMPTY_COPY: Record<ChannelThesisId, string> = {
   influencer_partnerships: "Replies take 48–72h — log warm/hot when they land",
 };
 
-const PULSE_WAIT_COPY: Partial<Record<ChannelThesisId, string>> = {
+const PULSE_WAIT_COPY: Record<ChannelThesisId, string> = {
   viral_short_form: "24–72h is normal — log views when TikTok/Reels analytics land",
   founder_social: "Give posts 48h — log impressions when analytics refresh",
   landing_conversion: "Connect GA4 or log session count manually",
   outbound_sales: "Replies take time — log count when prospects respond",
+  product_hunt_launch: "Launch metrics land T+24h — log upvotes + signups",
+  seo_content: "Indexation takes days — log GSC clicks when available",
+  community_launch: "Community posts need engagement window — log URL + replies",
+  influencer_partnerships: "Replies take 48–72h — log warm/hot when they land",
 };
+
+export function resolvePulseKpiPresetId(
+  cadence: CmoOpsCadence,
+  assessment: Week1MetricAssessment,
+): string {
+  if (assessment.primaryKpiId) return assessment.primaryKpiId;
+  const gateTask = cadence.tasks.find((t) => t.owner === "user" || t.owner === "delegate");
+  const gate = gateTask ? resolveOpsKpiGate(gateTask, cadence.thesis_id) : null;
+  return gate?.presetId ?? "targeted_visitors";
+}
 
 export function resolveHonestEmptyKpiCopy(
   thesisId?: ChannelThesisId,
@@ -138,6 +153,14 @@ function resolveLeadingIndicator(input: EvaluateDayPulseInput): DayPulseView["le
     const replies = profile?.manual_kpis?.find((k) => k.id === "outbound_replies")?.value;
     if (replies != null && replies > 0) {
       return { label: "Leading", value: `${replies} outbound replies` };
+    }
+  }
+  if (thesis?.id === "landing_conversion" || thesis?.id === "seo_content") {
+    const sessions =
+      readGa4MetricValue(profile ?? null, "sessions") ??
+      profile?.manual_kpis?.find((k) => k.id === "targeted_visitors")?.value;
+    if (sessions != null && sessions > 0) {
+      return { label: "Leading", value: `${sessions} sessions logged` };
     }
   }
   return undefined;

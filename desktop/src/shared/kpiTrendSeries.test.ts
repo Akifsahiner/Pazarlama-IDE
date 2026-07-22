@@ -53,4 +53,29 @@ describe("kpiTrendSeries", () => {
       true,
     );
   });
+
+  it("manual snapshot wins over GA4 on same day", () => {
+    const points = buildKpiTrendSeries(
+      { day_index: 3, thesis_id: "landing_conversion", tasks: [] } as never,
+      {
+        manual_kpis: [
+          {
+            id: "targeted_visitors",
+            name: "Sessions",
+            value: 500,
+            source: "manual",
+            updated_at: "t",
+            snapshots: [{ day_index: 3, value: 500, recorded_at: "t", source: "manual" }],
+          },
+        ],
+        connector_snapshots: {
+          ga4: { fetched_at: "t", metrics: [{ name: "sessions", value: 999 }] },
+        },
+      } as never,
+      "targeted_visitors",
+    );
+    const day3 = points.find((p) => p.day_index === 3);
+    assert.equal(day3?.value, 500);
+    assert.equal(day3?.source, "manual");
+  });
 });

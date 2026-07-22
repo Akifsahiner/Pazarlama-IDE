@@ -113,6 +113,7 @@ export function ExecutionRecordCard({
                   dispatchAllowed={dispatchAllowed}
                   verifying={record.lifecycle === "verifying"}
                   compact
+                  dayPulse={record.dayPulse}
                 />
               ) : (
                 <>
@@ -145,6 +146,9 @@ export function ExecutionRecordCard({
               <span className="hidden sm:inline">Details</span>
             </button>
           </div>
+          {record.dayPulse && (
+            <DayPulseRow pulse={record.dayPulse} kpiTrend={record.kpiTrend} compact />
+          )}
         </div>
       </motion.section>
     );
@@ -216,6 +220,7 @@ export function ExecutionRecordCard({
               onPrimaryAction={handlePrimary}
               dispatchAllowed={dispatchAllowed}
               verifying={record.lifecycle === "verifying"}
+              dayPulse={record.dayPulse}
             />
           </div>
         ) : (

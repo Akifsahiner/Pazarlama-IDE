@@ -581,6 +581,31 @@ export function skipDistributionSlot(
   return recomputeDailyDonePosts({ ...workspace, slots: nextSlots });
 }
 
+/** Faz 6 SSOT — hook-level kill after 3 measured posts all below this 3s retention %. */
+export const HOOK_KILL_RETENTION_THRESHOLD = 20;
+
+export function hookPostSlotsWithRetention(
+  workspace: DistributionOperatorWorkspace,
+  hookId: string,
+): DistributionSlot[] {
+  return workspace.slots.filter(
+    (s) =>
+      s.hook_id === hookId &&
+      s.slot_kind === "post" &&
+      s.proof?.retention_3s_pct != null,
+  );
+}
+
+export function shouldKillHook(
+  workspace: DistributionOperatorWorkspace,
+  hookId: string,
+  threshold = HOOK_KILL_RETENTION_THRESHOLD,
+): boolean {
+  const measured = hookPostSlotsWithRetention(workspace, hookId);
+  if (measured.length < 3) return false;
+  return measured.every((s) => (s.proof!.retention_3s_pct ?? 0) < threshold);
+}
+
 export function evaluateHookPerformance(
   workspace: DistributionOperatorWorkspace,
   weekAssessment?: { pctOfTarget?: number; primaryValue?: number; primaryTarget?: number },
@@ -609,30 +634,24 @@ export function evaluateHookPerformance(
   }
 
   for (const hook of workspace.hooks) {
-    const measured = workspace.slots.filter(
-      (s) =>
-        s.hook_id === hook.id &&
-        s.slot_kind === "post" &&
-        s.proof?.retention_3s_pct != null,
-    );
+    const measured = hookPostSlotsWithRetention(workspace, hook.id);
     const target = hook.retention_target_3s ?? 60;
 
-    if (measured.length >= 3) {
-      const allLow = measured.every((s) => (s.proof!.retention_3s_pct ?? 0) < 45);
-      if (allLow) {
-        evidence.push(`${hook.label}: ${measured.length} posts all <45% 3s retention`);
-        return {
-          kind: "kill",
-          hook_id: hook.id,
-          headline: `Kill ${hook.label} — rewrite hook, don't tweak music`,
-          rationale: [
-            "Retention below 45% after 3 posts means the opening failed.",
-            "Write a new formula variant — do not adjust music or captions only.",
-          ],
-          evidence,
-          computed_at: now,
-        };
-      }
+    if (shouldKillHook(workspace, hook.id)) {
+      evidence.push(
+        `${hook.label}: ${measured.length} posts all <${HOOK_KILL_RETENTION_THRESHOLD}% 3s retention`,
+      );
+      return {
+        kind: "kill",
+        hook_id: hook.id,
+        headline: `Kill ${hook.label} — rewrite hook, don't tweak music`,
+        rationale: [
+          `Retention below ${HOOK_KILL_RETENTION_THRESHOLD}% after 3 posts means the opening failed.`,
+          "Write a new formula variant — do not adjust music or captions only.",
+        ],
+        evidence,
+        computed_at: now,
+      };
     }
 
     const hits = measured.filter((s) => (s.proof!.retention_3s_pct ?? 0) >= target);
@@ -677,7 +696,7 @@ export function evaluateHookPerformance(
   };
 }
 
-/** Faz 5 — live P8 kill suggestion for Post Kit (3 posts all <20% 3s retention). */
+/** Faz 5/6 — live kill suggestion for Post Kit + leaderboard (uses shouldKillHook SSOT). */
 export function computeHookKillSuggestion(
   workspace: DistributionOperatorWorkspace,
   hookId?: string,
@@ -686,22 +705,12 @@ export function computeHookKillSuggestion(
     ? workspace.hooks.filter((h) => h.id === hookId)
     : workspace.hooks;
   for (const hook of hooks) {
-    const measured = workspace.slots.filter(
-      (s) =>
-        s.hook_id === hook.id &&
-        s.slot_kind === "post" &&
-        s.proof?.retention_3s_pct != null,
-    );
-    if (measured.length < 3) continue;
-    const allLow = measured.every((s) => (s.proof!.retention_3s_pct ?? 0) < 20);
-    if (allLow) {
-      return {
-        hook_id: hook.id,
-        headline: `Kill ${hook.label} — rewrite hook`,
-        detail:
-          "3 posts all below 20% 3s retention. Write a new formula — don't tweak music only.",
-      };
-    }
+    if (!shouldKillHook(workspace, hook.id)) continue;
+    return {
+      hook_id: hook.id,
+      headline: `Kill ${hook.label} — rewrite hook`,
+      detail: `3 posts all below ${HOOK_KILL_RETENTION_THRESHOLD}% 3s retention. Write a new formula — don't tweak music only.`,
+    };
   }
   return undefined;
 }

@@ -3,12 +3,14 @@ import { Badge } from "@renderer/components/ui/Badge";
 
 const VERDICT_LABEL: Record<string, string> = {
   leading: "leading",
+  trailing: "trailing",
   kill: "kill",
   pending: "pending",
 };
 
 const VERDICT_TONE: Record<string, "ok" | "warn" | "neutral"> = {
   leading: "ok",
+  trailing: "neutral",
   kill: "warn",
   pending: "neutral",
 };

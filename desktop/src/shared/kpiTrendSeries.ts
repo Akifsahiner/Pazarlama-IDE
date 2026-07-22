@@ -11,6 +11,23 @@ export interface KpiTrendPoint {
   source: "manual" | "import" | "proof" | "ga4";
 }
 
+const SOURCE_PRIORITY: Record<KpiTrendPoint["source"], number> = {
+  manual: 4,
+  import: 4,
+  proof: 3,
+  ga4: 2,
+};
+
+function mergePoint(
+  deduped: Map<number, KpiTrendPoint>,
+  point: KpiTrendPoint,
+): void {
+  const existing = deduped.get(point.day_index);
+  if (!existing || SOURCE_PRIORITY[point.source] >= SOURCE_PRIORITY[existing.source]) {
+    deduped.set(point.day_index, point);
+  }
+}
+
 export function appendKpiSnapshot(
   kpi: ManualKpi,
   snapshot: Omit<KpiTrendPoint, "value"> & { value: number },
@@ -37,19 +54,23 @@ export function buildKpiTrendSeries(
   presetId: string,
   distributionOperator?: DistributionOperatorWorkspace | null,
 ): KpiTrendPoint[] {
-  const points: KpiTrendPoint[] = [];
+  const deduped = new Map<number, KpiTrendPoint>();
   const manual = profile?.manual_kpis?.find((k) => k.id === presetId);
   if (manual?.snapshots?.length) {
     for (const s of manual.snapshots) {
-      points.push({ day_index: s.day_index, value: s.value, source: s.source });
+      mergePoint(deduped, { day_index: s.day_index, value: s.value, source: s.source });
     }
   }
 
   if (cadence) {
     for (const task of cadence.tasks) {
       if (task.proof?.kpi_id === presetId && task.proof.kpi_value != null) {
-        points.push({
-          day_index: task.day_slot === "now" ? cadence.day_index : cadence.day_index,
+        const dayIndex =
+          task.proof.completed_at && cadence.started_at
+            ? cadence.day_index
+            : cadence.day_index;
+        mergePoint(deduped, {
+          day_index: dayIndex,
           value: task.proof.kpi_value,
           source: task.proof.kpi_source === "ga4" ? "ga4" : "proof",
         });
@@ -66,24 +87,22 @@ export function buildKpiTrendSeries(
       }
     }
     for (const [day, value] of byDay) {
-      points.push({ day_index: day, value, source: "proof" });
+      mergePoint(deduped, { day_index: day, value, source: "proof" });
     }
   }
 
   const ga4Fetched = profile?.connector_snapshots?.ga4?.fetched_at;
   if (ga4Fetched && manual?.value != null && presetId === "targeted_visitors") {
-    points.push({
+    mergePoint(deduped, {
       day_index: cadence?.day_index ?? 7,
       value: manual.value,
       source: "ga4",
     });
   }
 
-  const deduped = new Map<number, KpiTrendPoint>();
-  for (const p of points.sort((a, b) => a.day_index - b.day_index)) {
-    deduped.set(p.day_index, p);
-  }
-  return [...deduped.values()].filter((p) => [1, 3, 5, 7].includes(p.day_index) || p.day_index <= 7);
+  return [...deduped.values()]
+    .sort((a, b) => a.day_index - b.day_index)
+    .filter((p) => [1, 3, 5, 7].includes(p.day_index) || p.day_index <= 7);
 }
 
 export function hasTrendData(points: KpiTrendPoint[]): boolean {

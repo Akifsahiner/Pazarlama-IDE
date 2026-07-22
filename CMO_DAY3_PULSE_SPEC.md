@@ -90,7 +90,23 @@ Used in `formatExecutionResults` (`results-empty` chip) and pulse `waitMessage`.
 | E2E | `desktop/e2e/day-pulse.spec.ts` |
 | CI script | `npm run test:faz6-day-pulse` in `desktop/package.json` |
 
-## Acceptance (screenshot-ready)
+## Hook kill SSOT
+
+- `HOOK_KILL_RETENTION_THRESHOLD = 20` — shared by `shouldKillHook`, `computeHookKillSuggestion`, `evaluateHookPerformance`, and `buildHookLeaderboard`
+- Leaderboard verdicts: `leading` | `trailing` | `kill` | `pending`
+
+## Import → distribution backfill
+
+- `mergeDistributionImportHints` updates open distribution slot metrics from TikTok/Reels paste (no fabricated post URLs)
+- TikTok CSV derives 3s retention proxy from avg watch time / video duration when explicit retention column missing
+
+## KPI trend source priority
+
+Per day_index: `manual`/`import` (4) > `proof` (3) > `ga4` (2) — manual never overwritten by GA4 on same day.
+
+## Verdict hard gate
+
+`loggedCount === 0` → `insufficient_data` unless GA4 connected with real snapshot or operator rollup signal.
 
 - [ ] Day 3/5/7 Pulse row on Record — primary KPI fraction + leading + action
 - [ ] 0 fake analytics rows (eval + manual QA)
