@@ -10,6 +10,7 @@ import type { ExpectedProofKind, OpsExecutionPlan } from "./opsExecutionPlan";
 import type { BrowserEvidenceProof } from "./browserVerify";
 import { doneWhenRequiresBrowserVerify } from "./browserVerify";
 import type { HumanExecutionRef } from "./humanExecutionPlan";
+import { isPulseRitualPending } from "./pulseCheckpoints";
 import {
   materializeOpsTaskContract,
   type MarketingExecutionMode,
@@ -111,6 +112,8 @@ export interface CmoOpsCadence {
   last_focus_reset_at: string;
   /** P2 — auto-pivot when Week 1 metrics are flat. */
   pivot_suggestion?: CmoPivotSuggestion;
+  /** Day 3/5/7 pulse ritual answers — mandatory checkpoint persistence. */
+  pulse_checkpoints?: import("./pulseCheckpoints").PulseCheckpointsState;
 }
 
 export interface OpsCadenceProgress {
@@ -136,6 +139,8 @@ export interface OpsProofInput {
   kpi_target?: number;
   kpi_unit?: string;
   browser_evidence?: BrowserEvidenceProof;
+  /** Progressive proof — URL-only complete before Day 3 on post tasks. */
+  measure_deferred?: boolean;
 }
 
 export interface OpsProofValidation {
@@ -379,12 +384,13 @@ export function isWeekReviewDue(cadence: CmoOpsCadence, now = Date.now()): boole
   return new Date(cadence.week_review.due_at).getTime() <= now;
 }
 
-/** Lane B/C next-action stays hidden while ops tasks or week review still need you. */
+/** Lane B/C next-action stays hidden while ops tasks, pending pulse, or week review still need you. */
 export function opsQueueBlocksLaneWork(
   cadence: CmoOpsCadence,
   marketingPaused = false,
 ): boolean {
   if (marketingPaused) return true;
+  if (isPulseRitualPending(cadence)) return true;
   if (isWeekReviewDue(cadence) && cadence.week_review.status !== "completed") {
     return true;
   }

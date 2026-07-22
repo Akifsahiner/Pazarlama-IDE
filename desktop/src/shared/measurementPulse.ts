@@ -22,6 +22,7 @@ import { KPI_PRESETS } from "./kpiPresets";
 import type { MeasurementBaselineAssessment } from "./measurementBaseline";
 import { assessMeasurementBaseline } from "./measurementBaseline";
 import type { MarketingProfile } from "./types";
+import { resolvePendingPulseCheckpoint } from "./pulseCheckpoints";
 
 export type PulseCommandKind =
   | "distribution_kill"
@@ -386,7 +387,10 @@ export function evaluateDayPulse(input: EvaluateDayPulseInput): DayPulseView | n
   const thesisId = input.thesis?.id ?? input.cadence.thesis_id;
   const waitMessage =
     value == null && thesisId ? PULSE_WAIT_COPY[thesisId] : undefined;
-  const ritualQuestion = resolveDay3RitualQuestion(input);
+  const ritualQuestion =
+    resolvePendingPulseCheckpoint(input.cadence) != null
+      ? resolveDay3RitualQuestion(input)
+      : undefined;
 
   return {
     checkpoint,

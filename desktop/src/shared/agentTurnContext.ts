@@ -3,6 +3,7 @@ import type { PlanProgressSnapshot } from "./planProgress";
 import { runChangedFiles } from "./runs";
 import { nextActionableTask } from "./planProgress";
 import { normalizePlan } from "./planPlaybooks";
+import type { Week1OpsTurnContext } from "./week1OpsTurnContext";
 
 export type ProactiveTrigger = "apply_complete" | "plan_task_done" | "measuring_phase";
 
@@ -12,6 +13,8 @@ export interface AgentTurnContext {
   campaign_phase?: string;
   plan_progress?: { done: number; total: number; next_task_title?: string };
   proactive_trigger?: ProactiveTrigger;
+  /** Week 1 execution — today's ops task grounds all composer/agent replies. */
+  week1_ops?: Week1OpsTurnContext;
 }
 
 export interface ProactiveSuggestionAction {
@@ -31,6 +34,7 @@ export interface AgentTurnContextInput {
   campaignSession?: CampaignSession | null;
   proactive_trigger?: ProactiveTrigger;
   lastAppliedSummary?: string;
+  week1_ops?: Week1OpsTurnContext;
 }
 
 /** Assemble enrichment payload for /agent context (Faz 7). */
@@ -64,11 +68,16 @@ export function buildAgentTurnContext(input: AgentTurnContextInput): AgentTurnCo
     };
   }
 
+  if (input.week1_ops) {
+    ctx.week1_ops = input.week1_ops;
+  }
+
   const hasData =
     ctx.proactive_trigger ||
     ctx.last_run_summary ||
     ctx.pending_files?.length ||
     ctx.campaign_phase ||
-    ctx.plan_progress;
+    ctx.plan_progress ||
+    ctx.week1_ops;
   return hasData ? ctx : undefined;
 }

@@ -338,7 +338,6 @@ export function assetCopyAllText(asset: HumanExecutionAsset): string {
     parts.push(`## ${b.label}`, b.body, "");
   }
   if (asset.success_criteria?.utm) parts.push(`UTM: ${asset.success_criteria.utm}`);
-  for (const c of asset.platform_checklist) parts.push(`☐ ${c.label}`);
   if (asset.honesty_note) parts.push("", asset.honesty_note);
   return parts.join("\n");
 }

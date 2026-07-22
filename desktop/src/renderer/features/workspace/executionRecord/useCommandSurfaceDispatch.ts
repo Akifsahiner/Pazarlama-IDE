@@ -24,6 +24,7 @@ export function useCommandSurfaceDispatch() {
   const laneDWorkspace = useApp((s) => s.laneDWorkspace ?? s.marketingProfile?.lane_d_workspace);
   const setExecutionRecordDetailTab = useApp((s) => s.setExecutionRecordDetailTab);
   const syncGa4Metrics = useApp((s) => s.syncGa4Metrics);
+  const openPulseRitual = useApp((s) => s.openPulseRitual);
 
   return (
     resolved: CommandSurfaceAction,
@@ -95,6 +96,10 @@ export function useCommandSurfaceDispatch() {
         break;
       case "sync_ga4":
         void syncGa4Metrics();
+        setExecutionRecordDetailTab("record");
+        break;
+      case "complete_pulse":
+        openPulseRitual(resolved.checkpoint);
         setExecutionRecordDetailTab("record");
         break;
       case "product_loop":

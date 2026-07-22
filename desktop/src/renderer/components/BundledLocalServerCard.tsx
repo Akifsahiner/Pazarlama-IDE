@@ -13,6 +13,7 @@ export function BundledLocalServerCard({
   autoStartOnMount?: boolean;
 }) {
   const checkConnection = useApp((s) => s.checkConnection);
+  const updateSettings = useApp((s) => s.updateSettings);
   const [available, setAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ state: string; error?: string } | null>(null);
@@ -31,6 +32,7 @@ export function BundledLocalServerCard({
     setBusy(true);
     try {
       const result = await window.api.bundledServer.start();
+      await updateSettings({ serverUrl: "http://127.0.0.1:8787" });
       await refresh();
       if (result.ok) await checkConnection();
     } finally {

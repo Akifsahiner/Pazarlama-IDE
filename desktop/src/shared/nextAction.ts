@@ -29,11 +29,10 @@ import {
 } from "./planProgress";
 import { firstAwaitingApplyTask, firstAwaitingReviewTask } from "./planTaskCompletion";
 import { isBrowserPlanTask } from "./planPlaybooks";
-import { PLAN_PREVIEW_LABEL, PLAN_AI_LABEL } from "./planLabels";
 import { personaValue } from "./personaValue";
 import type { WorkSurface } from "./workSurfaces";
 import { WORK_SURFACE_META } from "./workSurfaces";
-import { isWeek1OpsActive } from "./northStarFunnel";
+import { isWeek1OpsActive, resolveFirstRunPrimaryAction } from "./northStarFunnel";
 
 export type NextActionScope = "page" | "workspace";
 
@@ -117,6 +116,9 @@ export interface NextActionInput {
   /** Quick Start track — suppress plan CTAs pre-ship. */
   firstShipAt?: number | null;
   onboardingTrack?: "quick_start" | "full_cmo";
+  heroPath?: string | null;
+  week1Ready?: boolean;
+  marketingProfile?: import("./types").MarketingProfile | null;
   /** P3 — Lane B workspace (posting / outreach / runbook). */
   laneBWorkspace?: LaneBWorkspace | null;
   channelThesis?: ChannelThesis | null;
@@ -795,18 +797,25 @@ export function resolveNextActionCore(input: NextActionInput): ResolvedNextActio
         dispatch: { type: "open_workspace" },
       };
     }
+    const firstRun = resolveFirstRunPrimaryAction({
+      firstShipAt: input.firstShipAt,
+      heroPath: input.heroPath,
+      channelThesis: input.channelThesis,
+      marketingProfile: input.marketingProfile,
+      week1Ready: input.week1Ready,
+      onboardingTrack: input.onboardingTrack,
+      connected: input.connected,
+      persona: input.persona,
+      opsCadence: input.opsCadence,
+    });
     return {
-      id: input.connected ? "generate-plan" : "preview-plan",
-      eyebrow: pv.eyebrow,
-      title: input.connected ? pv.planTitle : pv.offlinePlanTitle,
-      reason: input.connected
-        ? pv.promise
-        : "Scan-based outline — connect for full AI personalization.",
+      id: firstRun.id,
+      eyebrow: firstRun.eyebrow,
+      title: firstRun.title,
+      reason: firstRun.reason,
       tone: "accent",
-      primaryLabel: input.connected ? PLAN_AI_LABEL : PLAN_PREVIEW_LABEL,
-      secondaryLabel: input.connected ? undefined : "Connect",
-      dispatch: input.connected ? { type: "generate_plan" } : { type: "preview_plan" },
-      secondaryDispatch: input.connected ? undefined : { type: "connect" },
+      primaryLabel: firstRun.primaryLabel,
+      dispatch: { type: "open_workspace" },
     };
   }
 

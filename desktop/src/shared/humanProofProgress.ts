@@ -2,6 +2,8 @@
  * Faz 5 — progressive human proof: posted URL → metrics → complete.
  */
 import type { HumanProofDraft, HumanProofProgressStep } from "./humanExecutionAsset";
+import type { CmoOpsCadence, CmoOpsTask } from "./cmoOpsCadence";
+import { resolveProofRequirements } from "./proofRequirements";
 
 const URL_RE = /^https?:\/\/.+/i;
 
@@ -33,10 +35,18 @@ export function canAdvanceToMetrics(draft: HumanProofDraft | null | undefined): 
 export function canCompleteHumanProof(
   draft: HumanProofDraft | null | undefined,
   requireKpi: boolean,
+  cadence?: CmoOpsCadence | null,
+  task?: Pick<CmoOpsTask, "owner" | "done_when" | "expected_proof_kind">,
 ): { ok: boolean; error?: string } {
   const posted = validatePostedUrl(draft?.posted_url);
   if (!posted.ok) return posted;
-  if (requireKpi && draft?.kpi_value == null && !draft?.measure_deferred) {
+
+  const effectiveRequireKpi =
+    task != null
+      ? resolveProofRequirements(cadence, task).kpiRequired && !draft?.measure_deferred
+      : requireKpi;
+
+  if (effectiveRequireKpi && draft?.kpi_value == null && !draft?.measure_deferred) {
     return { ok: false, error: "Log a KPI value or defer measurement before completing." };
   }
   return { ok: true };

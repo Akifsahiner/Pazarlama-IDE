@@ -40,6 +40,8 @@ export function shouldShowSuggestedMovesGrid(input: {
 }): boolean {
   if (isWeek1OpsActive(input.opsCadence)) return false;
   if (input.commandSurfaceActive) return false;
+  /** Post-ship pre-Week-1: one primary action only — no plan/move grid. */
+  if (input.firstShipAt != null && !isWeek1OpsActive(input.opsCadence)) return false;
   if (input.onboardingTrack !== "full_cmo" && input.firstShipAt == null) return false;
   return true;
 }
@@ -50,6 +52,7 @@ export function shouldShowGtmKnowledgeStrip(input: {
   onboardingTrack?: OnboardingTrack;
 }): boolean {
   if (isWeek1OpsActive(input.opsCadence)) return false;
+  if (input.firstShipAt != null && !isWeek1OpsActive(input.opsCadence)) return false;
   if (input.onboardingTrack !== "full_cmo" && input.firstShipAt == null) return false;
   return true;
 }

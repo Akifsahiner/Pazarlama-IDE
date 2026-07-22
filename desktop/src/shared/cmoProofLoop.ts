@@ -27,6 +27,7 @@ import {
 import { weekLabel } from "./cmoContinuous";
 import type { ManualKpi, MarketingProfile } from "./types";
 import { isMeasurableForReview } from "./marketingTaskContract";
+import { shouldRequireKpiProof } from "./proofRequirements";
 
 export interface OpsKpiGate {
   presetId: string;
@@ -213,15 +214,20 @@ export function validateKpiProof(
   return { ok: true, errors: [] };
 }
 
-/** Full P1 + P2 validation chain. */
+/** Full P1 + P2 validation chain — respects progressive proof (URL-only before Day 3). */
 export function validateFullOpsProof(
   task: CmoOpsTask,
-  proof: OpsProofInput,
+  proof: OpsProofInput & { measure_deferred?: boolean },
   profile?: MarketingProfile | null,
+  cadence?: CmoOpsCadence | null,
 ): OpsProofValidation {
   const base = validateOpsProof(task, proof);
   if (!base.ok) return base;
   if (!needsOpsProof(task.owner)) return base;
+
+  if (!shouldRequireKpiProof(cadence, task, { measure_deferred: proof.measure_deferred })) {
+    return base;
+  }
   return validateKpiProof(task, proof, profile);
 }
 

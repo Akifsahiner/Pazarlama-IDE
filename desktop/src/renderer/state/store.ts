@@ -199,6 +199,18 @@ import {
   PLAN_STUDIO_WEEK1_BLOCK_REASON,
   shouldBlockPlanStudio,
 } from "@shared/northStarFunnel";
+import { isPlanNavigationTarget } from "@shared/planStudioGuard";
+import { injectDay0SetupTasks } from "@shared/day0SetupTasks";
+import {
+  recordPulseCheckpoint,
+  resolvePendingPulseCheckpoint,
+  type PulseAnswer,
+} from "@shared/pulseCheckpoints";
+import {
+  buildOpsSteerPrompt,
+  buildWeek1OpsTurnContext,
+  mergeWeek1OpsIntoAgentContext,
+} from "@shared/week1OpsTurnContext";
 import { appendExecutionMetric, type ExecutionMetricsRollup } from "@shared/executionMetrics";
 import type { FirstShipLedger } from "@shared/types";
 import {
@@ -243,7 +255,6 @@ import {
 import {
   assessMeasurementBaseline,
 } from "@shared/measurementBaseline";
-import { isWeek1Ready } from "@shared/launchReadiness";
 import {
   buildShipReceiptFromApply,
   markShipReceiptVerifyRunning,
@@ -274,7 +285,7 @@ import {
 import { appendKpiSnapshot } from "@shared/kpiTrendSeries";
 import { parseSocialMetricsImport, mergeDistributionImportHints } from "@shared/socialMetricsImport";
 import { resolveActivePulseCheckpoint } from "@shared/measurementPulse";
-import { kpiFromPreset } from "@shared/kpiPresets";
+import { KPI_PRESETS, kpiFromPreset } from "@shared/kpiPresets";
 import {
   applyNextCycleStarted,
   archiveCompletedCycle,
@@ -822,6 +833,9 @@ interface AppState {
   week1BriefingOpen: boolean;
   /** Faz 2 — unified launch readiness stepper (activation / revenue / measurement). */
   launchReadinessOpen: boolean;
+  /** Day 3/5/7 mandatory pulse ritual modal. */
+  pulseRitualOpen?: boolean;
+  pulseRitualCheckpoint?: 3 | 5 | 7;
   /** Faz 5 — measurement baseline gate before Week 1. */
   measurementIntakeOpen: boolean;
   /** P8 — Distribution operator (hook grid + volume). */
@@ -927,6 +941,14 @@ interface AppState {
   closeWeek1Briefing: () => void;
   openLaunchReadiness: () => void;
   closeLaunchReadiness: () => void;
+  openPulseRitual: (checkpoint?: 3 | 5 | 7) => void;
+  closePulseRitual: () => void;
+  completePulseCheckpoint: (input: {
+    checkpoint: 3 | 5 | 7;
+    answer: PulseAnswer;
+    metric_value?: number;
+    metric_preset_id?: string;
+  }) => string | null;
   openMeasurementIntake: () => void;
   closeMeasurementIntake: () => void;
   acknowledgeMeasurementBaseline: (note?: string) => void;
@@ -1355,6 +1377,48 @@ export const useApp = create<AppState>((set, get) => {
       };
     });
     return id;
+  };
+
+  const blockPlanStudioNavigation = (): boolean => {
+    const opsCadence = get().opsCadence ?? get().marketingProfile?.ops_cadence;
+    if (!shouldBlockPlanStudio({ opsCadence })) return false;
+    appendEvent({
+      role: "system",
+      kind: "status",
+      text: PLAN_STUDIO_WEEK1_BLOCK_REASON,
+    });
+    set((s) => ({
+      route: "workspace",
+      canvas: { ...s.canvas, mode: "run" },
+    }));
+    return true;
+  };
+
+  const buildComposerAgentContext = () => {
+    const { opsCadence, marketingProfile, channelThesis, growthControlPlane } = get();
+    const cadence = opsCadence ?? marketingProfile?.ops_cadence;
+    const week1 = buildWeek1OpsTurnContext({
+      opsCadence: cadence,
+      channelThesis: channelThesis ?? marketingProfile?.channel_thesis,
+      bottleneck: growthControlPlane?.binding?.headline,
+    });
+    return mergeWeek1OpsIntoAgentContext(
+      buildAgentTurnContext({
+        run: get().run,
+        plan: get().plan,
+        planProgress: get().planProgress,
+        campaignSession: marketingProfile?.campaign_session ?? null,
+      }),
+      week1,
+    );
+  };
+
+  const syncPendingPulseRitual = () => {
+    const cadence = get().opsCadence ?? get().marketingProfile?.ops_cadence;
+    const pending = resolvePendingPulseCheckpoint(cadence ?? null);
+    if (pending != null) {
+      set({ pulseRitualOpen: true, pulseRitualCheckpoint: pending });
+    }
   };
 
   const appendPresentedError = (raw: string) => {
@@ -4255,6 +4319,8 @@ export const useApp = create<AppState>((set, get) => {
     strategicIntakeOpen: false,
     week1BriefingOpen: false,
     launchReadinessOpen: false,
+    pulseRitualOpen: false,
+    pulseRitualCheckpoint: undefined,
     measurementIntakeOpen: false,
     lastMorningBriefDayKey: undefined,
     morningUnlockToast: undefined,
@@ -5445,34 +5511,15 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     beginFirstHour: () => {
-      const { project, runtime } = get();
+      const { project } = get();
       if (!project) return;
-      const opsCadence = get().opsCadence ?? get().marketingProfile?.ops_cadence;
-      if (shouldBlockPlanStudio({ opsCadence })) {
-        appendEvent({
-          role: "system",
-          kind: "status",
-          text: PLAN_STUDIO_WEEK1_BLOCK_REASON,
-        });
-        set({ phase: "workspace", route: "workspace" });
-        get().setActiveCanvas("run");
-        return;
-      }
-      clearFirstHourAutoHandoff();
-      track("begin_first_hour");
-      set({
-        phase: "workspace",
-        route: "workspace",
-        workspaceHandoff: undefined,
-        firstHourScoutPending: false,
+      if (blockPlanStudioNavigation()) return;
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: "First hour is ship-first now — opening Quick Start on your landing file.",
       });
-      get().setWorkSurface("campaign-plan");
-      get().setActiveCanvas("campaign-plan");
-      if (runtime === "connected") {
-        void get().generatePlan();
-      } else {
-        get().previewPlanOutline();
-      }
+      get().beginQuickStartShip();
     },
 
     beginFirstHourWow: () => {
@@ -5910,6 +5957,44 @@ export const useApp = create<AppState>((set, get) => {
     closeWeek1Briefing: () => set({ week1BriefingOpen: false }),
     openLaunchReadiness: () => set({ launchReadinessOpen: true }),
     closeLaunchReadiness: () => set({ launchReadinessOpen: false }),
+    openPulseRitual: (checkpoint) => {
+      const cadence = get().opsCadence ?? get().marketingProfile?.ops_cadence;
+      const pending = checkpoint ?? resolvePendingPulseCheckpoint(cadence ?? null);
+      if (pending == null) return;
+      set({ pulseRitualOpen: true, pulseRitualCheckpoint: pending });
+    },
+    closePulseRitual: () => set({ pulseRitualOpen: false, pulseRitualCheckpoint: undefined }),
+    completePulseCheckpoint: (input) => {
+      const cadence = get().opsCadence;
+      if (!cadence) return "No active ops cadence.";
+      const next = recordPulseCheckpoint(cadence, input.checkpoint, {
+        answer: input.answer,
+        metric_value: input.metric_value,
+        metric_preset_id: input.metric_preset_id,
+      });
+      syncOpsCadenceState(next);
+      if (input.metric_value != null && input.metric_preset_id) {
+        const preset = KPI_PRESETS.find((p) => p.id === input.metric_preset_id);
+        void get().upsertManualKpi({
+          id: input.metric_preset_id,
+          name: preset?.name ?? input.metric_preset_id,
+          value: input.metric_value,
+          target: preset?.defaultTarget,
+          unit: preset?.unit,
+          source: "manual",
+          updated_at: new Date().toISOString(),
+        });
+      }
+      set({ pulseRitualOpen: false, pulseRitualCheckpoint: undefined });
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `Day ${input.checkpoint} pulse recorded — ${input.answer === "yes" ? "metric moved" : "needs pivot attention"}.`,
+      });
+      recomputeGrowthPlane();
+      syncPendingPulseRitual();
+      return null;
+    },
     openMeasurementIntake: () => set({ measurementIntakeOpen: true }),
     closeMeasurementIntake: () => set({ measurementIntakeOpen: false }),
     acknowledgeMeasurementBaseline: (note) => {
@@ -6393,7 +6478,7 @@ export const useApp = create<AppState>((set, get) => {
         });
       }
       const baseline = assessMeasurementBaseline(marketingProfile, project);
-      const week1Ready = isWeek1Ready({
+      const launchInput = {
         founderFit: marketingProfile?.founder_fit,
         productActivation:
           get().productActivation ?? marketingProfile?.product_activation,
@@ -6402,16 +6487,7 @@ export const useApp = create<AppState>((set, get) => {
         measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
         firstShipAt: get().firstShipAt,
         onboardingTrack: get().onboardingTrack,
-      });
-      if (!week1Ready) {
-        set({ launchReadinessOpen: true });
-        appendEvent({
-          role: "system",
-          kind: "status",
-          text: "Revenue intake required for paying-customer goals — measurement lands on Day 3 pulse.",
-        });
-        return;
-      }
+      };
 
       track("begin_cmo_week1", { thesis_id: thesis.id });
       const projectId = get().activeProjectId ?? project.id;
@@ -6465,6 +6541,8 @@ export const useApp = create<AppState>((set, get) => {
             campaignSessionId: session.id,
           })
         : createOpsCadenceFromThesis(thesis, { campaignSessionId: session.id });
+
+      opsCadence = injectDay0SetupTasks(opsCadence, launchInput);
 
       let laneA = productBinding.active
         ? {
@@ -6671,8 +6749,10 @@ export const useApp = create<AppState>((set, get) => {
         warRoomExpanded: true,
         launchReadinessOpen: false,
         week1BriefingOpen: false,
+        composerMode: "ask",
       });
       get().setActiveCanvas("run");
+      syncPendingPulseRitual();
 
       const firstSystemOps = opsCadence.tasks.find((t) => t.owner === "system");
       const firstUser = productBinding.active
@@ -6740,7 +6820,7 @@ export const useApp = create<AppState>((set, get) => {
         kpi_source: enriched.kpiFields.kpi_source,
         kpi_unit: enriched.kpiFields.kpi_unit,
       };
-      const validation = validateFullOpsProof(task, fullProof, profile);
+      const validation = validateFullOpsProof(task, fullProof, profile, cadence);
       if (!validation.ok) return validation.errors.join(" ");
 
       const { cadence: next, error } = completeOpsTaskCore(cadence, taskId, fullProof);
@@ -7737,7 +7817,7 @@ export const useApp = create<AppState>((set, get) => {
       const dayIndex = cadence?.day_index ?? 1;
       const requireKpi =
         dayIndex >= 3 && task ? /\bkpi\b|\bmetric\b|\bretention\b/i.test(task.done_when) : false;
-      const gate = canCompleteHumanProof(draft, requireKpi);
+      const gate = canCompleteHumanProof(draft, requireKpi, cadence, task);
       if (!gate.ok) return gate.error ?? "Cannot complete yet.";
 
       const url = draft?.posted_url?.trim();
@@ -7783,6 +7863,7 @@ export const useApp = create<AppState>((set, get) => {
           urls: url ? [url] : undefined,
           note,
           kpi_value: draft?.kpi_value,
+          measure_deferred: draft?.measure_deferred ?? dayIndex < 3,
         });
         if (err) return err;
       }
@@ -8985,12 +9066,7 @@ export const useApp = create<AppState>((set, get) => {
         : undefined;
       const agentContext =
         opts?.context ??
-        buildAgentTurnContext({
-          run: get().run,
-          plan: get().plan,
-          planProgress,
-          campaignSession: get().marketingProfile?.campaign_session ?? null,
-        });
+        buildComposerAgentContext();
 
       try {
         const token = await resolveBackendToken(settings, auth.authEnabled);
@@ -10642,7 +10718,8 @@ export const useApp = create<AppState>((set, get) => {
 
     clearKpiLogDefaultPreset: () => set({ kpiLogDefaultPresetId: undefined }),
 
-    setActivePlaybook: (playbookId) =>
+    setActivePlaybook: (playbookId) => {
+      if (blockPlanStudioNavigation()) return;
       set((s) => ({
         activePlaybookId: playbookId,
         canvas: { mode: "campaign-plan" },
@@ -10650,7 +10727,8 @@ export const useApp = create<AppState>((set, get) => {
           playbookId && playbookId !== s.activePlaybookId
             ? s.planDetailScrollNonce + 1
             : s.planDetailScrollNonce,
-      })),
+      }));
+    },
 
     clearPlanMilestone: (key) =>
       set((s) => ({
@@ -10823,6 +10901,7 @@ export const useApp = create<AppState>((set, get) => {
         return;
       }
       if (normalized === "campaign-plan" || mode === "plan") {
+        if (blockPlanStudioNavigation()) return;
         set((s) => ({ canvas: { ...s.canvas, mode: "campaign-plan" } }));
         return;
       }
@@ -10830,7 +10909,9 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     setActiveCanvas: (mode) => {
-      set((s) => ({ canvas: { ...s.canvas, mode: normalizeCanvasMode(mode) } }));
+      const normalized = normalizeCanvasMode(mode);
+      if (isPlanNavigationTarget(normalized) && blockPlanStudioNavigation()) return;
+      set((s) => ({ canvas: { ...s.canvas, mode: normalized } }));
     },
 
     setWorkSurface: (surface, opts) => {
@@ -11246,8 +11327,18 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     submitComposerText: async (text) => {
-      const trimmed = text.trim();
+      let trimmed = text.trim();
       if (!trimmed || get().agentStreaming) return;
+
+      const cadence = get().opsCadence ?? get().marketingProfile?.ops_cadence;
+      const week1 = buildWeek1OpsTurnContext({
+        opsCadence: cadence,
+        channelThesis: get().channelThesis ?? get().marketingProfile?.channel_thesis,
+        bottleneck: get().growthControlPlane?.binding?.headline,
+      });
+      if (week1 && trimmed.length < 24) {
+        trimmed = buildOpsSteerPrompt(week1);
+      }
 
       const mode = get().composerMode;
       if (mode === "browse") {

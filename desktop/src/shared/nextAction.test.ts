@@ -137,7 +137,7 @@ describe("resolveNextAction", () => {
     assert.equal(a?.dispatch.type, "open_workspace");
   });
 
-  it("allows offline plan preview on full_cmo track without ship", () => {
+  it("full_cmo pre-ship workspace opens execution path not plan preview", () => {
     const a = resolveNextAction(
       base({
         connected: false,
@@ -147,7 +147,7 @@ describe("resolveNextAction", () => {
         scope: "workspace",
       }),
     );
-    assert.equal(a?.dispatch.type, "preview_plan");
+    assert.equal(a?.dispatch.type, "open_workspace");
   });
 
   it("hides return-run when already on run canvas", () => {
@@ -177,7 +177,7 @@ describe("resolveNextAction", () => {
     assert.equal(a?.dispatch.type, "open_workspace");
   });
 
-  it("suggests generate plan when connected full_cmo and no plan", () => {
+  it("full_cmo pre-ship connected suggests workspace not generate plan", () => {
     const a = resolveNextAction(
       base({
         connected: true,
@@ -187,7 +187,7 @@ describe("resolveNextAction", () => {
         onboardingTrack: "full_cmo",
       }),
     );
-    assert.equal(a?.dispatch.type, "generate_plan");
+    assert.equal(a?.dispatch.type, "open_workspace");
   });
 
   it("uses sales persona value on home when full_cmo track", () => {

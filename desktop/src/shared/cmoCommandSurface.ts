@@ -392,6 +392,7 @@ export type CommandSurfaceAction =
   | { kind: "focus_backstage"; anchor: string; label: string; testId: string }
   | { kind: "retry_execution"; taskId: string; label: string; testId: string }
   | { kind: "sync_ga4"; label: string; testId: string }
+  | { kind: "complete_pulse"; checkpoint: 3 | 5 | 7; label: string; testId: string }
   | { kind: "none"; reason: string };
 
 function pulseActionToCommandSurface(action: PulseCommandAction): CommandSurfaceAction {
@@ -458,6 +459,8 @@ function resolvePulseCommandSurfaceAction(
   return pulseAction ? pulseActionToCommandSurface(pulseAction) : null;
 }
 
+import { resolvePendingPulseCheckpoint } from "./pulseCheckpoints";
+
 export interface ResolveCommandSurfaceActionInput extends BuildCommandSurfaceModelInput {
   firstShipAt?: number | null;
   wedgePhase?: string | null;
@@ -474,6 +477,16 @@ export function resolveCommandSurfaceAction(
   });
   if (preShip) {
     return { kind: "ship_first", label: preShip.primaryLabel, testId: preShip.testId };
+  }
+
+  const pendingPulse = input.cadence ? resolvePendingPulseCheckpoint(input.cadence) : null;
+  if (pendingPulse != null) {
+    return {
+      kind: "complete_pulse",
+      checkpoint: pendingPulse,
+      label: `Day ${pendingPulse} pulse — one metric check-in`,
+      testId: "command-surface-complete-pulse",
+    };
   }
 
   const governance = resolveCommandSurfaceGovernance(input);

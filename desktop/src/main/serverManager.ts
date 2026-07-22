@@ -1,7 +1,6 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { app } from "electron";
 import { loadBundledApiKey } from "./bundledApiKey";
 
 export type BundledServerState = "stopped" | "starting" | "ready" | "error";
@@ -10,11 +9,23 @@ let child: ChildProcess | null = null;
 let state: BundledServerState = "stopped";
 let lastError: string | undefined;
 
-function bundledServerRoot(): string | null {
-  const root = path.join(process.resourcesPath, "server");
-  const entry = path.join(root, "dist", "index.js");
-  if (fs.existsSync(entry)) return root;
+function devServerRoot(): string | null {
+  const candidates = [
+    path.join(process.cwd(), "server", "dist", "index.js"),
+    path.join(process.cwd(), "..", "server", "dist", "index.js"),
+    path.join(__dirname, "..", "..", "..", "server", "dist", "index.js"),
+  ];
+  for (const entry of candidates) {
+    if (fs.existsSync(entry)) return path.dirname(path.dirname(entry));
+  }
   return null;
+}
+
+function bundledServerRoot(): string | null {
+  const packaged = path.join(process.resourcesPath, "server");
+  const packagedEntry = path.join(packaged, "dist", "index.js");
+  if (fs.existsSync(packagedEntry)) return packaged;
+  return devServerRoot();
 }
 
 function serverEntryPath(): string | null {
@@ -131,9 +142,8 @@ export function stopBundledServerOnQuit(): void {
   if (child) child.kill("SIGTERM");
 }
 
-/** Auto-start for packaged builds when localhost backend is expected. */
+/** Auto-start when localhost backend is expected (packaged + dev with server build). */
 export async function maybeAutoStartBundledServer(serverUrl: string): Promise<{ started: boolean; ok: boolean }> {
-  if (!app.isPackaged) return { started: false, ok: false };
   try {
     const url = new URL(serverUrl);
     if (url.hostname !== "127.0.0.1" && url.hostname !== "localhost") return { started: false, ok: false };

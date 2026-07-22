@@ -14,6 +14,7 @@ import {
   skipOpsTask,
 } from "./cmoOpsCadence";
 import { toBrowserEvidenceProof } from "./browserVerify";
+import { recordPulseCheckpoint } from "./pulseCheckpoints";
 import type { ProjectProfile } from "./types";
 
 function baseProject(): ProjectProfile {
@@ -175,6 +176,9 @@ describe("cmoOpsCadence", () => {
         kpi_value: 42,
         note: "Logged measurable outcome for the week review gate.",
       }).cadence;
+    }
+    if (cadence.day_index >= 3) {
+      cadence = recordPulseCheckpoint(cadence, 3, { answer: "yes", metric_value: 42 });
     }
     assert.equal(opsQueueBlocksLaneWork(cadence), false);
   });
