@@ -1,0 +1,74 @@
+name: Dogfood blocker
+description: Report a Week 1 golden path blocker from a dogfood session
+title: "[dogfood] B? — "
+labels:
+  - dogfood
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use the facilitator sheet: `desktop/scripts/golden-path-dogfood-facilitator-sheet.md`
+        Blocker codes B1–B9 are defined in `desktop/src/shared/dogfoodSession.ts`.
+  - type: dropdown
+    id: blocker_code
+    attributes:
+      label: Primary blocker code
+      description: B1 intake · B2 dispatch · B3 validation · B4 apply · B5 verify · B6 human · B7 reload · B8 ceremony · B9 wrong surface
+      options:
+        - B1
+        - B2
+        - B3
+        - B4
+        - B5
+        - B6
+        - B7
+        - B8
+        - B9
+    validations:
+      required: true
+  - type: input
+    id: session_id
+    attributes:
+      label: Session ID (A–E)
+      placeholder: A
+    validations:
+      required: true
+  - type: input
+    id: exit_score
+    attributes:
+      label: Exit score (1–5)
+      placeholder: "3"
+    validations:
+      required: true
+  - type: input
+    id: fst_minutes
+    attributes:
+      label: FST minutes (project open → first apply)
+      placeholder: "42"
+  - type: input
+    id: screen_record
+    attributes:
+      label: Screen record URL
+      placeholder: https://...
+  - type: textarea
+    id: notes
+    attributes:
+      label: What happened (one paragraph)
+      description: Include timestamp from video if possible
+    validations:
+      required: true
+  - type: checkboxes
+    id: trust_gates
+    attributes:
+      label: Trust gates observed
+      options:
+        - label: Apply blocked without validation
+          required: false
+        - label: Reload — execution kernel intact
+          required: false
+        - label: Reload — human proof intact
+          required: false
+        - label: No false complete before verify
+          required: false
+        - label: Week 2 without mandatory essay
+          required: false

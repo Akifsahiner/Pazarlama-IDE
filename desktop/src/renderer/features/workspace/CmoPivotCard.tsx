@@ -125,6 +125,7 @@ export function InfluencerVerdictCard({ verdict }: { verdict: InfluencerVerdict 
 }
 
 export function DelegateVerdictCard({ verdict }: { verdict: DelegateVerdict }) {
+  const extendTrial = useApp((s) => s.extendDelegateTrial);
   const tone =
     verdict.kind === "release"
       ? "warn"
@@ -161,6 +162,18 @@ export function DelegateVerdictCard({ verdict }: { verdict: DelegateVerdict }) {
           </li>
         ))}
       </ul>
+      {verdict.kind === "extend" && verdict.brief_id && (
+        <div className="mt-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => extendTrial(verdict.brief_id)}
+            data-testid="delegate-extend-trial"
+          >
+            Extend trial +3 days
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }

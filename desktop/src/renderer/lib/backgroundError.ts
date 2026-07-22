@@ -1,5 +1,7 @@
 /** Non-fatal background failures — log always; toast when user-visible. */
 
+import { track } from "@renderer/lib/analytics";
+
 export type BackgroundErrorSeverity = "debug" | "warn" | "user";
 
 let toastHandler: ((message: string) => void) | null = null;
@@ -21,6 +23,7 @@ export function reportBackgroundError(
     return;
   }
   console.warn(line, err);
+  track("background_error", { context, message: detail, severity });
   if (severity === "user" && toastHandler) {
     toastHandler(`${context}: ${detail}`);
   }

@@ -7,10 +7,12 @@ import { createInfluencerOperatorFromThesis } from "./cmoInfluencerOperator";
 import {
   buildDelegateHandoffBundle,
   buildDelegateHireScaffold,
+  buildDelegateSowMarkdown,
   completeRubricDay,
   createDailyRubricsForBrief,
   createDelegateOperatorFromThesis,
   evaluateDelegatePerformance,
+  extendDelegateTrial,
   getNextDelegateRubricDay,
   hydrateDelegateOperatorFromJson,
   importDelegateDelivery,
@@ -267,5 +269,66 @@ describe("cmoDelegateOperator", () => {
     });
     assert.equal(isDelegateOperatorGate({ thesis, opsCadence: { week_index: 1 } as never }), false);
     assert.equal(createDelegateOperatorFromThesis(thesis), null);
+  });
+
+  it("writer_publish rubric → 4 days (not 7-day VA template)", () => {
+    const thesis = buildCmoIntake({
+      project: baseProject(),
+      persona: "marketing",
+      context: { force_thesis_id: "seo_content" },
+    });
+    const ws = createDelegateOperatorFromThesis(thesis)!;
+    const writerBrief = ws.briefs.find((b) => b.role === "writer")!;
+    const rubrics = createDailyRubricsForBrief(ws, writerBrief.id, thesis);
+    assert.equal(rubrics.length, 4);
+    assert.match(rubrics[0]!.title, /Outline/i);
+  });
+
+  it("agency_wave rubric → 5 days with DM checklist", () => {
+    const thesis = buildCmoIntake({
+      project: baseProject(),
+      persona: "marketing",
+      context: { force_thesis_id: "influencer_partnerships" },
+    });
+    const ws = createDelegateOperatorFromThesis(thesis)!;
+    const agencyBrief = ws.briefs.find((b) => b.role === "agency")!;
+    const rubrics = createDailyRubricsForBrief(ws, agencyBrief.id, thesis);
+    assert.equal(rubrics.length, 5);
+    assert.match(rubrics[0]!.checklist[0]!.label, /DM/i);
+  });
+
+  it("buildDelegateSowMarkdown includes scope and budget cap when set", () => {
+    const thesis = outboundThesis();
+    const ws = createDelegateOperatorFromThesis(thesis)!;
+    const brief = ws.briefs[0]!;
+    const hire = buildDelegateHireScaffold(thesis, brief);
+    hire.cost_estimate_usd = 250;
+    const sow = buildDelegateSowMarkdown(hire, brief);
+    assert.match(sow, /Statement of Work/);
+    assert.match(sow, /\$250/);
+    assert.match(sow, /Acceptance criteria/);
+  });
+
+  it("extendDelegateTrial appends 3 rubric days and resets verdict to on_track", () => {
+    const thesis = outboundThesis();
+    let ws = createDelegateOperatorFromThesis(thesis)!;
+    const brief = ws.briefs[0]!;
+    ws = {
+      ...ws,
+      daily_rubrics: createDailyRubricsForBrief(ws, brief.id, thesis),
+      verdict: {
+        kind: "extend",
+        brief_id: brief.id,
+        headline: "Extend trial",
+        rationale: ["Partial"],
+        evidence: [],
+        computed_at: new Date().toISOString(),
+      },
+    };
+    const before = ws.daily_rubrics.length;
+    const extended = extendDelegateTrial(ws, brief.id, thesis);
+    assert.equal(extended.daily_rubrics.length, before + 3);
+    assert.equal(extended.verdict?.kind, "on_track");
+    assert.match(extended.verdict?.headline ?? "", /extended \+3/i);
   });
 });

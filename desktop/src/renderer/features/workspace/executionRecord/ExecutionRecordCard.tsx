@@ -147,7 +147,19 @@ export function ExecutionRecordCard({
             </button>
           </div>
           {record.dayPulse && (
-            <DayPulseRow pulse={record.dayPulse} kpiTrend={record.kpiTrend} compact />
+            <DayPulseRow
+              pulse={record.dayPulse}
+              kpiTrend={record.kpiTrend}
+              compact
+              pulseAction={
+                record.next.action.kind !== "none" &&
+                "testId" in record.next.action &&
+                record.next.action.testId.includes("pulse")
+                  ? record.next.action
+                  : null
+              }
+              onPulseAction={handlePrimary}
+            />
           )}
         </div>
       </motion.section>
@@ -244,7 +256,18 @@ export function ExecutionRecordCard({
         )}
 
         {record.dayPulse && (
-          <DayPulseRow pulse={record.dayPulse} kpiTrend={record.kpiTrend} />
+          <DayPulseRow
+            pulse={record.dayPulse}
+            kpiTrend={record.kpiTrend}
+            pulseAction={
+              record.next.action.kind !== "none" &&
+              "testId" in record.next.action &&
+              record.next.action.testId.includes("pulse")
+                ? record.next.action
+                : null
+            }
+            onPulseAction={handlePrimary}
+          />
         )}
 
         {record.hookLeaderboard && record.hookLeaderboard.length > 0 && (

@@ -2,6 +2,9 @@ import { useEffect } from "react";
 import { useApp } from "@renderer/state/store";
 import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
 import { isQuickStartTrack } from "@shared/quickStartWedge";
+import { isContinuousReplanReady } from "@shared/cmoContinuous";
+import { isWeekCloseReady } from "@shared/cmoProofLoop";
+import { ReplanPreviewCard } from "@renderer/features/workspace/ReplanPreviewCard";
 import { ShipWinCard } from "@renderer/features/workspace/ShipWinCard";
 import { ShipRecoveryCard } from "@renderer/features/agent/ShipRecoveryCard";
 import { QuickStartSealBanner } from "@renderer/features/onboarding/QuickStartSealBanner";
@@ -30,6 +33,16 @@ export function ExecutionRecordStage() {
   const onboardingTrack = useApp((s) => s.onboardingTrack);
   const checkMorningDayUnlock = useApp((s) => s.checkMorningDayUnlock);
   const week1FocusMode = useApp((s) => s.week1FocusMode);
+  const growthMemory = useApp((s) => s.growthMemory ?? s.marketingProfile?.growth_memory);
+  const cmoContinuous = useApp((s) => s.cmoContinuous ?? s.marketingProfile?.cmo_continuous);
+  const campaignSession = useApp((s) => s.marketingProfile?.campaign_session);
+  const weekCloseReady = opsCadence
+    ? isWeekCloseReady(opsCadence, marketingProfile, channelThesis)
+    : false;
+  const replanReady =
+    opsCadence &&
+    growthMemory?.pending_replan &&
+    isContinuousReplanReady(cmoContinuous, opsCadence, campaignSession?.phase, weekCloseReady);
 
   useEffect(() => {
     if (!opsCadence) return;
@@ -90,6 +103,10 @@ export function ExecutionRecordStage() {
         ) : (
           <>
             <ExecutionRecordCard record={record} compact={heroCompact} />
+
+            {replanReady && growthMemory?.pending_replan && (
+              <ReplanPreviewCard preview={growthMemory.pending_replan} />
+            )}
 
             {shipRecovery && !runActive && <ShipRecoveryCard recovery={shipRecovery} />}
 

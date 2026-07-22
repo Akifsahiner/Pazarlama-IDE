@@ -3,7 +3,7 @@
  * The primary surface owns daily CMO work; deeper operational context stays backstage.
  */
 import type { CampaignPhase } from "./campaignSession";
-import type { ChannelThesisId } from "./cmoIntake";
+import type { ChannelThesis, ChannelThesisId } from "./cmoIntake";
 import type { CmoContinuousState } from "./cmoContinuous";
 import { isContinuousReplanReady } from "./cmoContinuous";
 import { resolveHumanProofAction } from "./cmoHumanExecutionBind";
@@ -28,6 +28,13 @@ import { getNextMonetizationTask, type MonetizationWorkspace } from "./cmoRevenu
 import { withNarrativePrefix } from "./cmoNarrativeContext";
 import type { CmoOpsCadence } from "./cmoOpsCadence";
 import { evaluateWeek1MetricsWithGa4Priority, isWeekCloseReady } from "./cmoProofLoop";
+import {
+  resolvePulseCommandAction,
+  resolvePulseKpiPresetId,
+  type PulseCommandAction,
+} from "./measurementPulse";
+import { buildKpiTrendSeries, countFlatPulseCheckpoints } from "./kpiTrendSeries";
+import type { MarketingProfile } from "./types";
 import { canRetryExecution } from "./executionRetryPolicy";
 
 type TodayWithoutWhy = Omit<GrowthTodayMove, "why"> & { why?: string };
@@ -116,6 +123,8 @@ export interface BuildCommandSurfaceModelInput extends CommandSurfaceGovernanceI
   influencerOperator?: InfluencerOperatorWorkspace | null;
   delegateOperator?: DelegateOperatorWorkspace | null;
   narrativeOneLiner?: string;
+  profile?: MarketingProfile | null;
+  channelThesis?: ChannelThesis | null;
 }
 
 export function resolveTodayWhy(input: ResolveTodayWhyInput): string {
@@ -382,7 +391,72 @@ export type CommandSurfaceAction =
   | { kind: "focus_war_room"; anchor: string; label: string; testId: string }
   | { kind: "focus_backstage"; anchor: string; label: string; testId: string }
   | { kind: "retry_execution"; taskId: string; label: string; testId: string }
+  | { kind: "sync_ga4"; label: string; testId: string }
   | { kind: "none"; reason: string };
+
+function pulseActionToCommandSurface(action: PulseCommandAction): CommandSurfaceAction {
+  switch (action.kind) {
+    case "distribution_kill":
+    case "distribution_post":
+      return {
+        kind: "operator_proof",
+        operator: "distribution",
+        touchId: action.slotId ?? action.hookId ?? "",
+        label: action.label,
+        testId: action.testId,
+      };
+    case "submit_proof":
+      return {
+        kind: "submit_proof",
+        taskId: action.taskId ?? "",
+        label: action.label,
+        testId: action.testId,
+      };
+    case "start_next_cycle":
+      return {
+        kind: "start_next_cycle",
+        mode: action.cycleMode ?? "pivot",
+        thesisId: action.thesisId,
+        label: action.label,
+        testId: action.testId,
+      };
+    case "sync_ga4":
+      return { kind: "sync_ga4", label: action.label, testId: action.testId };
+  }
+}
+
+function resolvePulseCommandSurfaceAction(
+  input: ResolveCommandSurfaceActionInput,
+): CommandSurfaceAction | null {
+  if (!input.cadence || input.cadence.day_index < 3) return null;
+  const assessment = evaluateWeek1MetricsWithGa4Priority(
+    input.cadence,
+    input.profile,
+    input.channelThesis,
+    input.distributionOperator,
+    input.influencerOperator,
+    input.delegateOperator,
+    input.growthMemory,
+  );
+  const presetId = resolvePulseKpiPresetId(input.cadence, assessment);
+  const trend = buildKpiTrendSeries(
+    input.cadence,
+    input.profile,
+    presetId,
+    input.distributionOperator,
+  );
+  const flatCount = countFlatPulseCheckpoints(trend, assessment.primaryTarget ?? undefined);
+  const pulseAction = resolvePulseCommandAction({
+    cadence: input.cadence,
+    profile: input.profile,
+    thesis: input.channelThesis,
+    distributionOperator: input.distributionOperator,
+    influencerOperator: input.influencerOperator,
+    delegateOperator: input.delegateOperator,
+    flatCheckpointCount: flatCount,
+  });
+  return pulseAction ? pulseActionToCommandSurface(pulseAction) : null;
+}
 
 export interface ResolveCommandSurfaceActionInput extends BuildCommandSurfaceModelInput {
   firstShipAt?: number | null;
@@ -591,6 +665,9 @@ export function resolveCommandSurfaceAction(
       testId: "command-surface-submit-proof",
     };
   }
+
+  const pulseAction = resolvePulseCommandSurfaceAction(input);
+  if (pulseAction && pulseAction.kind !== "none") return pulseAction;
 
   if (governance?.kind === "pivot") {
     const pivot = input.cadence?.pivot_suggestion;

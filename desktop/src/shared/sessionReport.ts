@@ -117,6 +117,11 @@ export function buildSessionReportMarkdown(input: SessionReportInput): string {
   return lines.join("\n");
 }
 
+/** Horizon 2 — unified ops snapshot for on-demand export (Continuous Decision). */
+export function buildOpsSnapshotMarkdown(input: SessionReportInput): string {
+  return buildSessionReportMarkdown(input);
+}
+
 /** Styled HTML for print-to-PDF from browser. */
 export function buildSessionReportHtml(markdown: string, title: string): string {
   const body = markdown

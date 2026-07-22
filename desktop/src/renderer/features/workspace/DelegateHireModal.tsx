@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ClipboardCopy, X } from "lucide-react";
 import { useApp } from "@renderer/state/store";
 import { Button } from "@renderer/components/ui/Button";
-import { buildDelegateHireMarkdown } from "@shared/cmoDelegateOperator";
+import { buildDelegateHireMarkdown, buildDelegateSowMarkdown } from "@shared/cmoDelegateOperator";
 
 export function DelegateHireModal() {
   const briefId = useApp((s) => s.pendingDelegateHireBriefId);
@@ -10,6 +10,7 @@ export function DelegateHireModal() {
   const dismiss = useApp((s) => s.dismissDelegateHireModal);
   const openHandoff = useApp((s) => s.openDelegateBriefModal);
   const [copied, setCopied] = useState(false);
+  const [copiedSow, setCopiedSow] = useState(false);
 
   const hire = useMemo(
     () =>
@@ -26,6 +27,7 @@ export function DelegateHireModal() {
   if (!briefId || !hire || !brief) return null;
 
   const md = buildDelegateHireMarkdown(hire);
+  const sowMd = buildDelegateSowMarkdown(hire, brief);
 
   return (
     <div
@@ -48,6 +50,18 @@ export function DelegateHireModal() {
           {md}
         </pre>
         <div className="mt-4 flex flex-wrap justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            iconLeft={<ClipboardCopy size={12} />}
+            onClick={() => {
+              void navigator.clipboard.writeText(sowMd);
+              setCopiedSow(true);
+              window.setTimeout(() => setCopiedSow(false), 2000);
+            }}
+          >
+            {copiedSow ? "Copied SOW" : "Copy SOW"}
+          </Button>
           <Button
             variant="ghost"
             size="sm"

@@ -102,7 +102,7 @@ import {
 } from "@renderer/lib/auth";
 import { BrowserSocket } from "@renderer/lib/browserSocket";
 import { resolveBackendToken } from "@renderer/lib/backendToken";
-import { setAnalyticsEnabled, track } from "@renderer/lib/analytics";
+import { setAnalyticsEnabled, configureAnalytics, track } from "@renderer/lib/analytics";
 import {
   makeEventId,
   type AuthInfo,
@@ -209,7 +209,7 @@ import {
   persistSessionOutcomesLocal,
   persistShipReceiptLocal,
 } from "@renderer/state/quickStartWedgeHelpers";
-import { buildCmoIntake, buildFinalChannelThesis } from "@shared/cmoIntake";
+import { buildCmoIntake, buildFinalChannelThesis, applyMemoryToWeek1Priorities } from "@shared/cmoIntake";
 import type { ChannelThesis } from "@shared/cmoIntake";
 import { evaluateThesisQuality } from "@shared/cmoThesisQualityEngine";
 import { validateFounderFit } from "@shared/cmoFounderFit";
@@ -261,11 +261,13 @@ import {
   evaluateWeek1Metrics,
   evaluateWeek1MetricsWithGa4Priority,
   hasGa4Connected,
+  isWeekCloseReady,
   validateFullOpsProof,
   readGa4MetricValue,
 } from "@shared/cmoProofLoop";
 import { appendKpiSnapshot } from "@shared/kpiTrendSeries";
 import { parseSocialMetricsImport, mergeDistributionImportHints } from "@shared/socialMetricsImport";
+import { resolveActivePulseCheckpoint } from "@shared/measurementPulse";
 import { kpiFromPreset } from "@shared/kpiPresets";
 import {
   applyNextCycleStarted,
@@ -276,6 +278,7 @@ import {
   createInitialContinuousState,
   hydrateContinuousStateFromJson,
   resolveNextCycleThesisId,
+  shouldSilentArchiveCycle,
   weekLabel,
   type CmoContinuousState,
   type NextCycleMode,
@@ -367,6 +370,7 @@ import {
   buildDelegateHandoffBundle,
   completeRubricDay as completeRubricDayCore,
   createDelegateOperatorFromThesis,
+  extendDelegateTrial as extendDelegateTrialCore,
   hydrateDelegateOperatorFromJson,
   importDelegateDelivery,
   migrateToOperatorWorkspace,
@@ -1065,6 +1069,7 @@ interface AppState {
     rubricId: string,
     input: RubricProofInput,
   ) => string | null;
+  extendDelegateTrial: (briefId?: string) => void;
   skipDelegateBrief: (briefId: string, reason?: string) => void;
   connectGa4: () => Promise<void>;
   syncGa4Metrics: () => Promise<void>;
@@ -4214,6 +4219,10 @@ export const useApp = create<AppState>((set, get) => {
           "Loading settings",
         );
         setAnalyticsEnabled(settings.telemetry);
+        configureAnalytics({
+          serverUrl: settings.serverUrl,
+          clientVersion: version,
+        });
         initTheme(migrateTheme(settings.theme));
         set({ settings, version, recents, ready: true, initPhase: "resuming" });
       } catch (err) {
@@ -6053,6 +6062,14 @@ export const useApp = create<AppState>((set, get) => {
           state.channelThesis?.title ?? marketingProfile?.channel_thesis?.title,
       });
       if (!brief) return;
+      const pulseCheckpoint = resolveActivePulseCheckpoint(opsCadence.day_index);
+      if (
+        pulseCheckpoint &&
+        hasGa4Connected(marketingProfile) &&
+        (opsCadence.day_index === 3 || opsCadence.day_index === 5 || opsCadence.day_index === 7)
+      ) {
+        void get().syncGa4Metrics();
+      }
       set({
         lastMorningBriefDayKey: dayKey,
         morningUnlockToast: { dayIndex: brief.dayIndex, today: brief.today },
@@ -6673,6 +6690,32 @@ export const useApp = create<AppState>((set, get) => {
       notifyOpsProgress(get().opsCadence ?? finalCadence, task.what);
       recomputeGrowthPlane();
       track("ops_task_done", { task_id: taskId, owner: task.owner, kpi: fullProof.kpi_id });
+
+      const afterCadence = get().opsCadence ?? finalCadence;
+      const weekCloseReady = isWeekCloseReady(
+        afterCadence,
+        profile,
+        thesis ?? undefined,
+        get().laneDWorkspace ?? profile?.lane_d_workspace,
+        get().monetizationWorkspace ?? profile?.monetization_workspace,
+      );
+      if (
+        shouldSilentArchiveCycle({
+          cadence: afterCadence,
+          continuous: get().cmoContinuous ?? profile?.cmo_continuous,
+          weekCloseReady,
+        })
+      ) {
+        const archiveErr = get().completeOpsWeekReview(undefined);
+        if (!archiveErr) {
+          appendEvent({
+            role: "system",
+            kind: "status",
+            text: `${weekLabel(afterCadence.week_index)} archived automatically — KPI logged, memory saved.`,
+          });
+        }
+      }
+
       return null;
     },
 
@@ -7117,21 +7160,22 @@ export const useApp = create<AppState>((set, get) => {
       if (!check.ok) return check.errors.join(" ");
 
       const mode: NextCycleMode = opts?.mode ?? "pivot";
-      if (mode === "pivot") {
-        const assessment = evaluateWeek1MetricsWithGa4Priority(
-          cadence,
-          marketingProfile,
-          priorThesis,
-          get().distributionOperator ?? marketingProfile?.distribution_operator,
-          get().influencerOperator ?? marketingProfile?.influencer_operator,
-          get().delegateOperator ??
-            get().delegateWorkspace ??
-            marketingProfile?.delegate_operator,
-          get().growthMemory ?? marketingProfile?.growth_memory,
-        );
-        if (assessment.primaryValue == null || assessment.loggedCount <= 0) {
+      const cycleAssessment = evaluateWeek1MetricsWithGa4Priority(
+        cadence,
+        marketingProfile,
+        priorThesis,
+        get().distributionOperator ?? marketingProfile?.distribution_operator,
+        get().influencerOperator ?? marketingProfile?.influencer_operator,
+        get().delegateOperator ??
+          get().delegateWorkspace ??
+          marketingProfile?.delegate_operator,
+        get().growthMemory ?? marketingProfile?.growth_memory,
+      );
+      if (cycleAssessment.primaryValue == null || cycleAssessment.loggedCount <= 0) {
+        if (mode === "pivot") {
           return "Log a numeric KPI in ops proof before pivoting thesis.";
         }
+        return "Log a numeric KPI before doubling down on this channel.";
       }
       const forceThesisId = resolveNextCycleThesisId(cadence, {
         mode,
@@ -7216,6 +7260,7 @@ export const useApp = create<AppState>((set, get) => {
         priorOpsCadenceId: cadence.id,
       });
       newThesis = memoryApplied.thesis;
+      newThesis = applyMemoryToWeek1Priorities(newThesis, memoryApplied.memory);
       const productActivation =
         get().productActivation ??
         marketingProfile?.product_activation ??
@@ -7753,6 +7798,31 @@ export const useApp = create<AppState>((set, get) => {
       return null;
     },
 
+    extendDelegateTrial: (briefId) => {
+      const thesis = get().channelThesis ?? get().marketingProfile?.channel_thesis;
+      const workspace = resolveDelegateOperator(
+        get().delegateOperator ?? get().delegateWorkspace,
+        thesis,
+      );
+      if (!workspace || !thesis) return;
+      const targetId =
+        briefId ??
+        workspace.verdict?.brief_id ??
+        workspace.briefs.find(
+          (b) => b.status === "handed_off" || b.status === "in_progress",
+        )?.id;
+      if (!targetId) return;
+      const next = extendDelegateTrialCore(workspace, targetId, thesis);
+      syncDelegateState(next);
+      track("delegate_trial_extended", { brief_id: targetId });
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: `Delegate trial extended +3 days for ${targetId}`,
+      });
+      recomputeGrowthPlane();
+    },
+
     completeDelegateBrief: (briefId, proof) => {
       const thesis = get().channelThesis ?? get().marketingProfile?.channel_thesis;
       const workspace = resolveDelegateOperator(
@@ -7977,6 +8047,12 @@ export const useApp = create<AppState>((set, get) => {
     updateSettings: async (patch) => {
       const settings = await window.api.settings.set(patch);
       if (patch.telemetry !== undefined) setAnalyticsEnabled(settings.telemetry);
+      if (patch.serverUrl !== undefined || patch.telemetry !== undefined) {
+        configureAnalytics({
+          serverUrl: settings.serverUrl,
+          clientVersion: get().version,
+        });
+      }
       if (patch.theme !== undefined) initTheme(migrateTheme(settings.theme));
       set({ settings });
       if (patch.serverUrl !== undefined || patch.apiToken !== undefined) {

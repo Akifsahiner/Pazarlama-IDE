@@ -7,6 +7,15 @@ import {
   hydrateExecutionKernelFromJson,
 } from "./executionKernel";
 import { createOpsCadenceFromThesis } from "./cmoOpsCadence";
+import {
+  assertSnapshotRoundTrip,
+  buildExecutionSnapshot,
+  parseExecutionKernel,
+  projectStorageKey,
+  serializeExecutionKernel,
+  EXECUTION_PERSISTENCE_KEYS,
+} from "./executionPersistence";
+import { createDelegateOperatorFromThesis } from "./cmoDelegateOperator";
 
 function baseProject(): ProjectProfile {
   return {
@@ -23,6 +32,13 @@ function baseProject(): ProjectProfile {
 }
 
 describe("executionPersistence", () => {
+  it("projectStorageKey uses stable prefix", () => {
+    assert.equal(
+      projectStorageKey(EXECUTION_PERSISTENCE_KEYS.kernel, "proj-1"),
+      "execution_kernel.v1.proj-1",
+    );
+  });
+
   it("hydrate round-trip preserves lifecycle and attempt", () => {
     const thesis = buildCmoIntake({
       project: baseProject(),
@@ -38,11 +54,33 @@ describe("executionPersistence", () => {
       attempt: 2,
       run_id: "run-abc",
     };
-    const raw = JSON.parse(JSON.stringify(kernel));
+    const raw = JSON.parse(serializeExecutionKernel(kernel));
     const hydrated = hydrateExecutionKernelFromJson(raw);
     assert.ok(hydrated);
     assert.equal(hydrated!.instances[task.id]?.status, "running");
     assert.equal(hydrated!.instances[task.id]?.attempt, 2);
     assert.equal(hydrated!.instances[task.id]?.run_id, "run-abc");
+  });
+
+  it("parseExecutionKernel returns null on corrupt JSON", () => {
+    assert.equal(parseExecutionKernel("{not json"), null);
+  });
+
+  it("assertSnapshotRoundTrip passes for kernel + cadence + delegate", () => {
+    const thesis = buildCmoIntake({
+      project: baseProject(),
+      persona: "sales",
+      profile: { sales_pipeline_empty: true } as never,
+    });
+    const cadence = createOpsCadenceFromThesis(thesis);
+    const kernel = bootstrapExecutionKernel({ cadence, projectId: "proj-1" });
+    const delegate = createDelegateOperatorFromThesis(thesis);
+    const snapshot = buildExecutionSnapshot({
+      kernel,
+      cadence,
+      delegate,
+    });
+    const errors = assertSnapshotRoundTrip(snapshot);
+    assert.deepEqual(errors, []);
   });
 });
