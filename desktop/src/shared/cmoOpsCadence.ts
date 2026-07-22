@@ -7,6 +7,7 @@ import { capWeek1Priorities, capWeekPriorities } from "./cmoExecutionBind";
 import type { ExpectedProofKind, OpsExecutionPlan } from "./opsExecutionPlan";
 import type { BrowserEvidenceProof } from "./browserVerify";
 import type { HumanExecutionRef } from "./humanExecutionPlan";
+import type { HumanExecutionAsset } from "./humanExecutionAsset";
 
 export type PivotVerdict = "flat" | "promising" | "insufficient_data";
 
@@ -60,6 +61,8 @@ export interface CmoOpsTask {
   expected_proof_kind?: ExpectedProofKind;
   /** Faz 3 — frozen human execution ref (user/delegate tasks only). */
   human_execution_ref?: HumanExecutionRef;
+  /** Faz 5 — frozen Post Kit / outreach pack (never re-freeze on retry). */
+  human_execution_asset?: HumanExecutionAsset;
 }
 
 export type CmoOpsWeekReviewStatus = "pending" | "due" | "completed";
@@ -619,6 +622,7 @@ export function hydrateOpsCadenceFromJson(raw: unknown): CmoOpsCadence | null {
           : undefined
       ) as ExpectedProofKind | undefined,
       human_execution_ref: t.human_execution_ref as HumanExecutionRef | undefined,
+      human_execution_asset: t.human_execution_asset as HumanExecutionAsset | undefined,
     }));
 
   const wr = o.week_review as Record<string, unknown> | undefined;
