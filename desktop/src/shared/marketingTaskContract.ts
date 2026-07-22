@@ -8,6 +8,7 @@ import type { GrowthMechanismId } from "./cmoGrowthMechanismKnowledge";
 import { getMechanismRecord } from "./cmoGrowthMechanismKnowledge";
 import type { ExpectedProofKind } from "./opsExecutionPlan";
 import type { HumanExecutionRef } from "./humanExecutionPlan";
+import type { HumanExecutionAsset } from "./humanExecutionAsset";
 import type { OpsExecutionPlan } from "./opsExecutionPlan";
 
 export type MarketingExecutionMode =
@@ -39,14 +40,6 @@ export interface MarketingTaskInput {
   label: string;
   ref?: string;
   value?: string;
-}
-
-export interface HumanExecutionAsset {
-  copy_blocks: Array<{ id: string; label: string; text: string; variant?: string }>;
-  brief_md?: string;
-  target_list?: Array<{ name: string; handle?: string; evidence?: string }>;
-  utm_template?: string;
-  follow_up?: string;
 }
 
 export interface MarketingTaskWhen {

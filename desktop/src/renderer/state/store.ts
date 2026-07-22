@@ -1835,10 +1835,10 @@ export const useApp = create<AppState>((set, get) => {
         { minPassRate: 1 },
       );
       const kernel = get().executionKernel;
-      if (kernel && passed) {
+      if (kernel && finalized.passed) {
         syncExecutionKernelState(
           completeVerifyingOpsTask(kernel, {
-            ...evidence,
+            ...finalized.evidence,
             completed_at: new Date().toISOString(),
           }),
           nextCadence,
@@ -1918,7 +1918,6 @@ export const useApp = create<AppState>((set, get) => {
   }) => {
     const result = bindHumanExecutionForCadence({
       ...input,
-      projectName: get().project?.name,
       strict: import.meta.env.DEV,
     });
     if (result.missingRefs.length > 0 && import.meta.env.DEV) {
@@ -6626,22 +6625,17 @@ export const useApp = create<AppState>((set, get) => {
     skipOpsTask: (taskId, reason) => {
       const cadence = get().opsCadence;
       if (!cadence) return;
-<<<<<<< HEAD
       const { cadence: next, error } = skipOpsTaskCore(cadence, taskId, reason);
       if (error) {
         appendEvent({ role: "system", kind: "error", text: error });
         return;
       }
-      syncOpsCadenceState(next);
-=======
-      const next = skipOpsTaskCore(cadence, taskId, reason);
       const kernel = get().executionKernel;
       if (kernel) {
         syncExecutionKernelState(kernelCancel(kernel, taskId), next);
       } else {
         syncOpsCadenceState(next);
       }
->>>>>>> 81e7827 (fix(Part 10): Harden execution kernel — lifecycle wiring, RunEvents, CI gates)
       appendEvent({
         role: "system",
         kind: "status",
@@ -6838,14 +6832,9 @@ export const useApp = create<AppState>((set, get) => {
               get().growthMemory ?? profile?.growth_memory,
             )
           : null;
-<<<<<<< HEAD
       const next = completeWeekReview(cadence, effectiveSummary, pivot);
-      syncOpsCadenceState(next);
-=======
-      const next = completeWeekReview(cadence, summary, pivot);
       const kernel = get().executionKernel ?? bootstrapKernelForCadence(cadence);
-      syncExecutionKernelState(completeWeekReviewGovernance(kernel, next, summary), next);
->>>>>>> 81e7827 (fix(Part 10): Harden execution kernel — lifecycle wiring, RunEvents, CI gates)
+      syncExecutionKernelState(completeWeekReviewGovernance(kernel, next, effectiveSummary), next);
       set({ week1FocusMode: false });
       get().advanceCampaignPhase({ type: "log_kpi" });
 
@@ -9544,7 +9533,6 @@ export const useApp = create<AppState>((set, get) => {
           set({ firstShipLedger: ledger });
         }
 
-<<<<<<< HEAD
         const qualityFindings = runShipQualityLint({
           after: afterMeta,
           diffText: aggregatePatchDiffText(run.events),
@@ -9579,16 +9567,9 @@ export const useApp = create<AppState>((set, get) => {
         }
         set({ lastShipReceipt: shipReceipt, executionRecordDetailTab: "proof" });
 
-        autoCompleteOpsOnApply({
-          runId: run.runId,
-          commitSha,
-          filesApplied: result.applied.length,
-        });
-=======
         const remainingFiles = allFiles.filter((f) => !result.applied.includes(f));
-        const cadence = get().opsCadence;
         const kernel = get().executionKernel;
-        const systemTask = cadence?.tasks.find(
+        const systemTask = cadenceBeforeApply?.tasks.find(
           (t) => t.status === "in_progress" && t.owner === "system",
         );
         if (remainingFiles.length > 0 && kernel && systemTask) {
@@ -9602,7 +9583,7 @@ export const useApp = create<AppState>((set, get) => {
                 remaining_gate: `${remainingFiles.length} file(s) pending apply`,
               },
             }),
-            cadence,
+            cadenceBeforeApply,
           );
         } else {
           autoCompleteOpsOnApply({
@@ -9612,7 +9593,6 @@ export const useApp = create<AppState>((set, get) => {
           });
         }
 
->>>>>>> 81e7827 (fix(Part 10): Harden execution kernel — lifecycle wiring, RunEvents, CI gates)
         get().recordSessionOutcome({
           kind: "run",
           label: summaryWithCommit,

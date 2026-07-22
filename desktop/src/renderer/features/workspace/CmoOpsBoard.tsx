@@ -282,12 +282,12 @@ function TaskContractDetails({ task }: { task: CmoOpsTask }) {
               variant="ghost"
               size="sm"
               data-testid={`ops-copy-${block.id}`}
-              onClick={() => void copyText(block.id, block.text)}
+              onClick={() => void copyText(block.id, block.body)}
             >
               {copied === block.id ? "Copied" : "Copy"}
             </Button>
           </div>
-          <p className="mt-1 whitespace-pre-wrap text-[10px] text-text-3">{block.text}</p>
+          <p className="mt-1 whitespace-pre-wrap text-[10px] text-text-3">{block.body}</p>
         </div>
       ))}
       {task.if_failed && (

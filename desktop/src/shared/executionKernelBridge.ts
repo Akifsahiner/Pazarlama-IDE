@@ -6,6 +6,7 @@ import {
   isOpsTaskUnlocked,
   type CmoOpsCadence,
   type CmoOpsProof,
+  type CmoOpsTask,
   type OpsProofInput,
 } from "./cmoOpsCadence";
 import {
@@ -36,8 +37,6 @@ import { executionPlanToLaneARunPlan } from "./cmoExecutionBind";
 import { resolveLaneARunPlan, getLaneAItemForOpsTask } from "./cmoLaneA";
 import type { ChannelThesis } from "./cmoIntake";
 import type { ProjectProfile } from "./types";
-<<<<<<< HEAD
-import type { CmoOpsProof, OpsProofInput } from "./cmoOpsCadence";
 import type { VerifyRunResult, BrowserEvidenceProof } from "./browserVerify";
 import {
   buildVerifyChecklistFromTask,
@@ -54,8 +53,6 @@ import {
 import { runShipQualityLint, hasBlockingQualityFinding, type ShipQualityFinding } from "./shipQualityLint";
 import type { ShipRecoveryAction } from "./shipPipelineRecovery";
 import { buildShipRecovery } from "./shipPipelineRecovery";
-=======
->>>>>>> 81e7827 (fix(Part 10): Harden execution kernel — lifecycle wiring, RunEvents, CI gates)
 
 export const EXECUTION_KERNEL_LS = "execution_kernel.v1";
 

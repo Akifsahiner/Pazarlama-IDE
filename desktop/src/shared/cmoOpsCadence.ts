@@ -11,12 +11,12 @@ import type { BrowserEvidenceProof } from "./browserVerify";
 import type { HumanExecutionRef } from "./humanExecutionPlan";
 import {
   materializeOpsTaskContract,
-  type HumanExecutionAsset,
   type MarketingExecutionMode,
   type MarketingTaskInput,
   type MarketingTaskMetric,
   type MarketingTaskWhen,
 } from "./marketingTaskContract";
+import type { HumanExecutionAsset } from "./humanExecutionAsset";
 
 export type PivotVerdict = "flat" | "promising" | "insufficient_data";
 
@@ -496,9 +496,20 @@ export function skipOpsTask(
   cadence: CmoOpsCadence,
   taskId: string,
   reason?: string,
-): CmoOpsCadence {
+): { cadence: CmoOpsCadence; error?: string } {
   const task = cadence.tasks.find((t) => t.id === taskId);
-  if (!task || task.status === "done") return cadence;
+  if (!task || task.status === "done") return { cadence };
+
+  if (
+    task.owner === "system" &&
+    (task.expected_proof_kind === "browser_evidence" ||
+      /browser|verify|preview/i.test(task.done_when))
+  ) {
+    return {
+      cadence,
+      error: "Cannot skip system tasks requiring browser verification.",
+    };
+  }
 
   const now = new Date().toISOString();
   let tasks = cadence.tasks.map((t) =>
@@ -514,7 +525,7 @@ export function skipOpsTask(
 
   let next = refreshOpsDaySlots({ ...cadence, tasks });
   next = unlockNextPending(next, now);
-  return next;
+  return { cadence: next };
 }
 
 export function completeWeekReview(
@@ -674,7 +685,7 @@ export function hydrateOpsCadenceFromJson(raw: unknown): CmoOpsCadence | null {
           : undefined
       ) as ExpectedProofKind | undefined,
       human_execution_ref: t.human_execution_ref as HumanExecutionRef | undefined,
-      human_execution_asset: t.human_execution_asset as import("./marketingTaskContract").HumanExecutionAsset | undefined,
+      human_execution_asset: t.human_execution_asset as HumanExecutionAsset | undefined,
       deliverable: typeof t.deliverable === "string" ? t.deliverable : undefined,
       execution_mode: t.execution_mode as import("./marketingTaskContract").MarketingExecutionMode | undefined,
       estimated_effort_minutes:

@@ -23,6 +23,7 @@ const PATTERNS = [
   { re: /completeOpsTaskCore\s*\(/, label: "completeOpsTaskCore(" },
   { re: /dispatchOpsTaskCore\s*\(/, label: "dispatchOpsTaskCore(" },
   { re: /skipOpsTaskCore\s*\(/, label: "skipOpsTaskCore(" },
+  { re: /markOpsTaskInProgress\s*\(/, label: "markOpsTaskInProgress(" },
 ];
 
 function walk(dir, acc = []) {
