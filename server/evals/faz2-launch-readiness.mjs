@@ -66,7 +66,7 @@ test("P13 camera-shy blocks founder_social option", () => {
   const founderFit = fit({ brand_face_readiness: "never" });
   const baseline = buildCmoIntake({ project: p, persona: "marketing", draft: true });
   const narrative = synthesizeGrowthNarrative({ project: p, founderFit });
-  const decision = buildStrategicDecision({
+  const { decision } = buildStrategicDecision({
     project: p,
     founderFit,
     narrative,
@@ -82,13 +82,14 @@ test("seal → final thesis → mechanism week1 ids", () => {
   const founderFit = fit();
   const baseline = buildCmoIntake({ project: p, persona: "marketing", draft: true });
   const narrative = synthesizeGrowthNarrative({ project: p, founderFit });
-  const decision = buildStrategicDecision({
+  const { decision } = buildStrategicDecision({
     project: p,
     founderFit,
     narrative,
     baselineThesis: baseline,
   });
   const selected = decision.options.find((o) => o.id === decision.recommended_id);
+  assert.ok(selected);
   const sealed = sealStrategicDecision(decision, selected.id, "2026-07-20T00:00:00.000Z");
   const finalThesis = buildFinalChannelThesis({
     project: p,
@@ -162,7 +163,7 @@ test("contract view from sealed decision", () => {
   const founderFit = fit();
   const baseline = buildCmoIntake({ project: p, persona: "marketing", draft: true });
   const narrative = synthesizeGrowthNarrative({ project: p, founderFit });
-  const decision = buildStrategicDecision({
+  const { decision } = buildStrategicDecision({
     project: p,
     founderFit,
     narrative,

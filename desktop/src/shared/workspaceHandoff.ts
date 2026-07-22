@@ -9,6 +9,7 @@ export type WorkspaceHandoffAction =
   | "open_plan"
   | "composer"
   | "home"
+  | "settings"
   | "first_move"
   | "execute_intent"
   | "ops_proof"

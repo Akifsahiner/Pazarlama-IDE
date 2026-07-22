@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { resolveNextAction, type NextActionInput, isBlockingNextAction, shouldSuppressWorkspaceNextActionBar } from "./nextAction";
+import { resolveNextAction, resolveNextActionCore, type NextActionInput, isBlockingNextAction, shouldSuppressWorkspaceNextActionBar } from "./nextAction";
 import type { MarketingPlan } from "./types";
 import { emptyProgressSnapshot } from "./planProgress";
 import { buildCmoIntake } from "./cmoIntake";
@@ -477,5 +477,63 @@ describe("shouldSuppressWorkspaceNextActionBar", () => {
       }),
       false,
     );
+  });
+});
+
+describe("ops week with active plan", () => {
+  it("prioritizes ops system task over plan when command surface active", () => {
+    const thesis = buildCmoIntake({
+      project: {
+        id: "p1",
+        source: { kind: "folder", path: "/p" },
+        name: "Acme",
+        framework: "Next",
+        routes: ["app/page.tsx"],
+        hasAnalytics: false,
+        excludedPaths: [],
+        scannedFileCount: 10,
+      },
+      persona: "marketing",
+    });
+    const cadence = createOpsCadenceFromThesis(thesis);
+    const now = cadence.tasks.find((t) => t.owner === "system");
+    assert.ok(now);
+    cadence.tasks = cadence.tasks.map((t) =>
+      t.id === now!.id ? { ...t, status: "pending" as const } : t,
+    );
+    const plane = {
+      binding: { headline: "Distribution", rationale: [], evidence: [] },
+      primary_lever: "Outreach",
+      today: { what: "Ship", why: "why", done_when: "done", owner: "system" },
+    } as unknown as import("./cmoGrowthPlane").GrowthControlPlane;
+    const action = resolveNextActionCore({
+      scope: "workspace",
+      route: "workspace",
+      hasProject: true,
+      connected: true,
+      persona: "marketing",
+      hasAgentCwd: true,
+      canvasMode: "empty",
+      plan: {
+        id: "plan-1",
+        projectId: "p1",
+        horizonDays: 30,
+        tasks: [{ id: "t1", day: 1, title: "Day 1", status: "pending" }],
+      } as unknown as import("./types").MarketingPlan,
+      planLoading: false,
+      planPreviewMode: false,
+      planProgress: null,
+      runActive: false,
+      runNeedsApproval: false,
+      browserActive: false,
+      browserNeedsApproval: false,
+      feedItems: [],
+      runsCount: 0,
+      assetsCount: 0,
+      opsCadence: cadence,
+      growthControlPlane: plane,
+    });
+    assert.ok(action);
+    assert.equal(action!.dispatch.type, "run_ops_system_task");
   });
 });

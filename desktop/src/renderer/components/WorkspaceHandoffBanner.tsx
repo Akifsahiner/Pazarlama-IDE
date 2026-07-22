@@ -25,6 +25,9 @@ function runHandoffAction(action: WorkspaceHandoffAction) {
     case "home":
       s.navigate("home");
       break;
+    case "settings":
+      s.navigate("settings");
+      break;
     case "first_move":
       s.navigate("workspace");
       s.setWorkSurface("campaign-plan");

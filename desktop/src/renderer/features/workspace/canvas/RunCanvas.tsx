@@ -245,17 +245,23 @@ export function RunCanvas() {
                 <X size={13} /> Discard all
               </button>
               <button
-                onClick={() =>
-                  void applyRunChanges(runApplySelection.length ? runApplySelection : files)
-                }
-                disabled={
-                  (runApplySelection.length === 0 && files.length === 0) || applyGate.blocked
-                }
+                onClick={() => {
+                  if (applyGate.blocked) {
+                    validateRun();
+                    return;
+                  }
+                  void applyRunChanges(runApplySelection.length ? runApplySelection : files);
+                }}
+                disabled={runApplySelection.length === 0 && files.length === 0}
                 data-testid="ship-apply-primary"
                 className="btn-accent flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-1.5 text-mini disabled:opacity-40"
               >
-                <Check size={13} /> Apply {runApplySelection.length || files.length} file
-                {(runApplySelection.length || files.length) !== 1 ? "s" : ""}
+                <Check size={13} />
+                {applyGate.blocked
+                  ? "Run validation first"
+                  : `Apply ${runApplySelection.length || files.length} file${
+                      (runApplySelection.length || files.length) !== 1 ? "s" : ""
+                    }`}
               </button>
             </div>
           </div>
