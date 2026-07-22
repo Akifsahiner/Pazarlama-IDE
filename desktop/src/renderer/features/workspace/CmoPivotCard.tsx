@@ -333,9 +333,9 @@ export function CmoWeekReviewModal() {
       data-testid="cmo-week-review-modal"
     >
       <div className="w-full max-w-lg rounded-[var(--radius-lg)] border border-line bg-surface p-5 shadow-lg">
-        <h2 className="text-body-sm font-semibold text-text">{wl} review</h2>
+        <h2 className="text-body-sm font-semibold text-text">{wl} snapshot (optional)</h2>
         <p className="mt-1 text-mini text-text-2">
-          {channelThesis?.title ?? wl} — what moved, what flat, what to pivot.
+          KPI and memory archive automatically — add notes only if you want them in history.
         </p>
         <div
           className="mt-3 rounded-[var(--radius-md)] border border-line bg-surface-2 px-3 py-2.5"
@@ -387,7 +387,7 @@ export function CmoWeekReviewModal() {
         <textarea
           className="mt-3 w-full resize-none rounded-[var(--radius-md)] border border-line bg-surface-2 px-2.5 py-2 text-body-sm text-text"
           rows={5}
-          placeholder="Wins, misses, KPI truth, next channel bet…"
+          placeholder="Optional notes for history — wins, misses, next bet…"
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
         />
@@ -431,7 +431,7 @@ export function CmoWeekReviewModal() {
             Cancel
           </Button>
           <Button variant="primary" size="sm" data-testid="cmo-week-review-submit" onClick={handleSubmit}>
-            Close {wl}
+            Archive {wl}
           </Button>
         </div>
       </div>

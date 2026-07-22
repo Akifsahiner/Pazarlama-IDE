@@ -420,9 +420,6 @@ export function canStartNextCycle(
   const errors: string[] = [];
   if (!continuous) errors.push("No CMO cycle history — complete Week 1 first.");
   if (!cadence) errors.push("No active ops cadence.");
-  if (cadence && cadence.week_review.status !== "completed") {
-    errors.push(`Close ${weekLabel(cadence.week_index)} review before starting the next cycle.`);
-  }
   if (
     continuous &&
     continuous.phase !== "measuring" &&
@@ -439,17 +436,36 @@ export function canStartNextCycle(
   return { ok: errors.length === 0, errors };
 }
 
-/** Campaign is in measuring and week review closed — ready for Week N+1 CTA. */
+/** Cycle is ready for Week N+1 — archived or auto-closeable without free-text review. */
 export function isContinuousReplanReady(
   continuous: CmoContinuousState | null | undefined,
   cadence: CmoOpsCadence | null | undefined,
   campaignPhase?: CampaignPhase | null,
+  weekCloseReady?: boolean,
 ): boolean {
-  if (!continuous || !cadence) return false;
-  if (cadence.week_review.status !== "completed") return false;
-  if (continuous.phase !== "measuring" && continuous.phase !== "pivot_ready") return false;
-  if (campaignPhase && campaignPhase !== "measuring") return false;
-  return continuous.cycles.some((c) => c.cycle_index === cadence.week_index);
+  if (!cadence) return false;
+
+  const archived =
+    continuous?.cycles.some((cycle) => cycle.cycle_index === cadence.week_index) ?? false;
+
+  if (archived && continuous) {
+    if (continuous.phase !== "measuring" && continuous.phase !== "pivot_ready") return false;
+    if (campaignPhase && campaignPhase !== "measuring") return false;
+    return true;
+  }
+
+  if (weekCloseReady) {
+    if (
+      campaignPhase &&
+      campaignPhase !== "measuring" &&
+      campaignPhase !== "executing"
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  return false;
 }
 
 export function applyNextCycleStarted(

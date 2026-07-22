@@ -46,7 +46,7 @@ export const CAMPAIGN_PHASE_LABELS: Record<CampaignPhase, string> = {
   planning: "Planning",
   executing: "Executing",
   reviewing: "Reviewing",
-  measuring: "Measuring",
+  measuring: "Ready to plan next week",
 };
 
 /** Thread header timeline: intake → plan → execute → measure */

@@ -35,6 +35,7 @@ import {
   campaignProgressPercent,
 } from "@shared/campaignSession";
 import { isContinuousReplanReady } from "@shared/cmoContinuous";
+import { isWeekCloseReady } from "@shared/cmoProofLoop";
 import { isCommandSurfaceActive } from "@shared/cmoCommandSurface";
 import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
 import { isWeek1Ready } from "@shared/launchReadiness";
@@ -683,7 +684,13 @@ function ActiveCampaignCard({
           ? "Open plan studio"
           : "Continue campaign";
 
-  const replanReady = isContinuousReplanReady(cmoContinuous, opsCadence, session.phase);
+  const weekCloseReady = opsCadence ? isWeekCloseReady(opsCadence) : false;
+  const replanReady = isContinuousReplanReady(
+    cmoContinuous,
+    opsCadence,
+    session.phase,
+    weekCloseReady,
+  );
 
   const handleContinue = () => {
     if (session.phase === "measuring" && replanReady) {

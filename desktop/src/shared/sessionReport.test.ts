@@ -14,7 +14,8 @@ describe("sessionReport", () => {
       outcomes,
       findings: [],
     });
-    assert.match(md, /Weekly session report — Launch Co/);
+    assert.match(md, /ops snapshot/);
+    assert.match(md, /Launch Co/);
     assert.match(md, /Applied hero copy/);
     assert.match(md, /you publish and send/i);
   });

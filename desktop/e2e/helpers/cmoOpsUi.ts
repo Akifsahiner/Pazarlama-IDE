@@ -184,7 +184,10 @@ export async function completeOpsCadenceViaUi(
   const kpiValue = opts?.kpiValue ?? "12";
 
   for (let step = 0; step < maxSteps; step += 1) {
-    if (await page.getByTestId("ops-week-review-open").isVisible().catch(() => false)) {
+    if (
+      (await page.getByTestId("ops-start-next-cycle").isVisible().catch(() => false)) ||
+      (await page.getByTestId("ops-week-review-open").isVisible().catch(() => false))
+    ) {
       return;
     }
 
@@ -226,24 +229,41 @@ export async function completeOpsCadenceViaUi(
       .toBeGreaterThan(doneBefore);
   }
 
-  if (!(await page.getByTestId("ops-week-review-open").isVisible().catch(() => false))) {
+  if (
+    !(await page.getByTestId("ops-start-next-cycle").isVisible().catch(() => false)) &&
+    !(await page.getByTestId("ops-week-review-open").isVisible().catch(() => false))
+  ) {
     await openOpsBackstage(page);
+  }
+  const startNext = page.getByTestId("ops-start-next-cycle");
+  if (await startNext.isVisible().catch(() => false)) {
+    await expect(startNext).toBeVisible({ timeout: 20_000 });
+    return;
   }
   await expect(page.getByTestId("ops-week-review-open")).toBeVisible({ timeout: 20_000 });
 }
 
-export async function completeWeekReviewViaUi(page: Page, summary: string) {
+export async function completeWeekReviewViaUi(page: Page, summary?: string) {
   await clearMonetizationBlockersViaUi(page);
 
   const board = page.getByTestId("cmo-ops-board");
   if (!(await board.isVisible().catch(() => false))) {
     await openOpsBackstage(page);
   }
+
+  const startNext = board.getByTestId("ops-start-next-cycle");
+  if (await startNext.isVisible().catch(() => false)) {
+    await startNext.click();
+    return;
+  }
+
   await board.getByTestId("ops-week-review-open").click();
 
   const modal = page.getByTestId("cmo-week-review-modal");
   await expect(modal).toBeVisible({ timeout: 10_000 });
-  await modal.locator("textarea").fill(summary);
+  if (summary) {
+    await modal.locator("textarea").fill(summary);
+  }
   await modal.getByTestId("cmo-week-review-submit").click();
 
   const errLine = modal.getByTestId("cmo-week-review-error");

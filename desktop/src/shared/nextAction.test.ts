@@ -274,7 +274,7 @@ describe("resolveNextAction", () => {
         route: "workspace",
       }),
     );
-    assert.equal(cleared?.id, "ops-week-review");
+    assert.equal(cleared?.id, "cmo-start-next-cycle");
   });
 
   it("hides Lane C delegate brief while ops queue is active", () => {
@@ -327,7 +327,7 @@ describe("resolveNextAction", () => {
         route: "workspace",
       }),
     );
-    assert.equal(cleared?.id, "ops-week-review");
+    assert.equal(cleared?.id, "cmo-start-next-cycle");
   });
 
   it("lets the command surface own CMO daily actions", () => {

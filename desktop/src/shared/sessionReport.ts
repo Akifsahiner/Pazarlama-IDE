@@ -27,7 +27,7 @@ function formatDate(iso: string): string {
   }
 }
 
-/** Campaign session + outcomes → weekly markdown report (Faz 10). */
+/** Campaign session + outcomes → ops snapshot markdown (on-demand export). */
 export function buildSessionReportMarkdown(input: SessionReportInput): string {
   const {
     projectName,
@@ -38,8 +38,9 @@ export function buildSessionReportMarkdown(input: SessionReportInput): string {
     experiments = [],
     nextStepLabel,
   } = input;
+  const stamp = new Date().toISOString().slice(0, 10);
   const lines: string[] = [
-    `# Weekly session report${projectName ? ` — ${projectName}` : ""}`,
+    `# ${projectName ?? "Project"} — ops snapshot ${stamp}`,
     "",
     `_Generated ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC_`,
     "",
