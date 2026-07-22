@@ -47,7 +47,22 @@ describe("launchReadiness", () => {
     assert.equal(state.completed, state.total);
   });
 
-  it("requires revenue before canStartWeek1 when paying_customers", () => {
+  it("measurement optional does not block week1 after seal path", () => {
+    const state = resolveLaunchReadinessSteps({
+      founderFit: fit(),
+      measurementReady: false,
+    });
+    assert.equal(state.canStartWeek1, true);
+    assert.equal(
+      isWeek1Ready({
+        founderFit: fit(),
+        measurementReady: false,
+      }),
+      true,
+    );
+  });
+
+  it("revenue still blocks when paying_customers win", () => {
     const blocked = resolveLaunchReadinessSteps({
       founderFit: fit({ thirty_day_win: "paying_customers" }),
       measurementReady: true,
@@ -63,13 +78,13 @@ describe("launchReadiness", () => {
     assert.equal(ready.canStartWeek1, true);
   });
 
-  it("requires measurement acknowledgement or baseline for week1 ready", () => {
+  it("measurement baseline optional — week1 ready without ack", () => {
     assert.equal(
       isWeek1Ready({
         founderFit: fit({ thirty_day_win: "qualified_signups" }),
         measurementReady: false,
       }),
-      false,
+      true,
     );
     assert.equal(
       isWeek1Ready({
@@ -108,7 +123,7 @@ describe("launchReadiness", () => {
         founderFit: fit(),
         measurementReady: false,
       }),
-      false,
+      true,
     );
     const quick = resolveLaunchReadinessSteps({
       onboardingTrack: "quick_start",

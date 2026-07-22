@@ -51,7 +51,7 @@ export const WORK_SURFACE_META: Record<WorkSurface, WorkSurfaceMeta> = {
     id: "campaign-plan",
     label: "Campaign plan",
     shortLabel: "Plan",
-    description: "30-day launch plan with runnable tasks and readiness scores.",
+    description: "30-day plan reference with runnable tasks — backstage during Week 1.",
   },
   funnel: {
     id: "funnel",

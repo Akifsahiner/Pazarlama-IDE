@@ -5,7 +5,13 @@ import { Card } from "@renderer/components/ui/Card";
 import { Button } from "@renderer/components/ui/Button";
 
 /** One-click local AI stack — surfaced in Connect onboarding and Settings. */
-export function BundledLocalServerCard({ prominent = false }: { prominent?: boolean }) {
+export function BundledLocalServerCard({
+  prominent = false,
+  autoStartOnMount = false,
+}: {
+  prominent?: boolean;
+  autoStartOnMount?: boolean;
+}) {
   const checkConnection = useApp((s) => s.checkConnection);
   const [available, setAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -21,13 +27,6 @@ export function BundledLocalServerCard({ prominent = false }: { prominent?: bool
     setKeyConfigured(hasKey);
   };
 
-  useEffect(() => {
-    void window.api.bundledServer.available().then(setAvailable).catch(() => setAvailable(false));
-    void refresh();
-  }, []);
-
-  if (!available) return null;
-
   const start = async () => {
     setBusy(true);
     try {
@@ -38,6 +37,19 @@ export function BundledLocalServerCard({ prominent = false }: { prominent?: bool
       setBusy(false);
     }
   };
+
+  useEffect(() => {
+    void window.api.bundledServer.available().then(setAvailable).catch(() => setAvailable(false));
+    void refresh();
+  }, []);
+
+  useEffect(() => {
+    if (!autoStartOnMount || !available || busy) return;
+    if (status?.state === "ready") return;
+    void start();
+  }, [autoStartOnMount, available, busy, status?.state]);
+
+  if (!available) return null;
 
   return (
     <Card

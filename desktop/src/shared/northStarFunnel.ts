@@ -12,7 +12,7 @@ import {
 import type { MarketingProfile } from "./types";
 
 export const NORTH_STAR_TAGLINE =
-  "The CMO that ships in your repo and tells you exactly what to do everywhere else.";
+  "Cursor for marketing execution — ship diffs in your repo, run one daily task until Week 1 is done.";
 
 export const PLAN_STUDIO_WEEK1_BLOCK_REASON =
   "Week 1 ops live in Execution Record. Finish this week's tasks — the full 30-day plan unlocks in backstage after Week 1.";
@@ -107,24 +107,25 @@ function mapRevealCtaToAction(
         reason:
           "We read your repo — one approved diff on your landing file. Same folder as Cursor; no re-upload.",
         primaryLabel: "Ship first patch",
-        tertiaryLabel: "Full CMO setup (optional)",
+        tertiaryLabel: "Personalize Week 1 (optional)",
       };
     case "complete_cmo_strategy":
       return {
         id: "complete_cmo_strategy",
         eyebrow: "After first ship",
-        title: "Personalize Week 1 ops",
+        title: "Personalize Week 1 tasks",
         reason:
-          "Founder-fit intake seals your channel thesis — then daily tasks get owners, deadlines, and done-when criteria.",
-        primaryLabel: "Complete CMO strategy",
+          "Founder-fit intake tunes your channel thesis — then daily tasks get owners, deadlines, and done-when criteria.",
+        primaryLabel: "Personalize Week 1",
       };
     case "complete_pre_week1":
       return {
         id: "complete_launch_setup",
         eyebrow: "Almost there",
-        title: "Finish launch setup",
-        reason: "Two minutes of activation and measurement ack — then Week 1 ops unlock.",
-        primaryLabel: "Complete launch setup",
+        title: "Revenue intake only",
+        reason:
+          "Your 30-day win is paying customers — add pricing thesis, then Week 1 ops unlock automatically.",
+        primaryLabel: "Add revenue intake",
       };
     case "start_week1":
       return {

@@ -5,6 +5,7 @@ import {
   validateFounderFit,
   type FounderFitQuestionId,
 } from "@shared/cmoFounderFit";
+import { HONEST_TIMING } from "@shared/marketingExecution";
 import type { FounderFitProfile } from "@shared/types";
 import { Badge } from "@renderer/components/ui/Badge";
 import { Button } from "@renderer/components/ui/Button";
@@ -57,13 +58,13 @@ export function FounderFitWizard({
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-wider text-accent">
-            Founder fit · question {step + 1} of {FOUNDER_FIT_QUESTIONS.length}
+            Founder fit · step {step + 1} of {FOUNDER_FIT_QUESTIONS.length}
           </div>
           <div className="mt-1 h-1.5 w-44 overflow-hidden rounded-full bg-surface-2">
             <div className="h-full bg-accent" style={{ width: `${progress}%` }} />
           </div>
         </div>
-        <Badge tone="neutral">~2 minutes</Badge>
+        <Badge tone="neutral">{HONEST_TIMING.founderFit.split("—")[1]?.trim() ?? "5–10 min"}</Badge>
       </div>
 
       <h2 className="mt-5 text-h3 text-text">{question.prompt}</h2>

@@ -62,6 +62,22 @@ describe("measurementPulse", () => {
     assert.equal(pulse!.visible, true);
   });
 
+  it("evaluateDayPulse includes Day 3 ritual question", () => {
+    const thesis = buildCmoIntake({
+      project: baseProject(),
+      persona: "marketing",
+      context: { force_thesis_id: "viral_short_form" },
+    });
+    let cadence = createOpsCadenceFromThesis(thesis);
+    cadence = { ...cadence, day_index: 3 };
+    const pulse = evaluateDayPulse({ cadence, thesis, profile: { manual_kpis: [] } as never });
+    assert.ok(pulse);
+    assert.equal(pulse!.checkpoint, 3);
+    assert.match(pulse!.title, /Day 3 Pulse/i);
+    assert.ok(pulse!.ritualQuestion);
+    assert.match(pulse!.ritualQuestion!, /retention|KPI/i);
+  });
+
   it("evaluateDayPulse promising when KPI exceeds target", () => {
     const thesis = buildCmoIntake({
       project: baseProject(),

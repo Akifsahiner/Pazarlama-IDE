@@ -14,7 +14,7 @@ export const SUBSCRIPTION_PACKAGES = {
     name: "Pro",
     priceLabel: "$20",
     periodLabel: "/ month",
-    tagline: "Full Software CMO — plan, agent, and browser research.",
+    tagline: "Marketing execution — daily ops, agent runs, and browser research.",
   },
   team: {
     id: "team" as const,

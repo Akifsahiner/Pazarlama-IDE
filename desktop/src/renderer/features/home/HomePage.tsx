@@ -340,8 +340,8 @@ export function HomePage() {
     },
     {
       icon: Wand2,
-      title: connected ? "30-day launch plan" : "Preview launch outline",
-      desc: connected ? "AI-generated plan from your repo." : "Scan-based outline — connect for full AI.",
+      title: connected ? "Plan reference (backstage)" : "Preview launch outline",
+      desc: connected ? "30-day outline for context — Week 1 ops is the main path." : "Scan-based outline — connect for full AI.",
       offlineCapable: true,
       run: () => {
         if (connected) {
@@ -415,7 +415,7 @@ export function HomePage() {
   return (
     <Page
       title="Dashboard"
-      eyebrow="Claude for Marketing & Sales"
+      eyebrow="Marketing execution"
       actions={
         <Button variant="secondary" iconRight={<ArrowRight size={15} />} onClick={goWorkspace}>
           Open workspace
@@ -428,7 +428,7 @@ export function HomePage() {
             <span className="text-h2 text-text">{project.name}</span>
             {project.framework && <Badge>{project.framework}</Badge>}
             <Badge tone={persona === "sales" ? "sales" : "marketing"}>
-              {persona === "sales" ? "Sales" : "Marketing"}
+              {persona === "sales" ? "Sales" : pv.eyebrow}
             </Badge>
           </div>
           <p className="mt-1 text-body-sm text-text-2">

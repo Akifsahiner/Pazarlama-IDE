@@ -98,8 +98,7 @@ export function resolveLaunchReadinessSteps(input: LaunchReadinessInput): Launch
     optional: true,
   });
 
-  const priorRequiredDone =
-    (!revenueRequired || revenueDone) && effectiveMeasurementDone;
+  const priorRequiredDone = !revenueRequired || revenueDone;
 
   steps.push({
     id: "start",
@@ -121,12 +120,14 @@ export function resolveLaunchReadinessSteps(input: LaunchReadinessInput): Launch
   };
 }
 
-/** Week 1 can begin when launch readiness stepper requirements are satisfied. */
+/** Week 1 can begin when required revenue gate passes — measurement is Day 0 ops, not a blocker. */
 export function isWeek1Ready(input: LaunchReadinessInput): boolean {
+  if (needsRevenueStep(input.founderFit) && !isRevenueComplete(input.revenueProfile)) {
+    return false;
+  }
   if (
     input.onboardingTrack === "quick_start" &&
-    input.firstShipAt &&
-    (!needsRevenueStep(input.founderFit) || isRevenueComplete(input.revenueProfile))
+    input.firstShipAt
   ) {
     return true;
   }

@@ -22,9 +22,9 @@ const ebGaramond = EB_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Marketing IDE — Ship your product. We'll handle the launch.",
+  title: "Marketing IDE — Cursor for marketing execution",
   description:
-    "Open your project, get a 30-day launch plan you approve, and run agent tasks — copy, diffs, and browser research you apply yourself.",
+    "Open the repo you built in Cursor. Ship landing diffs, run daily marketing tasks, and execute posts and outreach — without marketing expertise.",
 };
 
 export default function RootLayout({

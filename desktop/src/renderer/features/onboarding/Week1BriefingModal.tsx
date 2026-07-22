@@ -15,7 +15,7 @@ const POSTURE_LABEL: Record<StrategicOption["posture"], string> = {
 export function Week1BriefingModal() {
   const open = useApp((s) => s.week1BriefingOpen);
   const closeWeek1Briefing = useApp((s) => s.closeWeek1Briefing);
-  const openLaunchReadiness = useApp((s) => s.openLaunchReadiness);
+  const beginCmoWeek1 = useApp((s) => s.beginCmoWeek1);
   const marketingProfile = useApp((s) => s.marketingProfile);
   const channelThesis = useApp((s) => s.channelThesis ?? marketingProfile?.channel_thesis);
 
@@ -33,9 +33,9 @@ export function Week1BriefingModal() {
     year: "numeric",
   });
 
-  const continueToSetup = () => {
+  const startWeek1 = () => {
     closeWeek1Briefing();
-    openLaunchReadiness();
+    beginCmoWeek1();
   };
 
   return (
@@ -82,7 +82,7 @@ export function Week1BriefingModal() {
             <div className="flex items-center gap-2">
               <CheckCircle2 size={14} className="text-accent" />
               <p className="text-[10px] font-semibold uppercase tracking-wide text-accent">
-                From CMO
+                What we ship
               </p>
             </div>
             <ul className="mt-3 space-y-1.5 text-mini text-text-2">
@@ -91,9 +91,8 @@ export function Week1BriefingModal() {
               ))}
             </ul>
             <p className="mt-3 text-[10px] text-text-3">
-              Week 1 ships {tasks.filter((t) => t.owner === "system").length} repo tasks, prepares{" "}
-              {tasks.filter((t) => t.owner === "user").length} human handoffs, and gates every move
-              on measurement.
+              Week 1 ships {tasks.filter((t) => t.owner === "system").length} repo tasks and prepares{" "}
+              {tasks.filter((t) => t.owner === "user").length} post kits — measurement check-in on Day 3.
             </p>
           </div>
           <div className="rounded-[var(--radius-lg)] border border-line bg-surface p-4">
@@ -183,10 +182,10 @@ export function Week1BriefingModal() {
           <Button
             variant="primary"
             iconRight={<ArrowRight size={15} />}
-            onClick={continueToSetup}
+            onClick={startWeek1}
             data-testid="week1-briefing-continue"
           >
-            Continue to launch setup
+            Start Week 1 ops
           </Button>
         </div>
       </div>

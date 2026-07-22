@@ -56,6 +56,8 @@ export interface DayPulsePrimaryKpi {
 export interface DayPulseView {
   checkpoint: PulseCheckpointDay;
   title: string;
+  /** Day 3 ritual — single yes/no style question (no essay). */
+  ritualQuestion?: string;
   primaryKpi: DayPulsePrimaryKpi;
   leadingIndicator?: { label: string; value: string };
   actionSuggestion: string;
@@ -183,6 +185,32 @@ function resolveLeadingIndicator(input: EvaluateDayPulseInput): DayPulseView["le
     }
   }
   return undefined;
+}
+
+function resolveDay3RitualQuestion(input: EvaluateDayPulseInput): string | undefined {
+  if (input.cadence.day_index < 3) return undefined;
+  const checkpoint = resolveActivePulseCheckpoint(input.cadence.day_index);
+  if (checkpoint !== 3) return undefined;
+
+  if (input.distributionOperator) {
+    const verdict = evaluateHookPerformance(input.distributionOperator);
+    const hookId = verdict.hook_id ?? input.distributionOperator.hooks[0]?.id;
+    const hook = hookId
+      ? input.distributionOperator.hooks.find((h) => h.id === hookId)
+      : input.distributionOperator.hooks[0];
+    const label = hook?.label ?? "your latest hook";
+    return `Did ${label} pass 3s retention? (yes / no — one number is enough)`;
+  }
+
+  const gateTask = input.cadence.tasks.find((t) => t.owner === "user" || t.owner === "delegate");
+  const gate = gateTask ? resolveOpsKpiGate(gateTask, input.cadence.thesis_id) : null;
+  const kpiName = gate?.name ?? "primary KPI";
+  return `Did ${kpiName} move toward target? (one metric — skip the essay)`;
+}
+
+function resolvePulseTitle(checkpoint: PulseCheckpointDay, ritualQuestion?: string): string {
+  if (checkpoint === 3 && ritualQuestion) return "Day 3 Pulse — required check-in";
+  return `Day ${checkpoint} Pulse`;
 }
 
 function resolveActionSuggestion(input: EvaluateDayPulseInput): string {
@@ -358,10 +386,12 @@ export function evaluateDayPulse(input: EvaluateDayPulseInput): DayPulseView | n
   const thesisId = input.thesis?.id ?? input.cadence.thesis_id;
   const waitMessage =
     value == null && thesisId ? PULSE_WAIT_COPY[thesisId] : undefined;
+  const ritualQuestion = resolveDay3RitualQuestion(input);
 
   return {
     checkpoint,
-    title: `Day ${checkpoint} Pulse`,
+    title: resolvePulseTitle(checkpoint, ritualQuestion),
+    ritualQuestion,
     primaryKpi: {
       name,
       value,

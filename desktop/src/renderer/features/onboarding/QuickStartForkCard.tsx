@@ -24,7 +24,7 @@ export function QuickStartForkCard({ compact }: { compact?: boolean }) {
           <Rocket size={18} />
           <span className="text-body-sm font-semibold">Quick Start</span>
           <span className="text-mini font-normal text-text-2">
-            Ship your first marketing change in ~15 min — hero, meta, CTA.
+            Ship your first marketing patch — hero, meta, or CTA (~10 min with AI).
           </span>
         </Button>
         <Button
@@ -34,9 +34,9 @@ export function QuickStartForkCard({ compact }: { compact?: boolean }) {
           onClick={() => setOnboardingTrack("full_cmo")}
         >
           <Compass size={18} />
-          <span className="text-body-sm font-semibold">Full CMO setup</span>
+          <span className="text-body-sm font-semibold">Personalize Week 1</span>
           <span className="text-mini font-normal text-text-2">
-            Founder fit, channel thesis, Week 1 ops — the full Software CMO loop.
+            Founder-fit intake tunes daily tasks — channel thesis and Week 1 ops (~10–15 min).
           </span>
         </Button>
       </div>

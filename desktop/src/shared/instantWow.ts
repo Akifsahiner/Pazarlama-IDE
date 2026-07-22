@@ -3,14 +3,15 @@
  * Quick Start is the default; Full CMO remains available but never blocks first value.
  */
 import type { OnboardingTrack } from "./quickStartWedge";
+import { HONEST_TIMING } from "./marketingExecution";
 
 export const CURSOR_WOW = {
   headline: "We read your repo.",
   subhead:
-    "One approved patch away from a better landing — the Cursor moment, for marketing execution.",
+    "One approved patch away from a better landing — Cursor for marketing execution, not another checklist.",
   primaryCta: "Ship first marketing patch",
-  primaryEta: "~5 min to first diff",
-  secondaryCta: "Full CMO setup (optional)",
+  primaryEta: HONEST_TIMING.firstDiff,
+  secondaryCta: "Full setup (optional)",
 } as const;
 
 export type RevealBeatId =

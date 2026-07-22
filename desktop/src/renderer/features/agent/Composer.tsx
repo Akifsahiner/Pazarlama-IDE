@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { resolveIntent } from "@shared/conversationIntent";
+import { getNowTask } from "@shared/cmoOpsCadence";
+import { isWeek1OpsActive } from "@shared/northStarFunnel";
 import { normalizePlan } from "@shared/planPlaybooks";
 import { formatCostCents, formatTokenCount } from "@shared/contextBudget";
 import { summarizeUsage } from "@shared/usageDisplay";
@@ -29,7 +31,8 @@ import { Menu } from "@renderer/components/ui/Menu";
 import {
   COMPOSER_HINTS,
   COMPOSER_PLACEHOLDERS,
-  COMPOSER_QUICK_UI,
+  COMPOSER_WEEK1_PLACEHOLDER,
+  filterComposerQuickUi,
   QUICK_ACTION_GOALS,
   isQuickActionDisabled,
   resolveQuickAction,
@@ -137,6 +140,9 @@ export function Composer({ variant = "default", onExpandRequest }: ComposerProps
 
   const historyForBudget = useMemo(() => buildAgentHistory(thread), [thread]);
   const marketingProfile = useApp((s) => s.marketingProfile);
+  const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
+  const week1OpsActive = isWeek1OpsActive(opsCadence);
+  const nowTask = week1OpsActive && opsCadence ? getNowTask(opsCadence) : undefined;
   const contextBudget = useComposerContextBudget({
     message: text,
     history: historyForBudget,
@@ -166,8 +172,8 @@ export function Composer({ variant = "default", onExpandRequest }: ComposerProps
     return isQuickActionDisabled(resolveQuickAction(id), { connected, hasFolder });
   };
 
-  const primaryActions = COMPOSER_QUICK_UI.filter((a) => a.tier === "primary");
-  const moreActions = COMPOSER_QUICK_UI.filter((a) => a.tier === "more");
+  const primaryActions = filterComposerQuickUi(week1OpsActive).filter((a) => a.tier === "primary");
+  const moreActions = filterComposerQuickUi(week1OpsActive).filter((a) => a.tier === "more");
 
   const autoGrow = () => {
     const el = textareaRef.current;
@@ -290,7 +296,11 @@ export function Composer({ variant = "default", onExpandRequest }: ComposerProps
       ? `${COMPOSER_HINTS.edit} Open a local folder to edit files.`
       : COMPOSER_HINTS[composerMode];
 
-  const placeholder = COMPOSER_PLACEHOLDERS[composerMode][connected ? "connected" : "offline"];
+  const placeholder = week1OpsActive
+    ? (nowTask
+        ? `Today: ${nowTask.what.slice(0, 80)}…`
+        : COMPOSER_WEEK1_PLACEHOLDER[connected ? "connected" : "offline"])
+    : COMPOSER_PLACEHOLDERS[composerMode][connected ? "connected" : "offline"];
   const landingDraftActive = text === QUICK_ACTION_GOALS.LANDING_COPY;
   const ModeIcon = MODE_ICON[composerMode];
 
@@ -414,7 +424,7 @@ export function Composer({ variant = "default", onExpandRequest }: ComposerProps
             composerMode === "browse" ? "ring-1 ring-accent/40" : ""
           }`}
         />
-        {composerMode === "browse" && canBrowse && (
+        {composerMode === "browse" && canBrowse && !week1OpsActive && (
           <div className="mb-2 flex items-center justify-between gap-2 rounded-[var(--radius-md)] border border-accent/30 bg-accent-soft/30 px-3 py-2">
             <p className="text-mini text-text-2">
               Computer Use opens a live sandbox in the center — watch the agent browse.
@@ -437,7 +447,8 @@ export function Composer({ variant = "default", onExpandRequest }: ComposerProps
           Ctrl+0 Auto · Ctrl+1 Ask · Ctrl+2 Edit · Ctrl+3 Browse
         </p>
 
-        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+        {!week1OpsActive && (
+          <div className="mb-2 flex flex-wrap items-center gap-1.5">
           {primaryActions.map((action) => {
             const Icon = QUICK_ICONS[action.icon] ?? Wand2;
             const blocked = quickDisabled(action.id);
@@ -497,15 +508,23 @@ export function Composer({ variant = "default", onExpandRequest }: ComposerProps
             )}
           />
 
-          {(planLoading || streaming || browserRunning || runActive) && (
-            <button
-              onClick={stop}
-              className="inline-flex items-center gap-1.5 rounded-full border border-danger-border bg-danger-soft px-2.5 py-1 text-micro text-danger"
-            >
-              <Square size={11} fill="currentColor" /> Stop
-            </button>
-          )}
-        </div>
+          </div>
+        )}
+
+        {(planLoading || streaming || browserRunning || runActive) && (
+          <button
+            onClick={stop}
+            className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-danger-border bg-danger-soft px-2.5 py-1 text-micro text-danger"
+          >
+            <Square size={11} fill="currentColor" /> Stop
+          </button>
+        )}
+
+        {week1OpsActive && nowTask && (
+          <p className="mb-2 text-mini text-text-2">
+            Execution Record owns today&apos;s task — composer steers diff, kit, or proof.
+          </p>
+        )}
 
         {composerMode === "auto" && autoResolved && autoResolved.intent.kind !== "ask_only" && (
           <IntentPreviewChip resolved={autoResolved} message={text.trim()} />

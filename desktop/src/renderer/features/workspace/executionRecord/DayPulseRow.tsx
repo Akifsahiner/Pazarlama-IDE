@@ -41,6 +41,11 @@ export function DayPulseRow({
         <span className="text-micro font-semibold uppercase tracking-wide text-text-3">
           {pulse.title}
         </span>
+        {pulse.ritualQuestion && (
+          <span className="text-mini font-medium text-text" data-testid="day-pulse-ritual">
+            {pulse.ritualQuestion}
+          </span>
+        )}
         <span
           className={`text-mini font-semibold tabular-nums ${pctOk ? "text-ok" : "text-text-2"}`}
           data-testid="day-pulse-primary-kpi"
@@ -53,29 +58,51 @@ export function DayPulseRow({
     );
   }
 
+  const isDay3Ritual = pulse.checkpoint === 3 && Boolean(pulse.ritualQuestion);
+
   return (
     <div
-      className="mt-4 rounded-[var(--radius-lg)] border border-line/80 bg-surface-2/30 px-4 py-3"
+      className={`mt-4 rounded-[var(--radius-lg)] border px-4 py-3 ${
+        isDay3Ritual
+          ? "border-accent/40 bg-accent-soft/10"
+          : "border-line/80 bg-surface-2/30"
+      }`}
       data-testid="day-pulse-row"
+      data-ritual={isDay3Ritual ? "true" : undefined}
     >
+      {isDay3Ritual && (
+        <p
+          className="mb-3 text-body-sm font-semibold text-text"
+          data-testid="day-pulse-ritual"
+        >
+          {pulse.ritualQuestion}
+        </p>
+      )}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1" data-testid="day-pulse-checkpoint">
-            {CHECKPOINTS.map((cp) => (
-              <span
-                key={cp}
-                className={`rounded-[var(--radius-sm)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                  cp === pulse.checkpoint
-                    ? "bg-accent/15 text-accent"
-                    : cp < pulse.checkpoint
-                      ? "text-text-3"
-                      : "text-text-3/50"
-                }`}
-              >
-                Day {cp}
-              </span>
-            ))}
-          </div>
+          {!isDay3Ritual && (
+            <div className="flex items-center gap-1" data-testid="day-pulse-checkpoint">
+              {CHECKPOINTS.map((cp) => (
+                <span
+                  key={cp}
+                  className={`rounded-[var(--radius-sm)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                    cp === pulse.checkpoint
+                      ? "bg-accent/15 text-accent"
+                      : cp < pulse.checkpoint
+                        ? "text-text-3"
+                        : "text-text-3/50"
+                  }`}
+                >
+                  Day {cp}
+                </span>
+              ))}
+            </div>
+          )}
+          {isDay3Ritual && (
+            <span className="text-micro font-semibold uppercase tracking-wide text-accent">
+              {pulse.title}
+            </span>
+          )}
           <Badge tone={VERDICT_TONE[pulse.verdict] ?? "neutral"}>{pulse.verdict.replace("_", " ")}</Badge>
         </div>
         <Ga4SyncChip compact />

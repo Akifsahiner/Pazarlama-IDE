@@ -23,8 +23,8 @@ export interface PersonaValueProp {
 
 export const PERSONA_VALUE: Record<Persona, PersonaValueProp> = {
   marketing: {
-    eyebrow: "Marketing",
-    promise: "Scan your repo, get a weekly ops cadence with daily tasks, and ship copy and diffs you can apply.",
+    eyebrow: "Marketing execution",
+    promise: "Scan your repo, ship landing diffs, and run daily tasks with copy-ready scripts and proof — hours in the IDE, not a PDF.",
     honestyNote: "You approve every repo change; outreach and ads are drafts — you publish.",
     reason: "Daily ops tasks with copy-ready scripts, repo diffs, and KPI proof — not generic plan PDFs.",
     offlinePlanTitle: "Preview launch outline",

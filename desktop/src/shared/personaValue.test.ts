@@ -3,9 +3,10 @@ import assert from "node:assert/strict";
 import { personaValue, PERSONA_VALUE } from "./personaValue";
 
 describe("personaValue", () => {
-  it("marketing promise mentions weekly ops cadence", () => {
+  it("marketing promise mentions daily execution in the IDE", () => {
     const pv = personaValue("marketing");
-    assert.match(pv.promise, /weekly ops cadence/i);
+    assert.match(pv.promise, /daily tasks/i);
+    assert.match(pv.promise, /IDE/i);
     assert.equal(pv.offlinePlanTitle, "Preview launch outline");
   });
 
@@ -17,7 +18,7 @@ describe("personaValue", () => {
   });
 
   it("exports stable eyebrow labels", () => {
-    assert.equal(PERSONA_VALUE.marketing.eyebrow, "Marketing");
+    assert.equal(PERSONA_VALUE.marketing.eyebrow, "Marketing execution");
     assert.equal(PERSONA_VALUE.sales.eyebrow, "Sales");
   });
 

@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Eye, FileDiff, Search } from "lucide-react";
 import { Button } from "@renderer/components/ui/Button";
 import { staggerItem, staggerList } from "@renderer/design/animations";
+import { MARKETING_EXECUTION } from "@shared/marketingExecution";
 import { FIRST_HOUR_MILESTONES, FIRST_TEN_MINUTES } from "@shared/firstHour";
 
 const VALUE_PROPS = [
@@ -92,8 +93,7 @@ export function Welcome({ onStart }: { onStart: () => void }) {
           Get started
         </Button>
         <p className="max-w-[36ch] text-micro text-text-3">
-          After your first scan, open <span className="text-text-2">Help</span> in the left rail for the
-          full 30-day playbook.
+          {MARKETING_EXECUTION.tagline} — open your repo and execute for hours, like Cursor for code.
         </p>
       </motion.div>
     </div>

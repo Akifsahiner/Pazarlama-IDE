@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useApp } from "@renderer/state/store";
 import { readDemoConnectorsEnabled, setDemoConnectorsEnabled } from "@shared/demoConnectors";
 import { ConnectionSetupWizard } from "@renderer/components/ConnectionSetupWizard";
+import { BundledLocalServerCard } from "@renderer/components/BundledLocalServerCard";
 import { SignIn } from "./SignIn";
 
 /** Hosted connection wizard — sign in, 3-step setup, offline escape. */
@@ -21,7 +22,10 @@ export function ConnectStep() {
       )}
 
       {signedIn && (
-        <ConnectionSetupWizard showServerField onContinueOffline={() => continueOffline()} />
+        <>
+          <BundledLocalServerCard prominent autoStartOnMount />
+          <ConnectionSetupWizard showServerField onContinueOffline={() => continueOffline()} />
+        </>
       )}
 
       {import.meta.env.DEV && (

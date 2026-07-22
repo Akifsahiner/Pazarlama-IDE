@@ -37,7 +37,6 @@ export function HumanTaskKitDrawer() {
   const [kpiValue, setKpiValue] = useState("");
   const [retentionPct, setRetentionPct] = useState("");
   const [views24h, setViews24h] = useState("");
-  const [note, setNote] = useState("");
   const [replyInterest, setReplyInterest] = useState<"cold" | "warm" | "hot" | "">("");
   const [measureDeferred, setMeasureDeferred] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,26 +86,6 @@ export function HumanTaskKitDrawer() {
     }
   };
 
-  const handleMarkPosted = () => {
-    if (proofBlocked) return;
-    const lint = lintHumanPostedProof({ url: postedUrl || draft?.posted_url, note });
-    if (lint.length > 0) {
-      setError(lint[0]!.detail);
-      return;
-    }
-    const valid = validatePostedUrl(postedUrl || draft?.posted_url);
-    if (!valid.ok) {
-      setError(valid.error ?? "Invalid URL");
-      return;
-    }
-    const err = markPosted(ref, (postedUrl || draft?.posted_url || "").trim(), note.trim() || undefined);
-    if (err) {
-      setError(err);
-      return;
-    }
-    setError(null);
-  };
-
   const handleLogMetrics = () => {
     if (proofBlocked) return;
     if (!canAdvanceToMetrics(draft)) {
@@ -123,26 +102,35 @@ export function HumanTaskKitDrawer() {
       reply_interest: replyInterest || undefined,
       reply_received: isInfluencer && asset.influencer_stage === "pitched" ? true : undefined,
       measure_deferred: measureDeferred,
-      note: note.trim() || undefined,
+      note: draft?.note,
     });
     setError(null);
   };
 
-  const handleComplete = () => {
+  const handlePostAndComplete = () => {
     if (proofBlocked) return;
-    const err = completeKit(ref);
-    if (err) {
-      setError(err);
+    const url = (postedUrl || draft?.posted_url || "").trim();
+    const lint = lintHumanPostedProof({ url });
+    if (lint.length > 0) {
+      setError(lint[0]!.detail);
       return;
     }
-    setPostedUrl("");
-    setKpiValue("");
-    setRetentionPct("");
-    setViews24h("");
-    setNote("");
-    setReplyInterest("");
-    setMeasureDeferred(false);
-    setError(null);
+    const valid = validatePostedUrl(url);
+    if (!valid.ok) {
+      setError(valid.error ?? "Paste the live post link to finish.");
+      return;
+    }
+    const postErr = markPosted(ref, url);
+    if (postErr) {
+      setError(postErr);
+      return;
+    }
+    logMetrics(ref, { measure_deferred: true });
+    const completeErr = completeKit(ref);
+    if (completeErr) {
+      setError(completeErr);
+      return;
+    }
     dismiss();
   };
 
@@ -369,17 +357,24 @@ export function HumanTaskKitDrawer() {
               <Button
                 size="sm"
                 variant="primary"
-                data-testid="human-kit-mark-posted"
-                onClick={handleMarkPosted}
+                data-testid="human-kit-post-and-complete"
+                onClick={handlePostAndComplete}
                 disabled={proofBlocked}
               >
-                Mark posted →
+                Done — I posted
               </Button>
+              <p className="text-micro text-text-3">
+                Paste the link — metrics optional now, Day 3 pulse asks retention then.
+              </p>
             </div>
           )}
 
-          {(step === "posted" || step === "metrics") && canAdvanceToMetrics(draft) && (
-            <div className="mt-3 space-y-2">
+          {canAdvanceToMetrics(draft) && (
+            <details className="mt-3 rounded-[var(--radius-md)] border border-line/60 p-3">
+              <summary className="cursor-pointer text-mini font-semibold text-text-3">
+                Add metrics now (optional)
+              </summary>
+              <div className="mt-3 space-y-2">
               {isDistribution && (
                 <>
                   <label className="text-mini font-semibold text-text-3">3s retention %</label>
@@ -458,20 +453,8 @@ export function HumanTaskKitDrawer() {
               >
                 Log metrics →
               </Button>
-            </div>
-          )}
-
-          {canAdvanceToMetrics(draft) && (
-            <Button
-              className="mt-3 w-full"
-              size="sm"
-              variant="primary"
-              data-testid="human-kit-complete"
-              onClick={handleComplete}
-              disabled={proofBlocked}
-            >
-              Complete
-            </Button>
+              </div>
+            </details>
           )}
 
           {isInfluencer && asset.influencer_stage === "replied" && (

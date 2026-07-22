@@ -20,7 +20,7 @@ export const pricingPlans = [
     name: "Pro",
     price: "$20",
     period: "/ month",
-    description: "Full Software CMO — daily ops, agent runs, and browser research.",
+    description: "Marketing execution — daily ops, agent runs, and browser research.",
     cta: "Download & subscribe",
     ctaHref: "/download",
     highlighted: true,

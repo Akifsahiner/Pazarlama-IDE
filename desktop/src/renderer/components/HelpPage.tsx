@@ -37,33 +37,31 @@ const LAUNCH_PLAYBOOK: { day: string; title: string; body: string }[] = [
     body: "Open a local folder (best) or clone a repo. Scan builds your marketing profile — routes, stack, README summary.",
   },
   {
-    day: "Day 1–3",
-    title: "Plan Studio",
-    body: "Generate a 30-day launch plan (or preview an offline outline). Pick Day 1 from the timeline — browser tasks run in Operator, repo tasks edit files in a worktree.",
+    day: "Day 1–2",
+    title: "Ship & execute",
+    body: "Ship your first landing diff, then run today's ops task from Execution Record — repo ship or post kit with copy-ready script.",
   },
   {
-    day: "Day 4–14",
-    title: "Execute & review",
-    body: "Run tasks → review diff → apply to your repo. Draft copy lands in Content set and Marketing diff. Log KPIs after measurable tasks.",
+    day: "Day 3",
+    title: "Pulse check-in",
+    body: "One required ritual: did your hook or primary KPI move? One metric, one answer — no dashboard essay.",
   },
   {
-    day: "Day 15–30",
-    title: "Measure & iterate",
-    body: "Performance shows manual KPIs + optional GA4. Record experiment outcomes. Retry failed tasks from the timeline or next-action bar.",
+    day: "Day 4–7",
+    title: "Week 1 finish",
+    body: "One task per day with proof. Plan reference lives backstage — Execution Record owns the path.",
   },
 ];
 
 const EXPECTATIONS = {
   should: [
-    "Scan your repo locally and build a 30-day plan you approve",
-    "Draft copy, decisions, and file diffs — you review and apply",
-    "Count a plan task done only after you apply file changes, save an asset, or confirm research",
+    "Scan your repo locally and ship marketing diffs you approve",
+    "Run one daily ops task with owners, deadlines, and done-when criteria",
+    "Draft copy, post kits, and outreach — you publish and send",
+    "Count a task done after you apply file changes, paste a post URL, or confirm research",
     "Run browser research in the operator sandbox",
-    "Log KPIs manually or sync read-only GA4 when OAuth is configured",
+    "Answer the Day 3 pulse with one metric — full measurement can wait until then",
     "Export outreach CSV — you send from your email tool",
-    "Skill-backed decisions include ≥5 registry tactics with phase timing (T-/H+/D+)",
-    "State honest aggression ceiling when assets are thin — no fake #1 PH promises",
-    "Plan Studio tasks reference tactic ids and measurable acceptance criteria",
   ],
   shouldNot: [
     "Bulk email or ad publish without your approval",

@@ -48,8 +48,8 @@ export const COMPOSER_HINTS: Record<ComposerMode, string> = {
 
 export const COMPOSER_PLACEHOLDERS: Record<ComposerMode, { connected: string; offline: string }> = {
   auto: {
-    connected: "Bu execution'ı yönlendir — diff, kanıt ve sonuç Record'da…",
-    offline: "Enable AI to chat and run tasks…",
+    connected: "Steer today's task — diff, post kit, or proof for Execution Record…",
+    offline: "Enable AI to steer today's marketing task…",
   },
   ask: {
     connected: "Ask for a plan, copy, or marketing decision…",
@@ -155,6 +155,16 @@ export function isQuickActionDisabled(
   return null;
 }
 
+export const COMPOSER_WEEK1_PLACEHOLDER = {
+  connected: "Steer today's task — diff, post kit, or proof for Execution Record…",
+  offline: "Connect AI to steer today's marketing task…",
+} as const;
+
+export function filterComposerQuickUi(week1OpsActive: boolean) {
+  if (!week1OpsActive) return COMPOSER_QUICK_UI;
+  return [];
+}
+
 /** Registry-driven composer quick-action UI (primary pills + More menu). */
 export const COMPOSER_QUICK_UI: {
   id: QuickActionId | "plan_pill";
@@ -162,7 +172,7 @@ export const COMPOSER_QUICK_UI: {
   tier: "primary" | "more";
   icon: string;
 }[] = [
-  { id: "plan_pill", label: "Generate plan", tier: "primary", icon: "Wand2" },
+  { id: "plan_pill", label: "Plan reference (backstage)", tier: "primary", icon: "Wand2" },
   { id: "landing_copy", label: "Landing copy", tier: "primary", icon: "PenLine" },
   { id: "competitors", label: "Live research", tier: "primary", icon: "Compass" },
   { id: "launch", label: "Prepare for launch", tier: "more", icon: "Rocket" },

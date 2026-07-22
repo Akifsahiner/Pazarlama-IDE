@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { flattenFilePaths, rankFilePaths } from "@shared/fileSearch";
 import type { RecentProject } from "@shared/types";
+import { isWeek1OpsActive } from "@shared/northStarFunnel";
 import { useApp } from "@renderer/state/store";
 import { overlayFade, palettePop } from "@renderer/design/animations";
 import { Kbd } from "@renderer/components/ui/Kbd";
@@ -114,8 +115,12 @@ export function CommandPalette() {
   const [recents, setRecents] = useState<string[]>([]);
   const [filePaths, setFilePaths] = useState<string[]>([]);
 
+  const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
+  const week1OpsActive = isWeek1OpsActive(opsCadence);
+
   const commands = useMemo<Cmd[]>(
-    () => [
+    () => {
+      const all: Cmd[] = [
       { id: "nav-home", label: "Go to Home", hint: "Navigate", icon: House, run: () => navigate("home") },
       { id: "nav-workspace", label: "Go to Workspace", hint: "Navigate", icon: LayoutPanelLeft, run: () => navigate("workspace") },
       { id: "nav-runs", label: "Go to Runs", hint: "Navigate", icon: History, run: () => navigate("runs") },
@@ -180,8 +185,12 @@ export function CommandPalette() {
       { id: "close", label: "Close project", icon: XCircle, enabled: hasProject, run: () => closeProject() },
       { id: "connect", label: "Retry connection", hint: "Settings", icon: Plug, run: () => { navigate("settings"); void checkConnection(); } },
       { id: "settings", label: "Settings", icon: SettingsIcon, shortcut: ["Ctrl", ","], run: () => navigate("settings") },
-    ],
-    [openFolderDialog, openProjectPicker, generatePlan, createNewSession, closeProject, setActiveCanvas, setWorkSurface, navigate, runBrowserTask, checkConnection, hasProject, connected, projectRoot, fileSearchHint, toggleCommandDockCollapsed, setCommandDockCollapsed, toggleFocusMode, focusMode],
+    ];
+      return week1OpsActive
+        ? all.filter((c) => c.id !== "surface-plan" && c.id !== "plan")
+        : all;
+    },
+    [openFolderDialog, openProjectPicker, generatePlan, createNewSession, closeProject, setActiveCanvas, setWorkSurface, navigate, runBrowserTask, checkConnection, hasProject, connected, projectRoot, fileSearchHint, toggleCommandDockCollapsed, setCommandDockCollapsed, toggleFocusMode, focusMode, week1OpsActive],
   );
 
   useEffect(() => {

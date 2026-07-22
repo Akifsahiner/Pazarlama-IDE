@@ -8,7 +8,7 @@ export const PLAN_AI_BADGE = "AI launch plan";
 
 /** Plan Studio heading — preview must not read like a finished AI plan. */
 export const PLAN_PREVIEW_HEADING = "Launch outline preview";
-export const PLAN_AI_HEADING = "30-day launch plan";
+export const PLAN_AI_HEADING = "30-day plan reference";
 
 export function planPrimaryLabel(connected: boolean): string {
   return connected ? PLAN_AI_LABEL : PLAN_PREVIEW_LABEL;

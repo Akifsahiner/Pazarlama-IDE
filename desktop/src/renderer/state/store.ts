@@ -5879,7 +5879,7 @@ export const useApp = create<AppState>((set, get) => {
         marketingProfile: next,
         channelThesis: thesis,
         strategicIntakeOpen: false,
-        week1BriefingOpen: true,
+        week1BriefingOpen: false,
       });
       const projectId = get().activeProjectId ?? project.id;
       persistStrategicIntakeLocal(projectId, next);
@@ -5895,9 +5895,12 @@ export const useApp = create<AppState>((set, get) => {
       appendEvent({
         role: "system",
         kind: "status",
-        text: `Strategic contract sealed — Option ${selected.id}. Complete setup, then start Week 1.`,
+        text: `Strategy sealed — Option ${selected.id}. Starting Week 1 execution…`,
       });
       recomputeGrowthPlane();
+      queueMicrotask(() => {
+        get().beginCmoWeek1();
+      });
       return true;
     },
 
@@ -6405,7 +6408,7 @@ export const useApp = create<AppState>((set, get) => {
         appendEvent({
           role: "system",
           kind: "status",
-          text: "Complete launch setup — activation, revenue (if applicable), and measurement — before Week 1 starts.",
+          text: "Revenue intake required for paying-customer goals — measurement lands on Day 3 pulse.",
         });
         return;
       }
@@ -7731,7 +7734,9 @@ export const useApp = create<AppState>((set, get) => {
       const draft = get().humanProofDrafts?.[ref.item_id];
       const cadence = get().opsCadence;
       const task = cadence?.tasks.find((t) => t.human_execution_ref?.item_id === ref.item_id);
-      const requireKpi = task ? /\bkpi\b|\bmetric\b/i.test(task.done_when) : false;
+      const dayIndex = cadence?.day_index ?? 1;
+      const requireKpi =
+        dayIndex >= 3 && task ? /\bkpi\b|\bmetric\b|\bretention\b/i.test(task.done_when) : false;
       const gate = canCompleteHumanProof(draft, requireKpi);
       if (!gate.ok) return gate.error ?? "Cannot complete yet.";
 
