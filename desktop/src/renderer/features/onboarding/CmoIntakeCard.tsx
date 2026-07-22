@@ -2,6 +2,7 @@ import { ArrowRight, CheckCircle2, AlertTriangle, XCircle, Sparkles } from "luci
 import type { ChannelThesis, CmoWeek1Priority } from "@shared/cmoIntake";
 import { getMechanismRecord } from "@shared/cmoGrowthMechanismKnowledge";
 import type { GrowthMechanismId } from "@shared/cmoGrowthMechanismKnowledge";
+import type { ThesisQualityReport } from "@shared/cmoThesisQualityEngine";
 import type { GrowthNarrative, StrategicDecision } from "@shared/types";
 import { BOTTLENECK_LABELS } from "@shared/bottleneck";
 import { resolveWeek1PreviewTasks } from "@shared/week1Preview";
@@ -50,6 +51,7 @@ export function CmoIntakeCard({
   sealed = false,
   narrative,
   strategicDecision,
+  thesisQualityReport,
   week1BlockedReason,
 }: {
   thesis: ChannelThesis;
@@ -59,6 +61,7 @@ export function CmoIntakeCard({
   sealed?: boolean;
   narrative?: GrowthNarrative;
   strategicDecision?: StrategicDecision;
+  thesisQualityReport?: ThesisQualityReport | null;
   week1BlockedReason?: string;
 }) {
   const v = VERDICT_TONE[thesis.verdict];
@@ -106,6 +109,24 @@ export function CmoIntakeCard({
           )}
           <p className="mt-1 text-[10px] text-text-3">
             Option {strategicDecision.selected_id} sealed · operations own the next action
+          </p>
+        </div>
+      )}
+
+      {!compact && thesisQualityReport && (
+        <div className="mt-4 space-y-3 rounded-[var(--radius-md)] border border-line/70 bg-surface/50 px-3 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-text-3">
+            Tez kalitesi · {thesisQualityReport.composite_confidence}
+          </p>
+          <ul className="space-y-1">
+            {thesisQualityReport.why_now.slice(0, 2).map((line) => (
+              <li key={line} className="text-mini text-text-2">
+                · {line}
+              </li>
+            ))}
+          </ul>
+          <p className="text-[10px] text-text-3">
+            Başarı: {thesisQualityReport.success_signal}
           </p>
         </div>
       )}

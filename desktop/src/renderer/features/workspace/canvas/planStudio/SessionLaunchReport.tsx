@@ -47,7 +47,7 @@ const KIND_LABEL: Record<SessionOutcome["kind"], string> = {
 
 const KIND_ORDER: SessionOutcome["kind"][] = ["plan", "run", "research", "asset", "copy"];
 
-/** Designed session report — grouped outcomes + browser findings + next-step CTA. */
+/** On-demand ops snapshot export — not a golden-path ceremony step. */
 export function SessionLaunchReport() {
   const outcomes = useApp((s) => s.sessionOutcomes);
   const findings = useApp((s) => s.browser.findings);
@@ -55,6 +55,7 @@ export function SessionLaunchReport() {
   const planRaw = useApp((s) => s.plan);
   const planProgress = useApp((s) => s.planProgress);
   const marketingProfile = useApp((s) => s.marketingProfile);
+  const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
   const focusPlanTask = useApp((s) => s.focusPlanTask);
   const settings = useApp((s) => s.settings);
   const authEnabled = useApp((s) => s.auth.authEnabled);
@@ -156,7 +157,9 @@ export function SessionLaunchReport() {
     if (!serverProjectId || shareBusy) return;
     setShareBusy(true);
     try {
-      const title = project?.name ? `${project.name} — session report` : "Session launch report";
+      const title = project?.name
+        ? `${project.name} — ops snapshot`
+        : "Ops snapshot export";
       const { share } = await apiShareReport(settings, authEnabled, {
         projectId: serverProjectId,
         title,
@@ -177,10 +180,10 @@ export function SessionLaunchReport() {
   };
 
   return (
-    <section className="surface rounded-[var(--radius-lg)] p-5">
+    <section className="surface rounded-[var(--radius-lg)] p-5" data-testid="ops-snapshot-export">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-caption font-semibold uppercase tracking-wider">
-          <Sparkles size={14} className="text-accent" /> Session launch report
+          <Sparkles size={14} className="text-accent" /> Ops snapshot export
         </div>
         <div className="flex flex-wrap items-center gap-1">
           <button
@@ -225,7 +228,7 @@ export function SessionLaunchReport() {
               disabled={shareBusy}
               onClick={() => void shareWithClient()}
               className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-line px-2 py-1 text-micro text-text-2 transition-colors hover:bg-elevated hover:text-text"
-              data-testid="share-client-report"
+              data-testid="ops-snapshot-share-client"
             >
               <Link2 size={11} /> {shareBusy ? "Sharing…" : "Share with client"}
             </button>
@@ -241,7 +244,7 @@ export function SessionLaunchReport() {
 
       {grouped.length === 0 && findings.length === 0 ? (
         <p className="text-body-sm text-text-2">
-          Complete a plan task, browser teardown, or copy draft — your GTM progress summary builds here.
+          Export on demand when you need to share progress — ops board is the daily source of truth.
         </p>
       ) : (
         <div className="space-y-4">
@@ -296,7 +299,7 @@ export function SessionLaunchReport() {
         </div>
       )}
 
-      {nextStep && (
+      {!opsCadence && nextStep && (
         <button
           type="button"
           onClick={() =>

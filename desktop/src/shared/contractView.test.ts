@@ -47,7 +47,7 @@ describe("contractView", () => {
     const founderFit = fit();
     const baseline = buildCmoIntake({ project: p, persona: "marketing", draft: true });
     const narrative = synthesizeGrowthNarrative({ project: p, founderFit });
-    const result = buildStrategicDecision({
+    const { decision: result } = buildStrategicDecision({
       project: p,
       founderFit,
       narrative,

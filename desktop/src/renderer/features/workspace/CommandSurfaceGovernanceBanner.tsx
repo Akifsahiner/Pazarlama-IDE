@@ -8,7 +8,6 @@ export function CommandSurfaceGovernanceBanner({
 }: {
   governance: CommandSurfaceGovernance;
 }) {
-  const openWeekReviewModal = useApp((s) => s.openWeekReviewModal);
   const startNextCmoCycle = useApp((s) => s.startNextCmoCycle);
   const appendEvent = useApp((s) => s.appendEvent);
   const focusWarRoomAnchor = useApp((s) => s.focusWarRoomAnchor);
@@ -18,19 +17,12 @@ export function CommandSurfaceGovernanceBanner({
   };
 
   const onPrimary = () => {
-    if (governance.kind === "week_review") {
-      openWeekReviewModal();
-      return;
-    }
     if (governance.kind === "replan") {
       const err = startNextCmoCycle({
         thesisId: governance.thesisId as import("@shared/cmoIntake").ChannelThesisId | undefined,
         mode: governance.mode,
       });
-      if (err) {
-        appendEvent({ role: "system", kind: "error", text: err });
-        if (/review|close|archive/i.test(err)) openWeekReviewModal();
-      }
+      if (err) appendEvent({ role: "system", kind: "error", text: err });
       return;
     }
     if (governance.kind === "product_loop") {

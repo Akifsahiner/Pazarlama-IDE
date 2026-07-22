@@ -130,7 +130,7 @@ describe("CMO lifecycle smoke — scan → seal → Week 1 → review → next c
 
     // 3) Strategic A/B/C + seal
     const narrative = synthesizeGrowthNarrative({ project, founderFit: fit });
-    const decision = buildStrategicDecision({
+    const { decision } = buildStrategicDecision({
       project,
       profile: { public_presence_policy: presence } as unknown as MarketingProfile,
       founderFit: fit,
@@ -302,7 +302,7 @@ describe("CMO lifecycle smoke — scan → seal → Week 1 → review → next c
     const presence = { ...defaultPublicPresencePolicy(fit), configured_at: NOW };
     const baseline = buildCmoIntake({ project, persona: "marketing", draft: true });
     const narrative = synthesizeGrowthNarrative({ project, founderFit: fit });
-    const decision = buildStrategicDecision({
+    const { decision } = buildStrategicDecision({
       project,
       founderFit: fit,
       narrative,

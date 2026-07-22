@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { personaValue, PERSONA_VALUE } from "./personaValue";
 
 describe("personaValue", () => {
-  it("marketing promise mentions 30-day launch plan", () => {
+  it("marketing promise mentions weekly ops cadence", () => {
     const pv = personaValue("marketing");
-    assert.match(pv.promise, /30-day launch plan/i);
+    assert.match(pv.promise, /weekly ops cadence/i);
     assert.equal(pv.offlinePlanTitle, "Preview launch outline");
   });
 

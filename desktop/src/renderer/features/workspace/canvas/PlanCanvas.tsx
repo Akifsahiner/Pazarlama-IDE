@@ -323,6 +323,8 @@ function PlanStudioBody({
   const connected = runtime === "connected";
   const kpiLogDefaultPresetId = useApp((s) => s.kpiLogDefaultPresetId);
   const clearKpiLogDefaultPreset = useApp((s) => s.clearKpiLogDefaultPreset);
+  const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
+  const [exportOpen, setExportOpen] = useState(false);
 
   useEffect(() => {
     if (!kpiLogDefaultPresetId) return;
@@ -442,9 +444,30 @@ function PlanStudioBody({
         )}
       </section>
 
-      <div id="session-launch-report">
-        <SessionLaunchReport />
-      </div>
+      <section className="rounded-[var(--radius-lg)] border border-line bg-surface">
+        <button
+          type="button"
+          onClick={() => setExportOpen((v) => !v)}
+          aria-expanded={exportOpen}
+          className="flex w-full items-center justify-between px-5 py-3 text-left"
+          data-testid="plan-ops-snapshot-toggle"
+        >
+          <span className="text-mini font-semibold uppercase tracking-wider text-text-3">
+            {opsCadence
+              ? "Export ops snapshot (optional — daily work lives on Ops board)"
+              : "Export ops snapshot (optional)"}
+          </span>
+          <ChevronDown
+            size={14}
+            className={`text-text-3 transition-transform duration-[var(--dur-fast)] ${exportOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+        {exportOpen && (
+          <div id="session-launch-report" className="border-t border-line p-5">
+            <SessionLaunchReport />
+          </div>
+        )}
+      </section>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useApp } from "@renderer/state/store";
 
 /** Shared dispatch for ExecutionRecordCard primary CTA. */
 export function useCommandSurfaceDispatch() {
+  const retryExecutionTask = useApp((s) => s.retryExecutionTask);
   const startOpsSystemTask = useApp((s) => s.startOpsSystemTask);
   const openOpsProofModal = useApp((s) => s.openOpsProofModal);
   const openDistributionProofModal = useApp((s) => s.openDistributionProofModal);
@@ -14,7 +15,6 @@ export function useCommandSurfaceDispatch() {
   const openProductIssueModal = useApp((s) => s.openProductIssueModal);
   const openMonetizationTaskModal = useApp((s) => s.openMonetizationTaskModal);
   const openMonetizationIssueModal = useApp((s) => s.openMonetizationIssueModal);
-  const openWeekReviewModal = useApp((s) => s.openWeekReviewModal);
   const startNextCmoCycle = useApp((s) => s.startNextCmoCycle);
   const openHumanTaskKitDrawer = useApp((s) => s.openHumanTaskKitDrawer);
   const openLaneBProofModal = useApp((s) => s.openLaneBProofModal);
@@ -40,6 +40,15 @@ export function useCommandSurfaceDispatch() {
         startOpsSystemTask(resolved.taskId);
         setExecutionRecordDetailTab("diff");
         break;
+      case "retry_execution": {
+        const err = retryExecutionTask(resolved.taskId);
+        if (err) {
+          useApp.getState().appendEvent({ role: "system", kind: "error", text: err });
+        } else {
+          setExecutionRecordDetailTab("diff");
+        }
+        break;
+      }
       case "submit_proof":
         openOpsProofModal(resolved.taskId);
         setExecutionRecordDetailTab("proof");
@@ -62,7 +71,6 @@ export function useCommandSurfaceDispatch() {
         });
         if (err) {
           useApp.getState().appendEvent({ role: "system", kind: "error", text: err });
-          if (/review|close|archive/i.test(err)) openWeekReviewModal();
         }
         break;
       }
@@ -82,7 +90,7 @@ export function useCommandSurfaceDispatch() {
         }
         break;
       case "week_review":
-        openWeekReviewModal();
+        focusWarRoomAnchor("cmo-ops-board");
         break;
       case "product_loop":
         if (resolved.siteLevel) {

@@ -78,6 +78,7 @@ const mustExist = [
   "src/main/evidence/storeEvidence.ts",
   "src/renderer/features/onboarding/MeasurementBaselineCard.tsx",
   "e2e/browser-verify.spec.ts",
+  "e2e/apply-gate.spec.ts",
   "e2e/cmo-measure.spec.ts",
   "scripts/verify-fixture-smoke.mjs",
   "../CMO_BROWSER_VERIFY_SPEC.md",
@@ -90,6 +91,9 @@ const mustExist = [
   "e2e/first-ship-wedge.spec.ts",
   "scripts/first-ship-agent-smoke.mjs",
   "scripts/first-ship-dogfood.md",
+  "scripts/golden-path-dogfood.md",
+  "scripts/golden-path-dogfood-facilitator-sheet.md",
+  "src/shared/applyGate.ts",
 ];
 
 const exportChecks = [
@@ -132,7 +136,9 @@ const exportChecks = [
   { file: "src/renderer/lib/backgroundError.ts", needle: "reportBackgroundError" },
   { file: "src/renderer/state/store.ts", needle: "tierFeatures" },
   { file: "src/renderer/features/settings/SettingsPage.tsx", needle: "ConnectorMarketplaceSection" },
-  { file: "src/renderer/features/workspace/canvas/planStudio/SessionLaunchReport.tsx", needle: "share-client-report" },
+  { file: "src/renderer/features/workspace/canvas/planStudio/SessionLaunchReport.tsx", needle: "ops-snapshot-export" },
+  { file: "src/shared/applyGate.ts", needle: "evaluateApplyGate" },
+  { file: "src/renderer/features/workspace/canvas/PreviewCanvas.tsx", needle: "apply-validation-gate" },
   { file: "src/renderer/features/agent/MarketingDecisionCard.tsx", needle: "FeedbackThumbs" },
   { file: "src/renderer/state/store.ts", needle: "beginFirstHour" },
   { file: "src/renderer/state/store.ts", needle: "beginFirstHourWow" },
@@ -207,6 +213,10 @@ const exportChecks = [
   { file: "src/shared/cmoCommandSurface.ts", needle: "command-surface-ship-first-win" },
   { file: "src/shared/cmoExecutionBind.ts", needle: "bindExecutionPlansForCadence" },
   { file: "src/shared/cmoHumanExecutionBind.ts", needle: "bindHumanExecutionForCadence" },
+  { file: "src/shared/executionKernel.ts", needle: "bootstrapExecutionKernel" },
+  { file: "src/shared/executionHandlers.ts", needle: "resolveHandlerKind" },
+  { file: "src/renderer/state/store.ts", needle: "dispatchExecutionTask" },
+  { file: "../CMO_EXECUTION_KERNEL_SPEC.md", needle: "execution_kernel" },
   { file: "src/shared/cmoCommandSurface.ts", needle: "command-surface-start-next-cycle" },
   { file: "src/renderer/features/workspace/ReplanPreviewStrip.tsx", needle: "replan-preview-strip" },
   { file: "src/shared/cmoCommandSurface.ts", needle: "resolveCommandSurfaceAction" },
@@ -226,7 +236,7 @@ const exportChecks = [
   { file: "src/shared/measurementBaseline.ts", needle: "assessMeasurementBaseline" },
   { file: "src/shared/cmoProofLoop.ts", needle: "evaluateWeek1MetricsWithGa4Priority" },
   { file: "src/renderer/features/workspace/CmoOpsBoard.tsx", needle: "ops-browser-evidence-chip" },
-  { file: "e2e/browser-verify.spec.ts", needle: "@browser-verify" },
+  { file: "e2e/apply-gate.spec.ts", needle: "@apply-gate" },
   { file: "e2e/cmo-measure.spec.ts", needle: "@cmo-measure" },
   { file: "src/renderer/components/BundledLocalServerCard.tsx", needle: "Start local stack" },
 ];

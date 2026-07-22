@@ -68,10 +68,12 @@ export function isQueueFull(queue: ExecutionQueueItem[]): boolean {
 export function canDrainExecutionQueue(input: {
   runStatus?: string;
   browserRunning: boolean;
+  kernelActive?: boolean;
 }): boolean {
   const activeRun =
     input.runStatus === "running" ||
     input.runStatus === "planning" ||
     input.runStatus === "created";
+  if (input.kernelActive) return false;
   return !activeRun && !input.browserRunning;
 }

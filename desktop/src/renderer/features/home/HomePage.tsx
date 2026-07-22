@@ -456,7 +456,8 @@ export function HomePage() {
               sealed={true}
               narrative={marketingProfile?.growth_narrative}
               strategicDecision={marketingProfile?.strategic_decision}
-              onStartWeek1={() => beginCmoWeek1()}
+              thesisQualityReport={marketingProfile?.thesis_quality_report}
+              onStartWeek1={week1Ready ? () => beginCmoWeek1() : undefined}
               onFullPlan={() => beginFirstHour()}
             />
           )
@@ -676,13 +677,15 @@ function ActiveCampaignCard({
   const appendEvent = useApp((s) => s.appendEvent);
   const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
   const ctaLabel =
-    session.phase === "measuring"
-      ? "Start next week"
-      : session.phase === "reviewing"
-        ? "Review & apply"
-        : session.phase === "planning"
-          ? "Open plan studio"
-          : "Continue campaign";
+    opsCadence
+      ? "Continue Week 1 ops"
+      : session.phase === "measuring"
+        ? "Start next week"
+        : session.phase === "reviewing"
+          ? "Review & apply"
+          : session.phase === "planning"
+            ? "Open plan studio"
+            : "Continue campaign";
 
   const weekCloseReady = opsCadence ? isWeekCloseReady(opsCadence) : false;
   const replanReady = isContinuousReplanReady(
