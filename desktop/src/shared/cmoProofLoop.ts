@@ -304,6 +304,17 @@ export function evaluateWeek1Metrics(
     }
   }
 
+  if (primaryKpiId) {
+    const manual = profile?.manual_kpis?.find((k) => k.id === primaryKpiId);
+    if (manual?.target != null && primaryTarget == null) {
+      primaryTarget = manual.target;
+    }
+    if (primaryTarget == null) {
+      const preset = KPI_PRESETS.find((p) => p.id === primaryKpiId);
+      primaryTarget = preset?.defaultTarget;
+    }
+  }
+
   const operatorRollup = resolveOpsKpiFromOperatorRollup(
     profile,
     distributionOperator,

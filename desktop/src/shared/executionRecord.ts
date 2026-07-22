@@ -23,6 +23,14 @@ import {
 } from "./shipReceipt";
 import { computeRunSummary, runChangedFiles } from "./runs";
 import type { RunEvent, RunStatus } from "./types";
+import {
+  evaluateDayPulse,
+  resolveHonestEmptyKpiCopy,
+  type DayPulseView,
+} from "./measurementPulse";
+import { buildHookLeaderboard, type HookLeaderboardRow } from "./hookLeaderboard";
+import { buildKpiTrendSeries, type KpiTrendPoint } from "./kpiTrendSeries";
+import { readGa4MetricValue, resolveOpsKpiGate, hasGa4Connected } from "./cmoProofLoop";
 
 export type ExecutionRecordLifecycle =
   | "intake"
@@ -68,6 +76,9 @@ export interface ExecutionRecordView {
   morningBrief?: MorningBriefView;
   approvalHeroLine?: string;
   productLoopPaused?: boolean;
+  dayPulse?: DayPulseView | null;
+  hookLeaderboard?: HookLeaderboardRow[];
+  kpiTrend?: KpiTrendPoint[];
 }
 
 export interface ExecutionHistoryEntry {
@@ -107,6 +118,8 @@ export interface BuildActiveExecutionRecordInput extends Omit<BuildCommandSurfac
   shipReceipt?: ShipReceipt | null;
   pendingVerify?: boolean;
   approvalFileCount?: number;
+  marketingProfile?: import("./types").MarketingProfile | null;
+  project?: import("./types").ProjectProfile | null;
 }
 
 export interface BuildExecutionHistoryInput extends BuildActiveExecutionRecordInput {
@@ -313,6 +326,9 @@ export function formatExecutionResults(input: {
   taskOwner?: CmoOpsTask["owner"];
   activeRun?: ActiveRunSnapshot | null;
   shipReceipt?: ShipReceipt | null;
+  thesisId?: import("./cmoIntake").ChannelThesisId;
+  marketingProfile?: import("./types").MarketingProfile | null;
+  cadence?: CmoOpsCadence | null;
 }): ExecutionResultChip[] {
   const receiptChips = shipReceiptToResultChips(input.shipReceipt);
   if (receiptChips.length > 0) return receiptChips;
@@ -376,10 +392,30 @@ export function formatExecutionResults(input: {
   }
 
   if (chips.length === 0) {
+    const gateTask = input.cadence?.tasks?.find(
+      (t) => t.owner === "user" || t.owner === "delegate",
+    );
+    const gate = gateTask
+      ? resolveOpsKpiGate(gateTask, input.cadence?.thesis_id ?? input.thesisId)
+      : null;
+    if (gate?.ga4MetricName && hasGa4Connected(input.marketingProfile)) {
+      const ga4Val = readGa4MetricValue(input.marketingProfile, gate.ga4MetricName);
+      if (ga4Val != null) {
+        chips.push({
+          id: "ga4-kpi",
+          label: gate.label,
+          value: String(ga4Val),
+          tone: "ok",
+        });
+      }
+    }
+  }
+
+  if (chips.length === 0) {
     chips.push({
       id: "results-empty",
       label: "Sonuç",
-      value: "Not measured yet",
+      value: resolveHonestEmptyKpiCopy(input.thesisId ?? input.cadence?.thesis_id),
       tone: "missing",
     });
   }
@@ -507,6 +543,38 @@ export function buildActiveExecutionRecord(
       ? `Awaiting approval — ${input.approvalFileCount} file(s) to review → Apply to ship`
       : undefined;
 
+  const dayPulse =
+    input.cadence && input.plane
+      ? evaluateDayPulse({
+          cadence: input.cadence,
+          profile: input.marketingProfile,
+          thesis: input.channelThesis,
+          distributionOperator: input.distributionOperator,
+          influencerOperator: input.influencerOperator,
+          delegateOperator: input.delegateOperator,
+        })
+      : null;
+
+  const hookLeaderboard = input.distributionOperator
+    ? buildHookLeaderboard(input.distributionOperator)
+    : undefined;
+
+  const kpiTrend =
+    dayPulse?.primaryKpi && input.cadence
+      ? buildKpiTrendSeries(
+          input.cadence,
+          input.marketingProfile,
+          input.cadence.thesis_id === "viral_short_form"
+            ? "short_form_views"
+            : input.cadence.thesis_id === "outbound_sales"
+              ? "outbound_replies"
+              : input.cadence.thesis_id === "landing_conversion"
+                ? "targeted_visitors"
+                : "targeted_visitors",
+          input.distributionOperator,
+        )
+      : undefined;
+
   return {
     id: recordId,
     goal,
@@ -524,6 +592,9 @@ export function buildActiveExecutionRecord(
       taskOwner: task?.owner,
       activeRun: input.activeRun,
       shipReceipt: input.shipReceipt,
+      thesisId: input.channelThesis?.id ?? input.cadence?.thesis_id,
+      marketingProfile: input.marketingProfile,
+      cadence: input.cadence,
     }),
     learned: resolveLearned({
       task,
@@ -541,6 +612,9 @@ export function buildActiveExecutionRecord(
     morningBrief,
     approvalHeroLine,
     productLoopPaused: model?.governance?.kind === "product_loop",
+    dayPulse,
+    hookLeaderboard,
+    kpiTrend,
   };
 }
 

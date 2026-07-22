@@ -48,6 +48,7 @@ function useExecutionRecordInput(): BuildActiveExecutionRecordInput {
   const lastShipReceipt = useApp((s) => s.lastShipReceipt);
   const firstShipAt = useApp((s) => s.firstShipAt);
   const wedgePhase = useApp((s) => s.wedgePhase);
+  const project = useApp((s) => s.project);
 
   const delegateOperator = useMemo(
     () => resolveDelegateOperator(delegateRaw, channelThesis),
@@ -117,6 +118,8 @@ function useExecutionRecordInput(): BuildActiveExecutionRecordInput {
       shipReceipt: lastShipReceipt,
       pendingVerify,
       approvalFileCount,
+      marketingProfile,
+      project,
     }),
     [
       growthControlPlane,
@@ -139,6 +142,8 @@ function useExecutionRecordInput(): BuildActiveExecutionRecordInput {
       wedgePhase,
       marketingProfile?.growth_narrative?.one_liner,
       lastShipReceipt,
+      marketingProfile,
+      project,
     ],
   );
 }

@@ -131,6 +131,38 @@ describe("executionRecord", () => {
     assert.equal(chips[0]?.tone, "missing");
   });
 
+  it("formatExecutionResults uses thesis honest empty instead of Not measured yet", () => {
+    const chips = formatExecutionResults({
+      thesisId: "viral_short_form",
+      cadence: cadence({ day_index: 1 }),
+    });
+    const empty = chips.find((c) => c.id === "results-empty");
+    assert.ok(empty);
+    assert.match(empty!.value!, /24–72h|log views/i);
+    assert.doesNotMatch(empty!.value!, /Not measured yet/i);
+  });
+
+  it("buildActiveExecutionRecord includes dayPulse at day 3+", () => {
+    const record = buildActiveExecutionRecord({
+      plane: plane(),
+      cadence: cadence({ day_index: 3 }),
+      campaignSession: {
+        id: "cs.1",
+        projectId: "p1",
+        goal: "Test",
+        persona: "marketing",
+        startedAt: "2026-07-01T00:00:00.000Z",
+        phase: "executing",
+        milestones: [],
+        runIds: [],
+        assetIds: [],
+      },
+    });
+    assert.ok(record.dayPulse);
+    assert.equal(record.dayPulse!.checkpoint, 3);
+    assert.equal(record.dayPulse!.title, "Day 3 Pulse");
+  });
+
   it("formatExecutionDone includes proof KPI note", () => {
     const c = cadence();
     const doneTask = c.tasks[1]!;

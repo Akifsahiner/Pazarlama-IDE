@@ -14,6 +14,7 @@ import { WorkSurfaceBody } from "../canvas/work/WorkSurfaceBody";
 import { ProofDetailView } from "./ProofDetailView";
 import { DoneWhenChecklistHeader } from "./DoneWhenChecklistHeader";
 import { DistributionHookDayGrid } from "./DistributionHookDayGrid";
+import { SocialMetricsImportPanel } from "./SocialMetricsImportPanel";
 import type { ExecutionRecordView } from "@shared/executionRecord";
 import { isDistributionOperatorGate } from "@shared/cmoDistributionOperator";
 import { Radio } from "lucide-react";
@@ -155,6 +156,11 @@ export function ExecutionDetailPanel({
           <div className="min-h-0 flex-1 overflow-y-auto">
             {distOperatorActive && distributionOperator && activeTab === "proof" && (
               <DistributionHookDayGrid workspace={distributionOperator} />
+            )}
+            {activeTab === "proof" && (
+              <div className="border-b border-line/60 px-4 py-3">
+                <SocialMetricsImportPanel />
+              </div>
             )}
             <ProofDetailView
               receipt={proofView?.receipt}

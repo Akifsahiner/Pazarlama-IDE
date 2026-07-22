@@ -11,6 +11,8 @@ import { useApp } from "@renderer/state/store";
 import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
 import { OurContractStrip } from "./OurContractStrip";
 import { MorningBriefHero } from "./MorningBriefHero";
+import { DayPulseRow } from "./DayPulseRow";
+import { HookLeaderboard } from "./HookLeaderboard";
 
 function resolveStatusLabel(record: ExecutionRecordView): string | undefined {
   if (record.lifecycle === "queued") return record.lifecycleLabel;
@@ -71,6 +73,7 @@ export function ExecutionRecordCard({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const brief = record.morningBrief;
   const realResults = record.results.filter((r) => r.id !== "results-empty");
+  const emptyResult = record.results.find((r) => r.id === "results-empty");
 
   const handlePrimary = () => {
     if (!primary || !dispatchAllowed) return;
@@ -235,6 +238,14 @@ export function ExecutionRecordCard({
           </>
         )}
 
+        {record.dayPulse && (
+          <DayPulseRow pulse={record.dayPulse} kpiTrend={record.kpiTrend} />
+        )}
+
+        {record.hookLeaderboard && record.hookLeaderboard.length > 0 && (
+          <HookLeaderboard rows={record.hookLeaderboard} />
+        )}
+
         <div className="mt-6 flex flex-wrap gap-2">
           {realResults.length > 0 ? (
             realResults.map((chip) => (
@@ -245,9 +256,9 @@ export function ExecutionRecordCard({
                 tone={chip.tone === "ok" ? "ok" : chip.tone === "missing" ? "missing" : "neutral"}
               />
             ))
-          ) : (
-            <ResultChip label="Result" value="Not measured yet" tone="missing" />
-          )}
+          ) : emptyResult ? (
+            <ResultChip label={emptyResult.label} value={emptyResult.value} tone="missing" />
+          ) : null}
         </div>
 
         <button

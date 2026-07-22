@@ -261,7 +261,11 @@ import {
   evaluateWeek1MetricsWithGa4Priority,
   hasGa4Connected,
   validateFullOpsProof,
+  readGa4MetricValue,
 } from "@shared/cmoProofLoop";
+import { appendKpiSnapshot } from "@shared/kpiTrendSeries";
+import { parseSocialMetricsImport } from "@shared/socialMetricsImport";
+import { kpiFromPreset } from "@shared/kpiPresets";
 import {
   applyNextCycleStarted,
   archiveCompletedCycle,
@@ -1090,6 +1094,12 @@ interface AppState {
   recordExperimentFromConversation: (experimentId?: string) => Promise<void>;
   upsertManualKpi: (kpi: import("@shared/types").ManualKpi) => Promise<boolean>;
   deleteManualKpi: (kpiId: string) => Promise<void>;
+  /** Faz 6 — paste TikTok/Reels/generic analytics → manual_kpis + snapshots. */
+  importSocialMetrics: (
+    raw: string,
+    platform: import("@shared/socialMetricsImport").SocialImportPlatform,
+    dayIndex?: number,
+  ) => string | null;
 
   runBrowserTask: (
     task: string,
@@ -4858,22 +4868,40 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     upsertManualKpi: async (kpi) => {
-      const { settings, auth, activeProjectId, project, marketingProfile } = get();
+      const { settings, auth, activeProjectId, project, marketingProfile, opsCadence } = get();
       const pid = activeProjectId ?? project?.id;
       if (!pid) return false;
       if (!activeProjectId && project?.id) {
         set({ activeProjectId: project.id });
       }
+      const dayIndex =
+        opsCadence?.day_index ?? marketingProfile?.ops_cadence?.day_index ?? 1;
+      const hasDaySnapshot = kpi.snapshots?.some((s) => s.day_index === dayIndex);
+      const snapshotSource = kpi.import_note
+        ? "import"
+        : kpi.snapshots?.some((s) => s.source === "ga4")
+          ? "ga4"
+          : kpi.snapshots?.some((s) => s.source === "proof")
+            ? "proof"
+            : "manual";
+      const enriched =
+        !hasDaySnapshot && kpi.value != null && !Number.isNaN(kpi.value)
+          ? appendKpiSnapshot(kpi, {
+              day_index: dayIndex,
+              value: kpi.value,
+              source: snapshotSource,
+            })
+          : kpi;
       const base = marketingProfile ?? emptyMarketingProfile();
-      const merged = [...(base.manual_kpis ?? []).filter((k) => k.id !== kpi.id), kpi];
+      const merged = [...(base.manual_kpis ?? []).filter((k) => k.id !== enriched.id), enriched];
       set({ marketingProfile: { ...base, manual_kpis: merged } });
       try {
         const res = await authedFetch(
-          `${settings.serverUrl}/projects/${encodeURIComponent(pid)}/marketing-profile/kpis/${encodeURIComponent(kpi.id)}`,
+          `${settings.serverUrl}/projects/${encodeURIComponent(pid)}/marketing-profile/kpis/${encodeURIComponent(enriched.id)}`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(kpi),
+            body: JSON.stringify(enriched),
           },
           { authEnabled: auth.authEnabled, apiToken: settings.apiToken },
         );
@@ -4886,6 +4914,21 @@ export const useApp = create<AppState>((set, get) => {
       }
       recomputeGrowthPlane();
       return true;
+    },
+
+    importSocialMetrics: (raw, platform, dayIndex) => {
+      const { opsCadence, marketingProfile } = get();
+      const day =
+        dayIndex ?? opsCadence?.day_index ?? marketingProfile?.ops_cadence?.day_index ?? 3;
+      const result = parseSocialMetricsImport(raw, platform, day);
+      if (result.kpis.length === 0) {
+        return result.errors[0] ?? "No metrics parsed from paste";
+      }
+      for (const kpi of result.kpis) {
+        void get().upsertManualKpi(kpi);
+      }
+      recomputeGrowthPlane();
+      return result.errors.length > 0 ? result.errors.join("; ") : null;
     },
 
     deleteManualKpi: async (kpiId) => {
@@ -5734,8 +5777,14 @@ export const useApp = create<AppState>((set, get) => {
         kpi_value: proof.views_24h ?? proof.impressions ?? proof.replies,
       });
 
+      const distDayIndex = opsCadence?.day_index ?? 1;
       for (const kpi of rollupOperatorKpis(next, marketingProfile)) {
-        void get().upsertManualKpi(kpi);
+        const withSnapshot = appendKpiSnapshot(kpi, {
+          day_index: distDayIndex,
+          value: kpi.value,
+          source: "proof",
+        });
+        void get().upsertManualKpi(withSnapshot);
       }
 
       if (
@@ -6232,8 +6281,15 @@ export const useApp = create<AppState>((set, get) => {
       const { cadence: next, error } = completeOpsTaskCore(cadence, taskId, fullProof);
       if (error && !error.ok) return error.errors.join(" ");
 
-      const kpi = buildManualKpiFromOpsProof(task, fullProof, cadence.thesis_id);
-      if (kpi) void get().upsertManualKpi(kpi);
+      const kpiBase = buildManualKpiFromOpsProof(task, fullProof, cadence.thesis_id);
+      if (kpiBase) {
+        const kpi = appendKpiSnapshot(kpiBase, {
+          day_index: cadence.day_index,
+          value: kpiBase.value,
+          source: fullProof.kpi_source === "ga4" ? "ga4" : "proof",
+        });
+        void get().upsertManualKpi(kpi);
+      }
 
       let finalCadence = next;
       const thesis = channelThesis ?? profile?.channel_thesis;
@@ -7350,11 +7406,36 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     syncGa4Metrics: async () => {
-      const { settings, auth, activeProjectId, project } = get();
+      const { settings, auth, activeProjectId, project, opsCadence } = get();
       const pid = activeProjectId ?? project?.id;
       if (!pid) return;
       try {
-        const { profile } = await apiSyncGa4Metrics(settings, auth.authEnabled, pid);
+        const { profile: synced } = await apiSyncGa4Metrics(settings, auth.authEnabled, pid);
+        const dayIndex = opsCadence?.day_index ?? synced.ops_cadence?.day_index ?? 1;
+        const ga4Presets: Array<{ presetId: string; metric: "sessions" | "conversions" }> = [
+          { presetId: "targeted_visitors", metric: "sessions" },
+          { presetId: "ga4_sessions", metric: "sessions" },
+          { presetId: "ga4_conversions", metric: "conversions" },
+          { presetId: "waitlist_signups", metric: "conversions" },
+        ];
+        const manualKpis = [...(synced.manual_kpis ?? [])];
+        for (const { presetId, metric } of ga4Presets) {
+          const val = readGa4MetricValue(synced, metric);
+          if (val == null) continue;
+          const existing = manualKpis.find((k) => k.id === presetId);
+          const base = existing
+            ? { ...existing, value: val, updated_at: new Date().toISOString() }
+            : kpiFromPreset(presetId, val);
+          if (!base) continue;
+          const enriched = appendKpiSnapshot(
+            { ...base, value: val, updated_at: new Date().toISOString() },
+            { day_index: dayIndex, value: val, source: "ga4" },
+          );
+          const idx = manualKpis.findIndex((k) => k.id === presetId);
+          if (idx >= 0) manualKpis[idx] = enriched;
+          else manualKpis.push(enriched);
+        }
+        const profile = { ...synced, manual_kpis: manualKpis };
         set({ marketingProfile: profile });
         get().refreshConnectorFeed();
         recomputeGrowthPlane();

@@ -1,0 +1,56 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { appendKpiSnapshot, buildKpiTrendSeries, hasTrendData } from "./kpiTrendSeries";
+import type { ManualKpi } from "./types";
+
+describe("kpiTrendSeries", () => {
+  it("appendKpiSnapshot dedupes by day_index", () => {
+    const kpi: ManualKpi = {
+      id: "short_form_views",
+      name: "Views",
+      value: 100,
+      source: "manual",
+      updated_at: new Date().toISOString(),
+      snapshots: [{ day_index: 1, value: 50, recorded_at: "t1", source: "manual" }],
+    };
+    const next = appendKpiSnapshot(kpi, { day_index: 1, value: 100, source: "proof" });
+    assert.equal(next.snapshots?.length, 1);
+    assert.equal(next.snapshots![0]!.value, 100);
+    assert.equal(next.snapshots![0]!.source, "proof");
+  });
+
+  it("buildKpiTrendSeries merges manual snapshots", () => {
+    const points = buildKpiTrendSeries(
+      { day_index: 5, thesis_id: "viral_short_form", tasks: [] } as never,
+      {
+        manual_kpis: [
+          {
+            id: "short_form_views",
+            name: "Views",
+            value: 500,
+            source: "manual",
+            updated_at: "t",
+            snapshots: [
+              { day_index: 1, value: 100, recorded_at: "t", source: "manual" },
+              { day_index: 3, value: 300, recorded_at: "t", source: "import" },
+            ],
+          },
+        ],
+      } as never,
+      "short_form_views",
+    );
+    assert.equal(points.length, 2);
+    assert.ok(hasTrendData(points));
+  });
+
+  it("hasTrendData requires 2+ points", () => {
+    assert.equal(hasTrendData([{ day_index: 1, value: 1, source: "manual" }]), false);
+    assert.equal(
+      hasTrendData([
+        { day_index: 1, value: 1, source: "manual" },
+        { day_index: 3, value: 2, source: "manual" },
+      ]),
+      true,
+    );
+  });
+});

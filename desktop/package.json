@@ -21,6 +21,7 @@
     "test:faz3-morning-brief": "node --import tsx ../server/evals/faz3-morning-brief.mjs",
     "test:faz4-ship-receipt": "node --import tsx ../server/evals/ship-receipt-matrix.mjs",
     "test:faz5-human-lane": "node --import tsx ../server/evals/human-lane-matrix.mjs",
+    "test:faz6-day-pulse": "node --import tsx --test src/shared/measurementPulse.test.ts src/shared/hookLeaderboard.test.ts src/shared/socialMetricsImport.test.ts src/shared/kpiTrendSeries.test.ts && node --import tsx ../server/evals/proof-loop-matrix.mjs",
     "test:trust-copy": "node scripts/trust-copy-regression.mjs",
     "test:golden-path": "node scripts/golden-path-smoke.mjs",
     "test:verify-fixtures": "node scripts/verify-fixture-smoke.mjs",
@@ -32,10 +33,11 @@
     "test:e2e:cmo-prod": "playwright test --grep @cmo-prod",
     "test:e2e:browser-verify": "playwright test --grep @browser-verify",
     "test:e2e:cmo-measure": "playwright test --grep @cmo-measure",
+    "test:e2e:day-pulse": "playwright test --grep @day-pulse",
     "test:e2e:first-ship": "playwright test --grep @first-ship",
     "test:e2e:wow": "playwright test --grep @wow",
     "test:first-ship-smoke": "node scripts/first-ship-agent-smoke.mjs",
-    "test:ci": "npm run typecheck && npm run test:shared && npm run test:faz2-launch-readiness && npm run test:faz3-morning-brief && npm run test:faz4-ship-receipt && npm run test:faz5-human-lane && node scripts/duplicate-cta-lint.mjs && npm run test:trust-copy && npm run test:golden-path && npm run test:verify-fixtures && npm run test:cmo-lifecycle-smoke && npm run test:wow-checklist"
+    "test:ci": "npm run typecheck && npm run test:shared && npm run test:faz2-launch-readiness && npm run test:faz3-morning-brief && npm run test:faz4-ship-receipt && npm run test:faz5-human-lane && npm run test:faz6-day-pulse && node scripts/duplicate-cta-lint.mjs && npm run test:trust-copy && npm run test:golden-path && npm run test:verify-fixtures && npm run test:cmo-lifecycle-smoke && npm run test:wow-checklist"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.193",
