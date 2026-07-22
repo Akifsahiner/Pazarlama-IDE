@@ -156,10 +156,7 @@ function dispatchAction(dispatch: NextActionDispatch) {
         mode: dispatch.mode,
       });
       s.navigate("workspace");
-      if (err) {
-        s.appendEvent({ role: "system", kind: "error", text: err });
-        if (/review|close|archive/i.test(err)) s.openWeekReviewModal();
-      }
+      if (err) s.appendEvent({ role: "system", kind: "error", text: err });
       break;
     }
     case "complete_lane_b_item":

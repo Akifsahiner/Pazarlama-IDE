@@ -611,9 +611,25 @@ export function resolveCommandSurfaceAction(
       assessment &&
       (assessment.primaryValue == null || assessment.loggedCount <= 0)
     ) {
+      const needsKpi = input.cadence?.tasks.find(
+        (task) =>
+          task.owner !== "system" &&
+          task.status !== "done" &&
+          task.status !== "skipped" &&
+          (task.expected_proof_kind === "kpi" || /\bkpi\b|\bmetric\b/i.test(task.done_when)),
+      );
+      if (needsKpi) {
+        return {
+          kind: "submit_proof",
+          taskId: needsKpi.id,
+          label: "Log KPI proof",
+          testId: "command-surface-log-kpi",
+        };
+      }
       return {
-        kind: "week_review",
-        label: "Log KPI in review",
+        kind: "focus_war_room",
+        anchor: "cmo-ops-board",
+        label: "Log KPI proof",
         testId: "command-surface-log-kpi",
       };
     }

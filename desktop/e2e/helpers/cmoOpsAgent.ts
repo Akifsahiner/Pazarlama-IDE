@@ -67,7 +67,22 @@ export async function completeOpsCadenceWithAgent(page: Page) {
 
       const applyBtn = page.getByTestId("ship-apply-primary");
       if (await applyBtn.isVisible().catch(() => false)) {
-        await applyBtn.click();
+        const gate = page.getByTestId("apply-validation-gate");
+        if (await gate.isVisible().catch(() => false)) {
+          const runValidation = page.getByTestId("apply-gate-run-validation");
+          if (await runValidation.isVisible().catch(() => false)) {
+            await runValidation.click();
+            await page.waitForTimeout(5000);
+          }
+          const override = page.getByTestId("apply-gate-override");
+          if (await override.isVisible().catch(() => false)) {
+            await override.click();
+          } else {
+            await applyBtn.click();
+          }
+        } else {
+          await applyBtn.click();
+        }
         await page.waitForTimeout(3000);
       }
       await pollOpsTaskDone(page, task.id);

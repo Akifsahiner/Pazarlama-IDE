@@ -677,13 +677,15 @@ function ActiveCampaignCard({
   const appendEvent = useApp((s) => s.appendEvent);
   const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
   const ctaLabel =
-    session.phase === "measuring"
-      ? "Start next week"
-      : session.phase === "reviewing"
-        ? "Review & apply"
-        : session.phase === "planning"
-          ? "Open plan studio"
-          : "Continue campaign";
+    opsCadence
+      ? "Continue Week 1 ops"
+      : session.phase === "measuring"
+        ? "Start next week"
+        : session.phase === "reviewing"
+          ? "Review & apply"
+          : session.phase === "planning"
+            ? "Open plan studio"
+            : "Continue campaign";
 
   const weekCloseReady = opsCadence ? isWeekCloseReady(opsCadence) : false;
   const replanReady = isContinuousReplanReady(

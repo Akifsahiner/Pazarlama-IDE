@@ -90,6 +90,8 @@ const mustExist = [
   "e2e/first-ship-wedge.spec.ts",
   "scripts/first-ship-agent-smoke.mjs",
   "scripts/first-ship-dogfood.md",
+  "scripts/golden-path-dogfood.md",
+  "src/shared/applyGate.ts",
 ];
 
 const exportChecks = [
@@ -132,7 +134,9 @@ const exportChecks = [
   { file: "src/renderer/lib/backgroundError.ts", needle: "reportBackgroundError" },
   { file: "src/renderer/state/store.ts", needle: "tierFeatures" },
   { file: "src/renderer/features/settings/SettingsPage.tsx", needle: "ConnectorMarketplaceSection" },
-  { file: "src/renderer/features/workspace/canvas/planStudio/SessionLaunchReport.tsx", needle: "share-client-report" },
+  { file: "src/renderer/features/workspace/canvas/planStudio/SessionLaunchReport.tsx", needle: "ops-snapshot-export" },
+  { file: "src/shared/applyGate.ts", needle: "evaluateApplyGate" },
+  { file: "src/renderer/features/workspace/canvas/PreviewCanvas.tsx", needle: "apply-validation-gate" },
   { file: "src/renderer/features/agent/MarketingDecisionCard.tsx", needle: "FeedbackThumbs" },
   { file: "src/renderer/state/store.ts", needle: "beginFirstHour" },
   { file: "src/renderer/state/store.ts", needle: "beginFirstHourWow" },

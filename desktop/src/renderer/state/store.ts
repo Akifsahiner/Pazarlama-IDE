@@ -329,8 +329,10 @@ import {
   findLinkedOpsTaskForRubric,
   hydrateKernelFromProfile,
   mergeReplayTimeline,
+  shouldBlockTaskComplete,
   weekReviewGovernanceId,
 } from "@shared/executionKernelBridge";
+import { evaluateApplyGate } from "@shared/applyGate";
 import {
   assertKernelOpsSync,
   getActiveExecutionInstance,
@@ -1171,7 +1173,7 @@ interface AppState {
   interruptRun: () => void;
   approveRun: (approvalId: string) => void;
   rejectRun: (approvalId: string) => void;
-  applyRunChanges: (files: string[]) => Promise<void>;
+  applyRunChanges: (files: string[], opts?: { validationOverride?: boolean }) => Promise<void>;
   applyRunHunks: (file: string, hunkIds: string[]) => Promise<void>;
   discardRunChanges: () => Promise<void>;
   discardRunSelection: (files: string[]) => Promise<void>;
@@ -2013,7 +2015,7 @@ export const useApp = create<AppState>((set, get) => {
         get().openOpsProofModal(payload.taskId);
         break;
       case "week_review":
-        get().openWeekReviewModal();
+        get().focusWarRoomAnchor("cmo-ops-board");
         break;
       case "product_request":
         get().focusBackstageAnchor("lane-d-panel-wrap");
@@ -2194,8 +2196,22 @@ export const useApp = create<AppState>((set, get) => {
     if (!cadence) return;
     const before = cadence.tasks.find((t) => t.status === "in_progress" && t.owner === "system");
     if (before?.execution_plan?.mode === "browser_research") return;
-    const browserEvidenceRequired = before?.expected_proof_kind === "browser_evidence";
-    if (browserEvidenceRequired) {
+
+    const verifyRequired =
+      before != null &&
+      (before.expected_proof_kind === "browser_evidence" ||
+        doneWhenRequiresBrowserVerify(before.done_when, before));
+
+    const receipt = get().lastShipReceipt;
+    const completionBlock = before
+      ? shouldBlockTaskComplete({
+          task: before,
+          receipt,
+          qualityFindings: receipt?.qualityWarnings,
+        })
+      : { blocked: false as const };
+
+    if (verifyRequired) {
       const kernel = get().executionKernel;
       if (kernel && before?.id) {
         syncExecutionKernelState(
@@ -2207,8 +2223,16 @@ export const useApp = create<AppState>((set, get) => {
           cadence,
         );
       }
+      if (completionBlock.blocked) return;
+    } else if (completionBlock.blocked) {
+      appendEvent({
+        role: "system",
+        kind: "status",
+        text: completionBlock.reason ?? "Quality gate blocked auto-complete — fix before marking done.",
+      });
       return;
     }
+
     const next = tryAutoCompleteSystemTask(cadence, opts);
     if (next === cadence) return;
     const kernel = get().executionKernel;
@@ -9490,9 +9514,32 @@ export const useApp = create<AppState>((set, get) => {
       set((s) => (s.run ? { run: clearApproval(s.run, approvalId) } : {}));
     },
 
-    applyRunChanges: async (files) => {
-      const { run, planProgress } = get();
+    applyRunChanges: async (files, opts) => {
+      const { run, planProgress, e2eMockAgentEvents } = get();
       if (!run?.runId) return;
+
+      const gate = evaluateApplyGate({
+        events: run.events,
+        validationOverride: opts?.validationOverride,
+        skipForE2eMock: e2eMockAgentEvents,
+      });
+      if (gate.blocked) {
+        appendEvent({
+          role: "agent",
+          kind: "error",
+          text: gate.reason ?? "Validation must pass before apply.",
+        });
+        set({ canvas: { mode: "preview" } });
+        return;
+      }
+      if (opts?.validationOverride && gate.validationRequired) {
+        appendEvent({
+          role: "system",
+          kind: "status",
+          text: "Apply override — validation gate bypassed by explicit confirmation.",
+        });
+      }
+
       const allFiles = runChangedFiles(run.events);
       const taskId = get().activePlanTaskId ?? run.planTaskId;
       const taskStatus = taskId ? planProgress?.byTaskId[taskId]?.status : undefined;

@@ -72,7 +72,6 @@ export function useCommandSurfaceDispatch() {
         });
         if (err) {
           useApp.getState().appendEvent({ role: "system", kind: "error", text: err });
-          if (/review|close|archive/i.test(err)) openWeekReviewModal();
         }
         break;
       }
@@ -92,7 +91,7 @@ export function useCommandSurfaceDispatch() {
         }
         break;
       case "week_review":
-        openWeekReviewModal();
+        focusWarRoomAnchor("cmo-ops-board");
         break;
       case "product_loop":
         if (resolved.siteLevel) {

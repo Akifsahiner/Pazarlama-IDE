@@ -121,6 +121,21 @@ describe("cmoOpsCadence", () => {
     assert.equal(next.tasks[0]?.status, "in_progress");
   });
 
+  it("tryAutoCompleteSystemTask skips live URL done_when until verify passes", () => {
+    const thesis = buildCmoIntake({ project: baseProject(), persona: "marketing" });
+    let cadence = createOpsCadenceFromThesis(thesis);
+    cadence = {
+      ...cadence,
+      tasks: cadence.tasks.map((t, i) =>
+        i === 0
+          ? { ...t, done_when: "Live URL verified in browser", status: "in_progress" as const }
+          : t,
+      ),
+    };
+    const next = tryAutoCompleteSystemTask(cadence, { runId: "run-x", filesApplied: 1 });
+    assert.equal(next.tasks[0]?.status, "in_progress");
+  });
+
   it("attachBrowserEvidenceToSystemTask closes on pass", () => {
     const thesis = buildCmoIntake({ project: baseProject(), persona: "marketing" });
     const cadence = createOpsCadenceFromThesis(thesis);

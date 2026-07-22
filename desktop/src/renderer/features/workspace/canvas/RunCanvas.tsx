@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { ArrowLeft, Check, Eye, GitBranch, X, AlertTriangle } from "lucide-react";
 import { normalizePlan } from "@shared/planPlaybooks";
 import { runChangedFiles } from "@shared/runs";
+import { evaluateApplyGate } from "@shared/applyGate";
 import { useApp } from "@renderer/state/store";
 import type { CanvasMode } from "@renderer/state/session";
 import { ApprovalGate } from "@renderer/components/ApprovalGate";
@@ -90,6 +91,7 @@ export function RunCanvas() {
   const canvasMode = useApp((s) => s.canvas.mode);
   const setActiveCanvas = useApp((s) => s.setActiveCanvas);
   const applyRunChanges = useApp((s) => s.applyRunChanges);
+  const validateRun = useApp((s) => s.validateRun);
   const discardRunChanges = useApp((s) => s.discardRunChanges);
   const discardRunSelection = useApp((s) => s.discardRunSelection);
   const runApplySelection = useApp((s) => s.runApplySelection);
@@ -105,6 +107,7 @@ export function RunCanvas() {
     : undefined;
   const awaitingApply =
     finished && (planTaskStatus === "awaiting_apply" || planTaskStatus === "partial");
+  const applyGate = useMemo(() => evaluateApplyGate({ events }), [events]);
 
   useEffect(() => {
     if (run && finished && files.length > 0) {
@@ -211,45 +214,83 @@ export function RunCanvas() {
       </div>
 
       {!readOnly && finished && files.length > 0 && (
-        <div className="flex items-center justify-between gap-3 border-t border-line bg-surface px-4 py-2.5">
-          <div className="flex min-w-0 items-center gap-2 text-mini text-text-2">
-            <GitBranch size={13} className="shrink-0 text-accent" />
-            <span>
-              {files.length} file{files.length > 1 ? "s" : ""} changed in isolated worktree
-            </span>
+        <div className="flex flex-col gap-2 border-t border-line bg-surface px-4 py-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2 text-mini text-text-2">
+              <GitBranch size={13} className="shrink-0 text-accent" />
+              <span>
+                {files.length} file{files.length > 1 ? "s" : ""} changed in isolated worktree
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveCanvas("preview")}
+                className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-line px-3 py-1.5 text-mini text-text-2 transition-colors hover:bg-elevated hover:text-text"
+              >
+                <Eye size={13} /> Review all diffs
+              </button>
+              <button
+                type="button"
+                disabled={runApplySelection.length === 0}
+                onClick={() => void discardRunSelection(runApplySelection)}
+                className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-line px-3 py-1.5 text-mini text-text-2 transition-colors hover:bg-elevated hover:text-text disabled:opacity-40"
+              >
+                <X size={13} /> Discard selected
+              </button>
+              <button
+                onClick={() => void discardRunChanges()}
+                className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-line px-3 py-1.5 text-mini text-text-2 transition-colors hover:bg-elevated hover:text-text"
+              >
+                <X size={13} /> Discard all
+              </button>
+              <button
+                onClick={() =>
+                  void applyRunChanges(runApplySelection.length ? runApplySelection : files)
+                }
+                disabled={
+                  (runApplySelection.length === 0 && files.length === 0) || applyGate.blocked
+                }
+                data-testid="ship-apply-primary"
+                className="btn-accent flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-1.5 text-mini disabled:opacity-40"
+              >
+                <Check size={13} /> Apply {runApplySelection.length || files.length} file
+                {(runApplySelection.length || files.length) !== 1 ? "s" : ""}
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveCanvas("preview")}
-              className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-line px-3 py-1.5 text-mini text-text-2 transition-colors hover:bg-elevated hover:text-text"
+          {applyGate.blocked && (
+            <div
+              className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-warn/30 bg-warn-soft/20 px-3 py-2"
+              data-testid="apply-validation-gate"
             >
-              <Eye size={13} /> Review all diffs
-            </button>
-            <button
-              type="button"
-              disabled={runApplySelection.length === 0}
-              onClick={() => void discardRunSelection(runApplySelection)}
-              className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-line px-3 py-1.5 text-mini text-text-2 transition-colors hover:bg-elevated hover:text-text disabled:opacity-40"
-            >
-              <X size={13} /> Discard selected
-            </button>
-            <button
-              onClick={() => void discardRunChanges()}
-              className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-line px-3 py-1.5 text-mini text-text-2 transition-colors hover:bg-elevated hover:text-text"
-            >
-              <X size={13} /> Discard all
-            </button>
-            <button
-              onClick={() => void applyRunChanges(runApplySelection.length ? runApplySelection : files)}
-              disabled={runApplySelection.length === 0 && files.length === 0}
-              data-testid="ship-apply-primary"
-              className="btn-accent flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-1.5 text-mini disabled:opacity-40"
-            >
-              <Check size={13} /> Apply {runApplySelection.length || files.length} file
-              {(runApplySelection.length || files.length) !== 1 ? "s" : ""}
-            </button>
-          </div>
+              <p className="text-micro text-text-2">{applyGate.reason}</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => validateRun()}
+                  className="rounded-[var(--radius-sm)] border border-line px-2.5 py-1 text-micro text-text hover:bg-elevated"
+                  data-testid="apply-gate-run-validation"
+                >
+                  Run validation
+                </button>
+                <button
+                  type="button"
+                  disabled={runApplySelection.length === 0 && files.length === 0}
+                  onClick={() =>
+                    void applyRunChanges(
+                      runApplySelection.length ? runApplySelection : files,
+                      { validationOverride: true },
+                    )
+                  }
+                  className="rounded-[var(--radius-sm)] border border-danger/40 px-2.5 py-1 text-micro text-danger hover:bg-danger/10 disabled:opacity-40"
+                  data-testid="apply-gate-override"
+                >
+                  Apply anyway (override)
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

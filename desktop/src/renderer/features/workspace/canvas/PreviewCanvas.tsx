@@ -37,6 +37,7 @@ function latestPatchFor(events: RunEvent[], file: string): FilePatchPayload | nu
 }
 
 import { parseHunks, parseUnifiedPatch } from "@shared/patchParse";
+import { evaluateApplyGate } from "@shared/applyGate";
 function previewUrl(events: RunEvent[]): string | null {
   for (let i = events.length - 1; i >= 0; i--) {
     if (events[i].type === "preview.ready") {
@@ -92,6 +93,7 @@ export function PreviewCanvas() {
   const activeFile = selected ?? files[0] ?? null;
   const url = previewUrl(events);
   const checks = latestChecks(events);
+  const applyGate = useMemo(() => evaluateApplyGate({ events }), [events]);
   const finished = run?.status === "completed" || run?.status === "failed";
 
   useEffect(() => {
@@ -316,36 +318,67 @@ export function PreviewCanvas() {
               </div>
               </div>
               {finished && (
-                <div className="flex items-center justify-between gap-2 border-t border-line bg-surface/60 px-3 py-2">
-                  <span className="text-micro text-text-2">
-                    {runApplySelection.length} of {files.length} selected for apply
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      disabled={runApplySelection.length === 0}
-                      onClick={() => void discardRunSelection(runApplySelection)}
-                      className="rounded-[var(--radius-sm)] border border-line px-2.5 py-1 text-micro text-text-2 hover:bg-elevated disabled:opacity-40"
-                    >
-                      Discard selected
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void discardRunChanges()}
-                      className="rounded-[var(--radius-sm)] border border-line px-2.5 py-1 text-micro text-text-2 hover:bg-elevated"
-                    >
-                      Discard all
-                    </button>
-                    <button
-                      type="button"
-                      disabled={runApplySelection.length === 0}
-                      onClick={() => void applyRunChanges(runApplySelection)}
-                      data-testid="ship-apply-primary"
-                      className="btn-accent rounded-[var(--radius-sm)] px-2.5 py-1 text-micro disabled:opacity-40"
-                    >
-                      Apply first change
-                    </button>
+                <div className="flex flex-col gap-2 border-t border-line bg-surface/60 px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-micro text-text-2">
+                      {runApplySelection.length} of {files.length} selected for apply
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={runApplySelection.length === 0}
+                        onClick={() => void discardRunSelection(runApplySelection)}
+                        className="rounded-[var(--radius-sm)] border border-line px-2.5 py-1 text-micro text-text-2 hover:bg-elevated disabled:opacity-40"
+                      >
+                        Discard selected
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void discardRunChanges()}
+                        className="rounded-[var(--radius-sm)] border border-line px-2.5 py-1 text-micro text-text-2 hover:bg-elevated"
+                      >
+                        Discard all
+                      </button>
+                      <button
+                        type="button"
+                        disabled={runApplySelection.length === 0 || applyGate.blocked}
+                        onClick={() => void applyRunChanges(runApplySelection)}
+                        data-testid="ship-apply-primary"
+                        className="btn-accent rounded-[var(--radius-sm)] px-2.5 py-1 text-micro disabled:opacity-40"
+                      >
+                        Apply first change
+                      </button>
+                    </div>
                   </div>
+                  {applyGate.blocked && (
+                    <div
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-warn/30 bg-warn-soft/20 px-2.5 py-2"
+                      data-testid="apply-validation-gate"
+                    >
+                      <p className="text-micro text-text-2">{applyGate.reason}</p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => validateRun()}
+                          className="rounded-[var(--radius-sm)] border border-line px-2.5 py-1 text-micro text-text hover:bg-elevated"
+                          data-testid="apply-gate-run-validation"
+                        >
+                          Run validation
+                        </button>
+                        <button
+                          type="button"
+                          disabled={runApplySelection.length === 0}
+                          onClick={() =>
+                            void applyRunChanges(runApplySelection, { validationOverride: true })
+                          }
+                          className="rounded-[var(--radius-sm)] border border-danger/40 px-2.5 py-1 text-micro text-danger hover:bg-danger/10 disabled:opacity-40"
+                          data-testid="apply-gate-override"
+                        >
+                          Apply anyway (override)
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

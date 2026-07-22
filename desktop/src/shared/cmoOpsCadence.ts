@@ -8,6 +8,7 @@ import type { ChannelThesis, ChannelThesisId, CmoTaskOwner, CmoWeek1Priority } f
 import { capWeek1Priorities, capWeekPriorities } from "./cmoExecutionBind";
 import type { ExpectedProofKind, OpsExecutionPlan } from "./opsExecutionPlan";
 import type { BrowserEvidenceProof } from "./browserVerify";
+import { doneWhenRequiresBrowserVerify } from "./browserVerify";
 import type { HumanExecutionRef } from "./humanExecutionPlan";
 import {
   materializeOpsTaskContract,
@@ -626,6 +627,10 @@ export function tryAutoCompleteSystemTask(
   if (!target) return cadence;
 
   if (target.expected_proof_kind === "browser_evidence") {
+    return cadence;
+  }
+
+  if (doneWhenRequiresBrowserVerify(target.done_when, target)) {
     return cadence;
   }
 
