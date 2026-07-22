@@ -50,7 +50,7 @@ import { profileFromProjectScan } from "@shared/profileFromScan";
 import { parseMentionsFromText } from "@shared/mentionParse";
 import { enrichEditGoal } from "@shared/editGoalEnrich";
 import { buildTurnReceipt, type TurnReceipt } from "@shared/turnReceipt";
-import { aggregatePatchStats } from "@shared/turnReceipt";
+import { aggregatePatchDiffText, aggregatePatchStats } from "@shared/turnReceipt";
 import { presentError } from "@renderer/lib/errorPresenter";
 import { reportBackgroundError, swallowBackground } from "@renderer/lib/backgroundError";
 import {
@@ -157,6 +157,7 @@ import {
   type WorkSurface,
 } from "@shared/workSurfaces";
 import type { FeedFilter, FeedItem } from "@shared/feed";
+import type { ExecutionRecordDetailTab } from "@shared/executionRecord";
 import { railSectionToWorkSurface, type RailSection } from "@shared/projectRail";
 import { mockConnectorFeedItems, runEventToFeedItem } from "@renderer/features/workspace/feed/feedModel";
 import {
@@ -201,10 +202,12 @@ import {
   loadFirstShipLedger,
   loadOnboardingTrack,
   loadSessionOutcomesLocal,
+  loadShipReceipt,
   persistExecutionMetricsLocal,
   persistFirstShipLedgerLocal,
   persistOnboardingTrack,
   persistSessionOutcomesLocal,
+  persistShipReceiptLocal,
 } from "@renderer/state/quickStartWedgeHelpers";
 import { buildCmoIntake, buildFinalChannelThesis } from "@shared/cmoIntake";
 import type { ChannelThesis } from "@shared/cmoIntake";
@@ -228,16 +231,26 @@ import {
   type CmoOpsCadence,
 } from "@shared/cmoOpsCadence";
 import {
-  buildVerifyChecklistFromTask,
   buildVerifyFixGoal,
-  mergeReportToVerifyResult,
-  toBrowserEvidenceProof,
-  verifyPassed,
+  buildVerifyChecklistFromTask,
+  doneWhenRequiresBrowserVerify,
 } from "@shared/browserVerify";
 import {
   assessMeasurementBaseline,
-  isMeasurementGateHard,
 } from "@shared/measurementBaseline";
+import { resolveLaunchReadinessSteps } from "@shared/launchReadiness";
+import {
+  buildShipReceiptFromApply,
+  markShipReceiptVerifyRunning,
+  markShipReceiptVerifySkipped,
+} from "@shared/shipReceipt";
+import { finalizeVerifyRun, planVerifyAfterApply } from "@shared/executionKernelBridge";
+import { runShipQualityLint } from "@shared/shipQualityLint";
+import {
+  buildMorningBriefView,
+  morningBriefDayKey,
+  shouldShowDayUnlockToast,
+} from "@shared/morningBrief";
 import {
   allOpsTasksTerminal,
   attachKpiToCompletedProof,
@@ -709,6 +722,8 @@ interface AppState {
   wedgePhase?: WedgePhase;
   firstShipSnapshot?: FirstShipSnapshot;
   firstShipLedger?: FirstShipLedger;
+  /** Faz 4 — last apply ship receipt SSOT for Record chips + Proof tab. */
+  lastShipReceipt?: import("@shared/shipReceipt").ShipReceipt;
   shipPipeline?: ShipPipelineState;
   shipRecovery?: ShipRecoveryAction;
   executionMetrics?: ExecutionMetricsRollup;
@@ -733,6 +748,14 @@ interface AppState {
   week1FocusMode?: boolean;
   /** P13 — first-session founder-fit / strategic decision surface. */
   strategicIntakeOpen: boolean;
+  /** Faz 3 — calendar day key for morning unlock toast (`projectId:YYYY-MM-DD`). */
+  lastMorningBriefDayKey?: string;
+  /** Faz 3 — pending morning unlock toast payload for Shell. */
+  morningUnlockToast?: { dayIndex: number; today: string };
+  /** Faz 2 — Week 1 briefing modal after strategic seal. */
+  week1BriefingOpen: boolean;
+  /** Faz 2 — unified launch readiness stepper (activation / revenue / measurement). */
+  launchReadinessOpen: boolean;
   /** Faz 5 — measurement baseline gate before Week 1. */
   measurementIntakeOpen: boolean;
   /** P8 — Distribution operator (hook grid + volume). */
@@ -772,6 +795,13 @@ interface AppState {
   feedFilter: FeedFilter;
   feedCollapsed: boolean;
   activeFeedItemId?: string;
+  /** Part 0 — Execution Record detail panel tab. */
+  executionRecordDetailTab: ExecutionRecordDetailTab;
+  executionHistoryExpanded: boolean;
+  /** Part 0 — bottom command dock collapsed to composer strip (Cursor-like). */
+  commandDockCollapsed: boolean;
+  /** Part 0 — user pinned full hero during an active run. */
+  executionHeroExpanded: boolean;
   selectedRailSection: RailSection | null;
   selectedRailEntityId?: string;
 
@@ -826,9 +856,14 @@ interface AppState {
   sealStrategicDecision: (id?: StrategicOptionId) => boolean;
   openStrategicIntake: () => void;
   closeStrategicIntake: () => void;
+  openWeek1Briefing: () => void;
+  closeWeek1Briefing: () => void;
+  openLaunchReadiness: () => void;
+  closeLaunchReadiness: () => void;
   openMeasurementIntake: () => void;
   closeMeasurementIntake: () => void;
   acknowledgeMeasurementBaseline: (note?: string) => void;
+  applyProductActivationDefaults: () => boolean;
   /** P14 — confirm numeric budget or deterministic band estimate. */
   saveBudgetPlan: (monthlyAmountUsd?: number, cpaCeilingUsd?: number) => boolean;
   /** P15 — activation intake and product-loop proof actions. */
@@ -866,8 +901,13 @@ interface AppState {
   skipMonetizationTask: (taskId: string, reason?: string) => void;
   /** P7 — toggle war-room panel stack under command strip. */
   toggleWarRoomExpanded: () => void;
-  /** P7/P12 — expand backstage then scroll to anchor id. */
+  /** P7/P12 — expand war room then scroll to anchor id. */
+  focusWarRoomAnchor: (anchorId: string) => void;
+  /** @deprecated use focusWarRoomAnchor */
   focusBackstageAnchor: (anchorId: string) => void;
+  /** Faz 3 — detect calendar day rollover and queue morning unlock toast. */
+  checkMorningDayUnlock: () => void;
+  clearMorningUnlockToast: () => void;
   /** P8 — distribution operator proof actions. */
   openDistributionProofModal: (slotId: string) => void;
   dismissDistributionProofModal: () => void;
@@ -1114,6 +1154,12 @@ interface AppState {
   openFeedItem: (id: string) => void;
   setFeedFilter: (filter: FeedFilter) => void;
   toggleFeedCollapsed: (collapsed?: boolean) => void;
+  setExecutionRecordDetailTab: (tab: ExecutionRecordDetailTab) => void;
+  toggleExecutionHistoryExpanded: () => void;
+  setCommandDockCollapsed: (collapsed: boolean) => void;
+  toggleCommandDockCollapsed: () => void;
+  toggleExecutionHeroExpanded: () => void;
+  setExecutionHeroExpanded: (expanded: boolean) => void;
   selectRailSection: (section: RailSection, entityId?: string) => void;
   seedMockConnectorFeed: () => void;
   seedConnectorFeedPlaceholder: () => void;
@@ -1469,6 +1515,11 @@ export const useApp = create<AppState>((set, get) => {
     if (next.stage === "failed" && noPatches) {
       const target = get().project ? resolveFirstShipTarget(get().project!) : undefined;
       patch.shipRecovery = buildShipRecovery("no_patches", target);
+    } else if (
+      next.stage === "failed" &&
+      (next.error === "VERIFY_FAILED" || extra?.error?.includes("VERIFY_FAILED"))
+    ) {
+      patch.shipRecovery = buildShipRecovery("verify_failed");
     }
     set(patch);
   };
@@ -1554,8 +1605,7 @@ export const useApp = create<AppState>((set, get) => {
     pendingVerifyAfterApply = null;
     if (!ctx) return;
 
-    const { browser, opsCadence, activeProjectId } = get();
-    const findings = browser.findings;
+    const { browser, opsCadence, activeProjectId, lastShipReceipt, channelThesis } = get();
     const frame = browser.frameHistory.find((f) => f.pngBase64) ?? browser.frameHistory.at(-1);
     let screenshotPath: string | undefined;
     if (frame?.pngBase64 && activeProjectId) {
@@ -1571,20 +1621,30 @@ export const useApp = create<AppState>((set, get) => {
       }
     }
 
-    const verifyResult = mergeReportToVerifyResult({
-      url: ctx.url,
-      runId: input.runId,
-      report: input.report,
-      findings,
-    });
-    const evidence = toBrowserEvidenceProof(verifyResult, screenshotPath);
-    const passed = !input.failed && verifyPassed(verifyResult, 1);
+    const baseReceipt =
+      lastShipReceipt ??
+      buildShipReceiptFromApply({
+        runId: input.runId,
+        filesApplied: [],
+        previewUrl: ctx.url,
+      });
 
-    if (passed) {
-      bumpShipPipeline("verify.completed");
-    } else {
-      bumpShipPipeline("verify.failed", { error: input.summary ?? "VERIFY_FAILED" });
-      const failing = verifyResult.validations.filter((v) => !v.passed);
+    const finalized = finalizeVerifyRun({
+      receipt: baseReceipt,
+      runId: input.runId,
+      url: ctx.url,
+      report: input.report,
+      failed: input.failed,
+      summary: input.summary,
+      screenshotPath,
+      thesisId: channelThesis?.id ?? opsCadence?.thesis_id,
+      afterSnapshot: baseReceipt.after,
+    });
+
+    bumpShipPipeline(finalized.pipelineEvent, { error: finalized.pipelineError });
+
+    if (!finalized.passed) {
+      const failing = finalized.evidence.validations.filter((v) => !v.passed);
       set({
         workspaceHandoff: {
           eyebrow: "Verify failed",
@@ -1601,6 +1661,7 @@ export const useApp = create<AppState>((set, get) => {
             },
           },
         },
+        shipRecovery: finalized.recovery,
       });
       get().appendFeedItem({
         id: `verify-fix-${Date.now()}`,
@@ -1610,16 +1671,21 @@ export const useApp = create<AppState>((set, get) => {
         title: "Fix and re-verify",
         summary:
           input.summary ??
-          `Browser verify failed — ${verifyResult.validations.filter((v) => !v.passed).map((v) => v.label).join(", ") || "checklist incomplete"}`,
+          `Browser verify failed — ${failing.map((v) => v.label).join(", ") || "checklist incomplete"}`,
         status: "waiting",
         canvasTarget: { mode: "run", payload: { verifyFix: "1" } },
       });
     }
 
-    if (opsCadence) {
+    if (activeProjectId) {
+      persistShipReceiptLocal(activeProjectId, finalized.receipt);
+    }
+    set({ lastShipReceipt: finalized.receipt });
+
+    if (opsCadence && !finalized.blockAutoComplete) {
       const { cadence: nextCadence, closed } = attachBrowserEvidenceToSystemTask(
         opsCadence,
-        evidence,
+        finalized.evidence,
         { minPassRate: 1 },
       );
       syncOpsCadenceState(nextCadence);
@@ -1636,19 +1702,35 @@ export const useApp = create<AppState>((set, get) => {
             syncLaneAState(
               completeLaneAItemOnApply(laneA, inProgress.id, {
                 run_id: input.runId,
-                browser_evidence: evidence,
+                browser_evidence: finalized.evidence,
               }),
             );
           }
         }
         notifyOpsProgress(nextCadence);
       }
+    } else if (opsCadence && finalized.evidence) {
+      const target = getNowTask(opsCadence);
+      if (target && target.status !== "done") {
+        const tasks = opsCadence.tasks.map((t) =>
+          t.id === target.id
+            ? {
+                ...t,
+                proof: {
+                  ...(t.proof ?? { completed_at: new Date().toISOString() }),
+                  browser_evidence: finalized.evidence,
+                },
+              }
+            : t,
+        );
+        syncOpsCadenceState({ ...opsCadence, tasks });
+      }
     }
 
     appendEvent({
       role: "system",
       kind: "status",
-      text: passed
+      text: finalized.passed
         ? `✓ Browser verify passed for ${ctx.url}`
         : `Browser verify needs a fix — ${input.summary ?? "checklist failed"}`,
     });
@@ -1739,7 +1821,7 @@ export const useApp = create<AppState>((set, get) => {
 
   const openHumanExecutionProof = (ref: HumanExecutionRef) => {
     if (ref.export_kind === "outreach_csv") {
-      get().focusBackstageAnchor("lane-b-panel-wrap");
+      get().focusWarRoomAnchor("lane-b-panel-wrap");
       return;
     }
     if (ref.proof_surface === "lane_b_modal") {
@@ -3443,6 +3525,9 @@ export const useApp = create<AppState>((set, get) => {
       }
     } else if (event.type === "approval.required") {
       const p = event.payload as { approvalId?: string; intent?: string } | undefined;
+      if (get().wedgePhase === "ship" || get().firstHourActive || get().firstShipAt) {
+        bumpShipPipeline("approval.required");
+      }
       if (p?.approvalId && !hasThreadApproval(p.approvalId)) {
         appendEvent({
           role: "agent",
@@ -3794,13 +3879,21 @@ export const useApp = create<AppState>((set, get) => {
     pendingHandoffConfirm: undefined,
     warRoomExpanded: false,
     strategicIntakeOpen: false,
+    week1BriefingOpen: false,
+    launchReadinessOpen: false,
     measurementIntakeOpen: false,
+    lastMorningBriefDayKey: undefined,
+    morningUnlockToast: undefined,
 
     feedItems: [],
     feedFilter: "all",
     feedCollapsed:
-      typeof localStorage !== "undefined" && localStorage.getItem(FEED_COLLAPSED_KEY) === "1",
+      typeof localStorage === "undefined" || localStorage.getItem(FEED_COLLAPSED_KEY) !== "0",
     activeFeedItemId: undefined,
+    executionRecordDetailTab: "record",
+    executionHistoryExpanded: false,
+    commandDockCollapsed: false,
+    executionHeroExpanded: false,
     selectedRailSection: null,
     selectedRailEntityId: undefined,
 
@@ -4527,6 +4620,7 @@ export const useApp = create<AppState>((set, get) => {
           });
         }
         get().refreshConnectorFeed();
+        get().checkMorningDayUnlock();
       } catch {
         hydrateCampaignSessionLocal(projectId);
         hydrateOpsCadenceLocal(projectId);
@@ -4546,6 +4640,7 @@ export const useApp = create<AppState>((set, get) => {
         hydrateInfluencerOperatorLocal(projectId);
         recomputeGrowthPlane();
         ensureChannelThesisAfterProfileLoad();
+        get().checkMorningDayUnlock();
         /* offline / persistence off — UI just shows defaults */
       }
     },
@@ -5283,6 +5378,7 @@ export const useApp = create<AppState>((set, get) => {
         marketingProfile: next,
         channelThesis: thesis,
         strategicIntakeOpen: false,
+        week1BriefingOpen: true,
       });
       const projectId = get().activeProjectId ?? project.id;
       persistStrategicIntakeLocal(projectId, next);
@@ -5306,6 +5402,10 @@ export const useApp = create<AppState>((set, get) => {
 
     openStrategicIntake: () => set({ strategicIntakeOpen: true }),
     closeStrategicIntake: () => set({ strategicIntakeOpen: false }),
+    openWeek1Briefing: () => set({ week1BriefingOpen: true }),
+    closeWeek1Briefing: () => set({ week1BriefingOpen: false }),
+    openLaunchReadiness: () => set({ launchReadinessOpen: true }),
+    closeLaunchReadiness: () => set({ launchReadinessOpen: false }),
     openMeasurementIntake: () => set({ measurementIntakeOpen: true }),
     closeMeasurementIntake: () => set({ measurementIntakeOpen: false }),
     acknowledgeMeasurementBaseline: (note) => {
@@ -5375,6 +5475,19 @@ export const useApp = create<AppState>((set, get) => {
         has_activation_rate: built.activation_rate_pct != null,
         has_ttfv: built.ttfv_hours != null,
       });
+      return true;
+    },
+
+    applyProductActivationDefaults: () => {
+      const { project, marketingProfile } = get();
+      if (!project) return false;
+      const built = buildProductActivationProfile({
+        founderFit: marketingProfile?.founder_fit,
+        manualKpis: marketingProfile?.manual_kpis,
+        scan: project,
+      });
+      syncProductActivationState(built);
+      track("product_activation_defaults", { confidence: built.confidence });
       return true;
     },
 
@@ -5511,12 +5624,54 @@ export const useApp = create<AppState>((set, get) => {
         warRoomExpanded: !s.warRoomExpanded,
         week1FocusMode: !s.warRoomExpanded ? false : s.week1FocusMode,
       })),
-    focusBackstageAnchor: (anchorId) => {
+    focusWarRoomAnchor: (anchorId) => {
       if (!get().warRoomExpanded) get().toggleWarRoomExpanded();
       requestAnimationFrame(() => {
         document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     },
+    focusBackstageAnchor: (anchorId) => {
+      get().focusWarRoomAnchor(anchorId);
+    },
+
+    checkMorningDayUnlock: () => {
+      const state = get();
+      const { project, opsCadence, growthControlPlane, lastMorningBriefDayKey, marketingProfile } =
+        state;
+      if (!project?.id || !opsCadence || !growthControlPlane?.today) return;
+      const dayKey = morningBriefDayKey(project.id);
+      if (!shouldShowDayUnlockToast(lastMorningBriefDayKey, project.id, opsCadence)) return;
+      const brief = buildMorningBriefView({
+        plane: growthControlPlane,
+        cadence: opsCadence,
+        laneBWorkspace: state.laneBWorkspace ?? marketingProfile?.lane_b_workspace,
+        laneDWorkspace: state.laneDWorkspace ?? marketingProfile?.lane_d_workspace,
+        monetizationWorkspace:
+          state.monetizationWorkspace ?? marketingProfile?.monetization_workspace,
+        distributionOperator:
+          state.distributionOperator ?? marketingProfile?.distribution_operator,
+        influencerOperator:
+          state.influencerOperator ?? marketingProfile?.influencer_operator,
+        delegateOperator:
+          state.delegateOperator ??
+          state.delegateWorkspace ??
+          marketingProfile?.delegate_operator,
+        continuous: state.cmoContinuous ?? marketingProfile?.cmo_continuous,
+        campaignPhase: marketingProfile?.campaign_session?.phase,
+        growthMemory: state.growthMemory ?? marketingProfile?.growth_memory,
+        narrativeOneLiner: marketingProfile?.growth_narrative?.one_liner,
+        firstShipAt: state.firstShipAt,
+        wedgePhase: state.wedgePhase,
+        mechanismFallback:
+          state.channelThesis?.title ?? marketingProfile?.channel_thesis?.title,
+      });
+      if (!brief) return;
+      set({
+        lastMorningBriefDayKey: dayKey,
+        morningUnlockToast: { dayIndex: brief.dayIndex, today: brief.today },
+      });
+    },
+    clearMorningUnlockToast: () => set({ morningUnlockToast: undefined }),
 
     openDistributionProofModal: (slotId) =>
       set({ pendingDistributionProofSlotId: slotId }),
@@ -5704,39 +5859,23 @@ export const useApp = create<AppState>((set, get) => {
           text: `Budget plan uses the ${marketingProfile.founder_fit.monthly_budget_band} band estimate until you confirm a numeric ceiling.`,
         });
       }
-      if (!get().productActivation && !marketingProfile?.product_activation) {
-        appendEvent({
-          role: "system",
-          kind: "status",
-          text: "Define the activation event and first-value gate before Week 1 starts.",
-        });
-        return;
-      }
-      if (!get().revenueProfile && !marketingProfile?.revenue_profile) {
-        appendEvent({
-          role: "system",
-          kind: "status",
-          text: "Define how payment will be received — complete revenue intake before Week 1 starts.",
-        });
-        return;
-      }
       const baseline = assessMeasurementBaseline(marketingProfile, project);
-      if (!baseline.ready) {
-        if (isMeasurementGateHard()) {
-          set({ measurementIntakeOpen: true });
-          appendEvent({
-            role: "system",
-            kind: "status",
-            text: "Connect GA4 or log a manual baseline before Week 1 starts.",
-          });
-          return;
-        }
-        set({ measurementIntakeOpen: true });
+      const readiness = resolveLaunchReadinessSteps({
+        founderFit: marketingProfile?.founder_fit,
+        productActivation:
+          get().productActivation ?? marketingProfile?.product_activation,
+        revenueProfile: get().revenueProfile ?? marketingProfile?.revenue_profile,
+        measurementReady: baseline.ready,
+        measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
+      });
+      if (!readiness.canStartWeek1) {
+        set({ launchReadinessOpen: true });
         appendEvent({
           role: "system",
           kind: "status",
-          text: "Week 1 works best with a measurement baseline — connect GA4 or log a manual KPI.",
+          text: "Complete launch setup — activation, revenue (if applicable), and measurement — before Week 1 starts.",
         });
+        return;
       }
 
       track("begin_cmo_week1", { thesis_id: thesis.id });
@@ -5994,7 +6133,9 @@ export const useApp = create<AppState>((set, get) => {
         workspaceHandoff: undefined,
         firstHourActive: true,
         week1FocusMode: true,
-        warRoomExpanded: false,
+        warRoomExpanded: true,
+        launchReadinessOpen: false,
+        week1BriefingOpen: false,
       });
       get().setActiveCanvas("run");
 
@@ -6112,7 +6253,11 @@ export const useApp = create<AppState>((set, get) => {
     skipOpsTask: (taskId, reason) => {
       const cadence = get().opsCadence;
       if (!cadence) return;
-      const next = skipOpsTaskCore(cadence, taskId, reason);
+      const { cadence: next, error } = skipOpsTaskCore(cadence, taskId, reason);
+      if (error) {
+        appendEvent({ role: "system", kind: "error", text: error });
+        return;
+      }
       syncOpsCadenceState(next);
       appendEvent({
         role: "system",
@@ -7226,6 +7371,7 @@ export const useApp = create<AppState>((set, get) => {
           firstHourActive: !loadFirstShipAt(project.id),
           onboardingTrack: loadOnboardingTrack(project.id),
           firstShipLedger: loadFirstShipLedger(project.id),
+          lastShipReceipt: loadShipReceipt(project.id),
           executionMetrics: loadExecutionMetrics(project.id) ?? {
             projectId: project.id,
             projectOpenedAt: Date.now(),
@@ -8731,6 +8877,7 @@ export const useApp = create<AppState>((set, get) => {
           runId: run.runId,
           patchCount: result.applied.length,
         });
+        bumpShipPipeline("approval.granted");
         bumpShipPipeline("apply.completed");
 
         const snapshot = get().firstShipSnapshot;
@@ -8773,6 +8920,40 @@ export const useApp = create<AppState>((set, get) => {
           persistFirstShipLedgerLocal(pid, ledger);
           set({ firstShipLedger: ledger });
         }
+
+        const qualityFindings = runShipQualityLint({
+          after: afterMeta,
+          diffText: aggregatePatchDiffText(run.events),
+          thesisId: get().channelThesis?.id ?? get().marketingProfile?.channel_thesis?.id,
+        });
+        const cadenceBeforeApply = get().opsCadence;
+        const activeOpsBeforeApply = cadenceBeforeApply?.tasks.find(
+          (t) => t.status === "in_progress" && t.owner === "system",
+        );
+        const requiresVerify = activeOpsBeforeApply
+          ? doneWhenRequiresBrowserVerify(activeOpsBeforeApply.done_when, activeOpsBeforeApply)
+          : Boolean(previewUrl);
+        const shipReceipt = {
+          ...buildShipReceiptFromApply({
+            runId: run.runId,
+            commitSha,
+            branch: result.branch,
+            filesApplied: result.applied,
+            linesAdded: patchStats.linesAdded,
+            linesRemoved: patchStats.linesRemoved,
+            previewUrl,
+            before: snapshot ?? undefined,
+            after: afterMeta,
+            events: run.events,
+            ledger,
+            requiresVerify,
+          }),
+          qualityWarnings: qualityFindings,
+        };
+        if (pid) {
+          persistShipReceiptLocal(pid, shipReceipt);
+        }
+        set({ lastShipReceipt: shipReceipt, executionRecordDetailTab: "proof" });
 
         autoCompleteOpsOnApply({
           runId: run.runId,
@@ -8821,7 +9002,6 @@ export const useApp = create<AppState>((set, get) => {
           const activeOps = cadenceBefore?.tasks.find(
             (t) => t.status === "in_progress" && t.owner === "system",
           );
-          const verifyChecklist = buildVerifyChecklistFromTask(activeOps, thesisBefore);
           set({
             run: null,
             replayRun: null,
@@ -8852,9 +9032,24 @@ export const useApp = create<AppState>((set, get) => {
             feedItemId: gateId,
           });
           if (previewUrl && get().capabilityMatrix.canBrowse) {
-            scheduleVerifyAfterApply(previewUrl, verifyChecklist);
-          } else if (!get().capabilityMatrix.canBrowse) {
+            const plan = planVerifyAfterApply({
+              previewUrl,
+              canBrowse: true,
+              task: activeOps,
+              thesis: thesisBefore,
+            });
+            if (plan?.shouldSchedule) {
+              const runningReceipt = markShipReceiptVerifyRunning(shipReceipt);
+              if (pid) persistShipReceiptLocal(pid, runningReceipt);
+              set({ lastShipReceipt: runningReceipt });
+              scheduleVerifyAfterApply(previewUrl, plan.checklist);
+            }
+          } else if (!get().capabilityMatrix.canBrowse && requiresVerify) {
+            const skipped = markShipReceiptVerifySkipped(shipReceipt);
+            if (pid) persistShipReceiptLocal(pid, skipped);
             set({
+              lastShipReceipt: skipped,
+              shipRecovery: buildShipRecovery("verify_unavailable"),
               workspaceHandoff: {
                 eyebrow: "Verify live",
                 title: "Connect Computer Use to verify",
@@ -8863,6 +9058,12 @@ export const useApp = create<AppState>((set, get) => {
                 primaryLabel: "Open settings",
                 primaryAction: "home",
               },
+            });
+          } else if (requiresVerify && !previewUrl) {
+            if (pid) persistShipReceiptLocal(pid, shipReceipt);
+            set({
+              lastShipReceipt: shipReceipt,
+              shipRecovery: buildShipRecovery("preview_missing"),
             });
           }
         } else {
@@ -9706,12 +9907,15 @@ export const useApp = create<AppState>((set, get) => {
         get().navigate("workspace");
         if (item.source === "browser" || get().browser.pendingApprovalId === item.approvalId) {
           get().setActiveCanvas("browser");
+          get().setExecutionRecordDetailTab("browser");
           return;
         }
         if (item.source === "run" || get().run?.pendingApproval?.approvalId === item.approvalId) {
           get().setActiveCanvas("run");
+          get().setExecutionRecordDetailTab("diff");
           return;
         }
+        get().setExecutionRecordDetailTab("proof");
       }
 
       const target = item.canvasTarget;
@@ -9723,18 +9927,23 @@ export const useApp = create<AppState>((set, get) => {
         target.mode === "browser" &&
         (item.id.startsWith("browser-verify-") || target.payload?.verify === "1")
       ) {
+        const receipt = get().lastShipReceipt;
+        const cadenceBefore = get().opsCadence ?? get().marketingProfile?.ops_cadence;
+        const thesisBefore =
+          get().channelThesis ?? get().marketingProfile?.channel_thesis ?? null;
+        const activeOps = cadenceBefore?.tasks.find(
+          (t) => t.status === "in_progress" && t.owner === "system",
+        );
+        const previewEv = get().run?.events
+          .slice()
+          .reverse()
+          .find((ev) => ev.type === "preview.ready");
         const previewUrl =
-          get().run?.events
-            .slice()
-            .reverse()
-            .find((ev) => ev.type === "preview.ready")?.payload as { url?: string } | undefined;
-        const url = previewUrl?.url ?? "";
+          receipt?.previewUrl ??
+          ((previewEv?.payload as { url?: string } | undefined)?.url?.trim() ?? "");
+        const checklist = buildVerifyChecklistFromTask(activeOps, thesisBefore);
         get().navigate("workspace");
-        void get().startVerifyAfterApply(url, [
-          "Page loads without obvious errors",
-          "Hero and primary CTA visible",
-          "No broken layout above the fold",
-        ]);
+        void get().startVerifyAfterApply(previewUrl, checklist);
         return;
       }
 
@@ -9769,6 +9978,21 @@ export const useApp = create<AppState>((set, get) => {
         }
         return { feedCollapsed: next };
       }),
+
+    setExecutionRecordDetailTab: (tab) => set({ executionRecordDetailTab: tab }),
+
+    toggleExecutionHistoryExpanded: () =>
+      set((s) => ({ executionHistoryExpanded: !s.executionHistoryExpanded })),
+
+    setCommandDockCollapsed: (collapsed) => set({ commandDockCollapsed: collapsed }),
+
+    toggleCommandDockCollapsed: () =>
+      set((s) => ({ commandDockCollapsed: !s.commandDockCollapsed })),
+
+    toggleExecutionHeroExpanded: () =>
+      set((s) => ({ executionHeroExpanded: !s.executionHeroExpanded })),
+
+    setExecutionHeroExpanded: (expanded) => set({ executionHeroExpanded: expanded }),
 
     selectRailSection: (section, entityId) => {
       let surface = railSectionToWorkSurface(section);
@@ -9823,7 +10047,17 @@ export const useApp = create<AppState>((set, get) => {
     togglePalette: (open) => set((s) => ({ paletteOpen: open ?? !s.paletteOpen })),
     toggleSettings: (open) => set((s) => ({ settingsOpen: open ?? !s.settingsOpen })),
 
-    toggleFocusMode: (on) => set((s) => ({ focusMode: on ?? !s.focusMode })),
+    toggleFocusMode: (on) =>
+      set((s) => {
+        const next = on ?? !s.focusMode;
+        return next
+          ? {
+              focusMode: true,
+              commandDockCollapsed: true,
+              executionHeroExpanded: false,
+            }
+          : { focusMode: false };
+      }),
     toggleSidebar: (collapsed) =>
       set((s) => {
         const next = collapsed ?? !s.sidebarCollapsed;

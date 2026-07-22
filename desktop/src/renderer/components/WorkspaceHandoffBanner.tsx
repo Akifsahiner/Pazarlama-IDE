@@ -57,10 +57,10 @@ function runHandoffAction(action: WorkspaceHandoffAction) {
       break;
     }
     case "export_outreach":
-      s.focusBackstageAnchor("lane-b-panel-wrap");
+      s.focusWarRoomAnchor("lane-b-panel-wrap");
       break;
     case "focus_lane_b":
-      s.focusBackstageAnchor("lane-b-panel-wrap");
+      s.focusWarRoomAnchor("lane-b-panel-wrap");
       break;
     default:
       break;

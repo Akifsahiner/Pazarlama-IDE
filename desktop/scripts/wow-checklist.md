@@ -105,11 +105,48 @@ Run after Plan Studio / GTM brain / design-system changes.
 ## CMO Command Surface (P12)
 - [ ] **Four fields visible** — Darboğaz / Bugün / Neden / Done when without opening a panel
 - [ ] **One daily CTA** — dispatches the active ops, P8, P9, or P10 proof flow
-- [ ] **Backstage collapsed** — Ops + Lane A/B/C + Memory + Cycle hidden until "Open backstage"
+- [ ] **Backstage collapsed** — Ops + Lane A/B/C + Memory + Cycle hidden until "War room — full week plan"
 - [ ] **Governance banner** — at most one review / measuring / pivot / replan state
 - [ ] **NextActionBar de-dupe** — CMO-owned actions hidden; apply and approval blockers remain visible
 - [ ] **Home / Workspace parity** — same model, operator gates, and backstage order
 - [ ] **Honest why** — linked task or operator rationale; deterministic fallback, no LLM invention
+
+## Execution Record Center (Part 0)
+- [ ] **Record always center** — Workspace opens to `execution-record-stage`, not empty canvas
+- [ ] **Bottleneck sentence** — single line `Darboğaz X → sıradaki hareket Y` above the card
+- [ ] **Seven fields** — Amaç, Deney, Durum, Yapılan, Sonuç, Öğrenilen, Sonraki on the hero card
+- [ ] **Honest empty KPI** — "Henüz ölçülmedi" / "Ölçüm bekleniyor"; no fabricated rows
+- [ ] **Primary CTA on card** — Record hero dispatches command-surface action; no duplicate strip
+- [ ] **Detail panel** — Diff / Browser / Kanıt tabs embed run/browser/proof views
+- [ ] **Chat command role** — Agent panel subtitle + composer steer copy; lifecycle rail not in chat
+- [ ] **Turn receipt chip** — "Record güncellendi · Yapılan → diff" links to detail tab
+- [ ] **History timeline** — closed ops tasks in experiment language (not Runs archive wording)
+- [ ] **Backstage overlay** — war room opens on demand from Record footer; default collapsed
+- [ ] **Golden path** — reveal → run → apply updates Yapılan + diff tab; next task on Record
+
+## Faz 3 — Morning Brief (Daily Ritual)
+- [ ] **Morning brief grid** — `morning-brief-grid` shows Bottleneck / Today / Why / Done when on Execution Record
+- [ ] **Day header meta** — `Day N · mechanism · ~Xm total · owner breakdown` in hero header
+- [ ] **Effort budget** — max 3 focus tasks; owner breakdown (`2 IDE · 1 you`)
+- [ ] **Single CTA** — NextActionBar hidden on workspace when command surface active (blocking actions excepted)
+- [ ] **No duplicate CTA** — detail panel empty diff does not repeat primary button
+- [ ] **Day unlock toast** — first open each calendar day: `Day N unlocked — [today]`
+- [ ] **War room rename** — "War room — full week plan" (not Backstage)
+- [ ] **Day 1 auto-expand** — war room opens once when Week 1 begins
+- [ ] **Governance guard** — week review / pivot / product loop blocks ops dispatch until resolved
+- [ ] **Footer chips** — pending ops / prepared / product P0 / operator / mechanism in `morning-brief-footer`
+- [ ] **E2E @morning-brief** — record grid + CTA visible within 10s of card mount
+
+## Faz 4 — Profesyonel Ship (Lane A Excellence)
+- [ ] **Ship receipt SSOT** — Apply → `lastShipReceipt` populates Record chips (commit, files, lines, live URL)
+- [ ] **Done-when checklist** — `done-when-checklist` on Diff tab with apply/verify status
+- [ ] **Browser verify gate** — system tasks with live/URL done_when blocked until verify passes
+- [ ] **Approval clarity** — `approval-hero-line` + pipeline `approval` stage
+- [ ] **Quality lint** — CTA warn, SEO block on landing_conversion, tracking warn
+- [ ] **P15 pause hero** — `product-loop-pause-banner` on Record when marketing paused
+- [ ] **Proof tab receipt** — `proof-detail-view` shows commit, before/after, browser checks
+- [ ] **Eval ship-receipt-matrix** — 8 thesis × apply → receipt, 0 fail
+- [ ] **E2E @ship-receipt** — record + detail panel visible after Week 1 start
 
 ## CMO Founder-Fit + Strategic Options (P13)
 - [ ] **Exactly 7 questions** — one FounderFitWizard question per step, no long-form intake

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { resolveNextAction, type NextActionInput } from "./nextAction";
+import { resolveNextAction, type NextActionInput, isBlockingNextAction, shouldSuppressWorkspaceNextActionBar } from "./nextAction";
 import type { MarketingPlan } from "./types";
 import { emptyProgressSnapshot } from "./planProgress";
 import { buildCmoIntake } from "./cmoIntake";
@@ -404,5 +404,78 @@ describe("resolveNextAction", () => {
       }),
     );
     assert.equal(action?.id, "run-approval");
+  });
+});
+
+describe("shouldSuppressWorkspaceNextActionBar", () => {
+  function thesisCadence() {
+    const thesis = buildCmoIntake({
+      project: {
+        id: "p1",
+        source: { kind: "folder", path: "/p" },
+        name: "Acme",
+        framework: "Next",
+        routes: ["app/page.tsx"],
+        hasAnalytics: false,
+        excludedPaths: [],
+        scannedFileCount: 10,
+      },
+      persona: "marketing",
+    });
+    return { thesis, cadence: createOpsCadenceFromThesis(thesis) };
+  }
+
+  it("suppresses CMO-owned actions on workspace when command surface active", () => {
+    const { cadence } = thesisCadence();
+    const plane = {
+      binding: { headline: "Distribution", rationale: [], evidence: [] },
+      primary_lever: "Outreach",
+      today: { what: "Ship", why: "why", done_when: "done", owner: "system" },
+    } as unknown as GrowthControlPlane;
+
+    const suppressed = shouldSuppressWorkspaceNextActionBar({
+      scope: "workspace",
+      growthControlPlane: plane,
+      opsCadence: cadence,
+      action: {
+        id: "ops-system-task.1",
+        eyebrow: "IDE ships",
+        title: "Task",
+        reason: "r",
+        tone: "accent",
+        primaryLabel: "Start",
+        dispatch: { type: "run_ops_system_task", taskId: "task.1" },
+      },
+    });
+    assert.equal(suppressed, true);
+  });
+
+  it("does not suppress blocking approval actions", () => {
+    const { cadence } = thesisCadence();
+    const plane = {
+      binding: { headline: "Distribution", rationale: [], evidence: [] },
+      primary_lever: "Outreach",
+      today: { what: "Ship", why: "why", done_when: "done", owner: "system" },
+    } as unknown as GrowthControlPlane;
+
+    const action = {
+      id: "run-approval",
+      eyebrow: "Needs you",
+      title: "Approve",
+      reason: "r",
+      tone: "warn" as const,
+      primaryLabel: "Review",
+      dispatch: { type: "focus_run" as const },
+    };
+    assert.equal(isBlockingNextAction(action), true);
+    assert.equal(
+      shouldSuppressWorkspaceNextActionBar({
+        scope: "workspace",
+        growthControlPlane: plane,
+        opsCadence: cadence,
+        action,
+      }),
+      false,
+    );
   });
 });

@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildVerifyChecklistFromTask,
+  doneWhenRequiresBrowserVerify,
   parseValidationLine,
   verifyPassRate,
   verifyPassed,
@@ -43,5 +44,34 @@ describe("browserVerify", () => {
     );
     assert.ok(list.some((i) => /cta/i.test(i)));
     assert.ok(list.some((i) => /title/i.test(i)));
+  });
+
+  it("doneWhenRequiresBrowserVerify respects system owner and live URL keywords", () => {
+    const task = {
+      id: "t1",
+      owner: "system" as const,
+      what: "Ship",
+      why: "",
+      done_when: "Live URL verified in browser",
+      status: "in_progress" as const,
+      priority_index: 0,
+      day_slot: "now" as const,
+    };
+    assert.equal(doneWhenRequiresBrowserVerify(task.done_when, task), true);
+    assert.equal(
+      doneWhenRequiresBrowserVerify(task.done_when, { ...task, owner: "user" }),
+      false,
+    );
+    assert.equal(
+      doneWhenRequiresBrowserVerify("Hero diff applied", task),
+      false,
+    );
+    assert.equal(
+      doneWhenRequiresBrowserVerify("Hero diff applied", {
+        ...task,
+        expected_proof_kind: "browser_evidence",
+      }),
+      true,
+    );
   });
 });

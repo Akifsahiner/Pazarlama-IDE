@@ -16,7 +16,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useApp } from "@renderer/state/store";
-import { assessMeasurementBaseline, isMeasurementGateHard } from "@shared/measurementBaseline";
+import { assessMeasurementBaseline } from "@shared/measurementBaseline";
 import { Page } from "@renderer/components/ui/Page";
 import { Card } from "@renderer/components/ui/Card";
 import { Button } from "@renderer/components/ui/Button";
@@ -37,17 +37,17 @@ import {
 import { isContinuousReplanReady } from "@shared/cmoContinuous";
 import { isCommandSurfaceActive } from "@shared/cmoCommandSurface";
 import { isStrategicDecisionSealed } from "@shared/cmoStrategicOptions";
-import { shouldDeferFullCmoIntake } from "@shared/quickStartWedge";
+import { isWeek1Ready } from "@shared/launchReadiness";
+import { shouldDeferFullCmoIntake, isQuickStartTrack } from "@shared/quickStartWedge";
 import { ShipFirstWinBanner } from "./ShipFirstWinBanner";
 import { ShipWinCard } from "@renderer/features/workspace/ShipWinCard";
 import { nextActionableTask } from "@shared/planProgress";
 import type { CampaignSession } from "@shared/types";
 import { CmoIntakeCard } from "@renderer/features/onboarding/CmoIntakeCard";
 import { CmoStrategicIntakeFlow } from "@renderer/features/onboarding/CmoStrategicIntakeFlow";
-import { BudgetSetupCard } from "@renderer/features/onboarding/BudgetSetupCard";
-import { ProductActivationCard } from "@renderer/features/onboarding/ProductActivationCard";
-import { RevenueSetupCard } from "@renderer/features/onboarding/RevenueSetupCard";
-import { GrowthCommandSurface } from "@renderer/features/workspace/GrowthCommandSurface";
+import { QuickStartSealBanner } from "@renderer/features/onboarding/QuickStartSealBanner";
+import { ExecutionRecordCard } from "@renderer/features/workspace/executionRecord/ExecutionRecordCard";
+import { useActiveExecutionRecord } from "@renderer/features/workspace/executionRecord/useExecutionRecord";
 import { CmoBackstage } from "@renderer/features/workspace/CmoBackstage";
 import { isDistributionOperatorGate } from "@shared/cmoDistributionOperator";
 import { isInfluencerOperatorGate } from "@shared/cmoInfluencerOperator";
@@ -136,18 +136,26 @@ export function HomePage() {
   const firstShipLedger = useApp((s) => s.firstShipLedger);
   const onboardingTrack = useApp((s) => s.onboardingTrack);
   const openStrategicIntake = useApp((s) => s.openStrategicIntake);
+  const openLaunchReadiness = useApp((s) => s.openLaunchReadiness);
+  const executionRecord = useActiveExecutionRecord();
 
   const baselineReady = assessMeasurementBaseline(marketingProfile, project).ready;
-  const week1Ready = Boolean(
-    productActivation &&
-      revenueProfile &&
-      (!isMeasurementGateHard() || baselineReady),
-  );
+  const week1Ready = isWeek1Ready({
+    founderFit: marketingProfile?.founder_fit,
+    revenueProfile,
+    productActivation,
+    measurementReady: baselineReady,
+    measurementAcknowledged: Boolean(marketingProfile?.measurement_ack?.acknowledged_at),
+  });
   const needsPreWeek1Setup =
     Boolean(channelThesis) &&
     !opsCadence &&
     isStrategicDecisionSealed(marketingProfile) &&
     !week1Ready;
+  const showQuickStartSealBanner =
+    isQuickStartTrack(onboardingTrack) &&
+    firstShipAt != null &&
+    !isStrategicDecisionSealed(marketingProfile);
   const showCmoIntakeSection =
     Boolean(channelThesis) &&
     !opsCadence &&
@@ -378,20 +386,14 @@ export function HomePage() {
       )}
 
       {commandSurfaceActive && growthControlPlane && opsCadence && (
-        <GrowthCommandSurface
-          plane={growthControlPlane}
-          cadence={opsCadence}
-          laneBWorkspace={laneBWorkspace}
-          laneDWorkspace={laneDWorkspace}
-          distributionOperator={distOperatorActive ? distributionOperator : null}
-          influencerOperator={infOperatorActive ? influencerOperator : null}
-          delegateOperator={delegateOperatorActive ? delegateWorkspace : null}
-          continuous={cmoContinuous}
-          campaignSession={campaignSession}
-          growthMemory={growthMemory}
-          monetizationWorkspace={monetizationWorkspace}
-          revenueProfile={revenueProfile}
-        />
+        <div className="space-y-3">
+          <ExecutionRecordCard record={executionRecord} />
+          <div className="flex justify-end">
+            <Button variant="subtle" size="sm" onClick={() => navigate("workspace")}>
+              Open in workspace <ArrowRight size={14} className="ml-1" />
+            </Button>
+          </div>
+        </div>
       )}
 
       {commandSurfaceActive && warRoomExpanded && growthControlPlane && opsCadence && (
@@ -429,33 +431,34 @@ export function HomePage() {
         />
       )}
 
+      {showQuickStartSealBanner && (
+        <QuickStartSealBanner onSeal={() => openStrategicIntake()} />
+      )}
+
       {showCmoIntakeSection && (
         channelThesis!.verdict === "not_ready" ? (
-          <CmoIntakeCard thesis={channelThesis!} />
+          <CmoIntakeCard thesis={channelThesis!} sealed={false} />
         ) : isStrategicDecisionSealed(marketingProfile) ? (
-          <>
-            {needsPreWeek1Setup && (
-              <>
-                <BudgetSetupCard />
-                <ProductActivationCard />
-                <RevenueSetupCard />
-              </>
-            )}
+          needsPreWeek1Setup ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="primary" onClick={() => openLaunchReadiness()}>
+                Complete launch setup
+              </Button>
+              <p className="text-mini text-text-3">
+                Finish in the launch stepper on Workspace — activation, measurement, revenue if
+                applicable (~2 min each).
+              </p>
+            </div>
+          ) : (
             <CmoIntakeCard
               thesis={channelThesis!}
+              sealed={true}
               narrative={marketingProfile?.growth_narrative}
               strategicDecision={marketingProfile?.strategic_decision}
-              onStartWeek1={week1Ready ? () => beginCmoWeek1() : undefined}
+              onStartWeek1={() => beginCmoWeek1()}
               onFullPlan={() => beginFirstHour()}
-              week1BlockedReason={
-                !week1Ready
-                  ? !productActivation
-                    ? "Complete product activation above before Week 1."
-                    : "Complete revenue intake above before Week 1."
-                  : undefined
-              }
             />
-          </>
+          )
         ) : (
           <CmoStrategicIntakeFlow />
         )

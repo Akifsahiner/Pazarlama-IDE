@@ -6,6 +6,7 @@ import type { ChannelThesis, ChannelThesisId, CmoTaskOwner, CmoWeek1Priority } f
 import { capWeek1Priorities, capWeekPriorities } from "./cmoExecutionBind";
 import type { ExpectedProofKind, OpsExecutionPlan } from "./opsExecutionPlan";
 import type { BrowserEvidenceProof } from "./browserVerify";
+import { doneWhenRequiresBrowserVerify, verifyPassed } from "./browserVerify";
 import type { HumanExecutionRef } from "./humanExecutionPlan";
 import type { HumanExecutionAsset } from "./humanExecutionAsset";
 
@@ -403,6 +404,23 @@ export function completeOpsTask(
   const validation = validateOpsProof(task, proof ?? {});
   if (!validation.ok) return { cadence, error: validation };
 
+  if (
+    task.owner === "system" &&
+    (task.expected_proof_kind === "browser_evidence" ||
+      doneWhenRequiresBrowserVerify(task.done_when, task))
+  ) {
+    const evidence = proof?.browser_evidence;
+    if (!evidence || !verifyPassed({ validations: evidence.validations }, 1)) {
+      return {
+        cadence,
+        error: {
+          ok: false,
+          errors: ["Browser verification must pass before completing this system task."],
+        },
+      };
+    }
+  }
+
   const now = new Date().toISOString();
   const completedProof: CmoOpsProof = {
     urls: proof?.urls?.filter((u) => URL_RE.test(u.trim())),
@@ -444,9 +462,20 @@ export function skipOpsTask(
   cadence: CmoOpsCadence,
   taskId: string,
   reason?: string,
-): CmoOpsCadence {
+): { cadence: CmoOpsCadence; error?: string } {
   const task = cadence.tasks.find((t) => t.id === taskId);
-  if (!task || task.status === "done") return cadence;
+  if (!task || task.status === "done") return { cadence };
+
+  if (
+    task.owner === "system" &&
+    (task.expected_proof_kind === "browser_evidence" ||
+      doneWhenRequiresBrowserVerify(task.done_when, task))
+  ) {
+    return {
+      cadence,
+      error: "Cannot skip — browser verification is required for this task.",
+    };
+  }
 
   const now = new Date().toISOString();
   let tasks = cadence.tasks.map((t) =>
@@ -462,7 +491,7 @@ export function skipOpsTask(
 
   let next = refreshOpsDaySlots({ ...cadence, tasks });
   next = unlockNextPending(next, now);
-  return next;
+  return { cadence: next };
 }
 
 export function completeWeekReview(

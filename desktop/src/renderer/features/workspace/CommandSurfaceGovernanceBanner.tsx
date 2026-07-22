@@ -11,10 +11,10 @@ export function CommandSurfaceGovernanceBanner({
   const openWeekReviewModal = useApp((s) => s.openWeekReviewModal);
   const startNextCmoCycle = useApp((s) => s.startNextCmoCycle);
   const appendEvent = useApp((s) => s.appendEvent);
-  const focusBackstageAnchor = useApp((s) => s.focusBackstageAnchor);
+  const focusWarRoomAnchor = useApp((s) => s.focusWarRoomAnchor);
 
-  const openBackstage = (anchor: string) => {
-    focusBackstageAnchor(anchor);
+  const openWarRoom = (anchor: string) => {
+    focusWarRoomAnchor(anchor);
   };
 
   const onPrimary = () => {
@@ -34,14 +34,14 @@ export function CommandSurfaceGovernanceBanner({
       return;
     }
     if (governance.kind === "product_loop") {
-      openBackstage("lane-d-panel-wrap");
+      openWarRoom("lane-d-panel-wrap");
       return;
     }
     if (governance.kind === "revenue_focus") {
-      openBackstage("revenue-plane-panel-wrap");
+      openWarRoom("revenue-plane-panel-wrap");
       return;
     }
-    openBackstage(governance.kind === "pivot" ? "cmo-ops-board" : "cmo-cycle-panel");
+    openWarRoom(governance.kind === "pivot" ? "cmo-ops-board" : "cmo-cycle-panel");
   };
 
   const Icon =

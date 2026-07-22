@@ -7,6 +7,7 @@ export type ShipPipelineStage =
   | "idle"
   | "run"
   | "diff"
+  | "approval"
   | "apply"
   | "preview"
   | "verify"
@@ -54,7 +55,13 @@ export function nextShipPipelineStage(
     if (count === 0) {
       return { ...state, stage: "failed", patchCount: 0, error: "NO_PATCHES", updatedAt: now };
     }
-    return { ...state, stage: "apply", patchCount: count, updatedAt: now };
+    return { ...state, stage: "approval", patchCount: count, updatedAt: now };
+  }
+  if (event.type === "approval.required") {
+    return { ...state, stage: "approval", updatedAt: now };
+  }
+  if (event.type === "approval.granted") {
+    return { ...state, stage: "apply", updatedAt: now };
   }
   if (event.type === "apply.completed") {
     return { ...state, stage: "preview", updatedAt: now };
@@ -90,6 +97,8 @@ export function shipPipelineStepLabel(stage: ShipPipelineStage): string {
       return "Agent run";
     case "diff":
       return "Review diff";
+    case "approval":
+      return "Approval";
     case "apply":
       return "Apply to repo";
     case "preview":
@@ -97,7 +106,7 @@ export function shipPipelineStepLabel(stage: ShipPipelineStage): string {
     case "verify":
       return "Browser verify";
     case "done":
-      return "Shipped";
+      return "Proof recorded";
     case "failed":
       return "Needs recovery";
     default:

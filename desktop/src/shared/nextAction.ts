@@ -219,6 +219,37 @@ function enrichWithGrowthPlane(
   return { ...action, eyebrow, reason };
 }
 
+/** Blocking actions that must surface above the Execution Record primary CTA. */
+export function isBlockingNextAction(action: ResolvedNextAction): boolean {
+  if (action.id.startsWith("gate-")) return true;
+  return (
+    action.id === "apply-from-receipt" ||
+    action.id === "run-approval" ||
+    action.id === "browser-approval" ||
+    action.id === "return-run" ||
+    action.id === "return-browser"
+  );
+}
+
+export function shouldSuppressWorkspaceNextActionBar(input: {
+  scope: NextActionScope;
+  growthControlPlane?: GrowthControlPlane | null;
+  opsCadence?: CmoOpsCadence | null;
+  action: ResolvedNextAction | null;
+}): boolean {
+  if (input.scope !== "workspace") return false;
+  if (
+    !isCommandSurfaceActive({
+      growthControlPlane: input.growthControlPlane,
+      opsCadence: input.opsCadence,
+    })
+  ) {
+    return false;
+  }
+  if (!input.action) return true;
+  return !isBlockingNextAction(input.action);
+}
+
 /** Single prioritized “what should I do now?” for the current screen. */
 export function resolveNextAction(input: NextActionInput): ResolvedNextAction | null {
   const commandSurfaceActive = isCommandSurfaceActive({
@@ -240,12 +271,35 @@ export function resolveNextAction(input: NextActionInput): ResolvedNextAction | 
   const enriched = !commandSurfaceActive && input.opsCadence && !input.plan
     ? enrichWithGrowthPlane(action, input.growthControlPlane)
     : action;
-  if (!input.campaignSession) return enriched;
-  return {
+  if (!input.campaignSession) {
+    if (
+      shouldSuppressWorkspaceNextActionBar({
+        scope: input.scope,
+        growthControlPlane: input.growthControlPlane,
+        opsCadence: input.opsCadence,
+        action: enriched,
+      })
+    ) {
+      return null;
+    }
+    return enriched;
+  }
+  const withCampaign = {
     ...enriched,
     eyebrow: campaignNextActionEyebrow(input.campaignSession, enriched.eyebrow),
     reason: campaignNextActionReason(input.campaignSession, enriched.reason),
   };
+  if (
+    shouldSuppressWorkspaceNextActionBar({
+      scope: input.scope,
+      growthControlPlane: input.growthControlPlane,
+      opsCadence: input.opsCadence,
+      action: withCampaign,
+    })
+  ) {
+    return null;
+  }
+  return withCampaign;
 }
 
 function resolveNextActionCore(input: NextActionInput): ResolvedNextAction | null {
