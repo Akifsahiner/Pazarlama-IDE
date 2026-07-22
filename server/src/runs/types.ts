@@ -49,7 +49,16 @@ export type RunEventType =
   | "evidence.captured"
   | "issue.detected"
   | "approval.required"
-  | "verification.completed";
+  | "verification.completed"
+  // Part 10 — execution kernel task correlation
+  | "task.dispatched"
+  | "task.status_changed"
+  | "task.proof_submitted"
+  | "task.partial_applied"
+  | "task.retry_scheduled"
+  | "task.paused"
+  | "task.resumed"
+  | "task.cancelled";
 
 export type RunEventStatus = "pending" | "running" | "success" | "failed";
 

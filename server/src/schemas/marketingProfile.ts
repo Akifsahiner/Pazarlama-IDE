@@ -79,6 +79,62 @@ export const cmoWeek1PrioritySchema = z.object({
   done_when: z.string(),
 });
 
+export const marketingTaskMetricSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  target: z.number().optional(),
+  unit: z.string().optional(),
+  measurable: z.boolean(),
+  ga4_metric_name: z.enum(["sessions", "activeUsers", "conversions"]).optional(),
+});
+
+export const marketingTaskInputSchema = z.object({
+  label: z.string(),
+  ref: z.string().optional(),
+  value: z.string().optional(),
+});
+
+export const humanExecutionAssetSchema = z.object({
+  copy_blocks: z.array(
+    z.object({
+      id: z.string(),
+      label: z.string(),
+      text: z.string(),
+      variant: z.string().optional(),
+    }),
+  ),
+  brief_md: z.string().optional(),
+  target_list: z
+    .array(
+      z.object({
+        name: z.string(),
+        handle: z.string().optional(),
+        evidence: z.string().optional(),
+      }),
+    )
+    .optional(),
+  utm_template: z.string().optional(),
+  follow_up: z.string().optional(),
+});
+
+export const opsExecutionPlanSchema = z.object({
+  mode: z.enum(["repo_edit", "browser_research", "content_draft", "scout_then_edit"]),
+  goal: z.string(),
+  skills: z.array(z.string()),
+  mentions: z.array(z.record(z.string(), z.unknown())).optional(),
+  scout_prompt: z.string().optional(),
+  start_url: z.string().optional(),
+  lane_a_item_id: z.string().optional(),
+});
+
+export const humanExecutionRefSchema = z.object({
+  source: z.enum(["lane_b", "distribution", "influencer", "delegate"]),
+  item_id: z.string(),
+  proof_surface: z.enum(["ops_modal", "lane_b_modal", "operator_modal"]),
+  export_kind: z.enum(["outreach_csv", "issue", "brief"]).optional(),
+  label: z.string().optional(),
+});
+
 export const cmoOpsProofSchema = z.object({
   urls: z.array(z.string()).optional(),
   note: z.string().optional(),
@@ -91,6 +147,7 @@ export const cmoOpsProofSchema = z.object({
   kpi_target: z.number().optional(),
   kpi_source: z.enum(["manual", "ga4"]).optional(),
   kpi_unit: z.string().optional(),
+  browser_evidence: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const cmoPivotSuggestionSchema = z.object({
@@ -128,6 +185,44 @@ export const cmoOpsTaskSchema = z.object({
   skip_reason: z.string().optional(),
   unlocked_at: z.string().optional(),
   cost_estimate_usd: z.number().nonnegative().optional(),
+  execution_plan: opsExecutionPlanSchema.optional(),
+  expected_proof_kind: z.enum(["live_url", "kpi", "note", "browser_evidence"]).optional(),
+  human_execution_ref: humanExecutionRefSchema.optional(),
+  human_execution_asset: humanExecutionAssetSchema.optional(),
+  deliverable: z.string().optional(),
+  execution_mode: z
+    .enum([
+      "repo_edit",
+      "browser_research",
+      "content_draft",
+      "scout_then_edit",
+      "human_post",
+      "human_outreach",
+      "human_launch",
+      "human_log",
+      "delegate_rubric",
+      "delegate_brief",
+      "export_csv",
+      "measurement_sync",
+      "product_request",
+      "week_review",
+    ])
+    .optional(),
+  estimated_effort_minutes: z.number().positive().optional(),
+  if_failed: z.string().optional(),
+  day_offset: z.number().nonnegative().optional(),
+  inputs: z.array(marketingTaskInputSchema).optional(),
+  required_proof: z.array(z.enum(["live_url", "kpi", "note", "browser_evidence"])).optional(),
+  metric: marketingTaskMetricSchema.optional(),
+  measure_date: z.string().optional(),
+  depends_on: z.array(z.string()).optional(),
+  when: z
+    .object({
+      day_offset: z.number(),
+      slot: z.enum(["now", "today", "up_next", "later"]),
+      due_at: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const cmoOpsCadenceSchema = z.object({
@@ -157,6 +252,107 @@ export const cmoOpsCadenceSchema = z.object({
   }),
   last_focus_reset_at: z.string(),
   pivot_suggestion: cmoPivotSuggestionSchema.optional(),
+});
+
+const executionProvenanceSchema = z.object({
+  source: z.enum([
+    "command_surface",
+    "ops_board",
+    "plan_studio",
+    "brain_action",
+    "auto_chain",
+    "replay",
+    "week_review",
+  ]),
+  at: z.string(),
+  actor: z.enum(["system", "user"]).optional(),
+});
+
+const executionInstanceSchema = z.object({
+  id: z.string(),
+  scope: z.enum(["ops", "plan", "governance"]),
+  execution_mode: z.enum([
+    "repo_edit",
+    "browser_research",
+    "content_draft",
+    "scout_then_edit",
+    "human_post",
+    "human_outreach",
+    "human_launch",
+    "human_log",
+    "delegate_rubric",
+    "delegate_brief",
+    "export_csv",
+    "measurement_sync",
+    "product_request",
+    "week_review",
+  ]),
+  status: z.enum([
+    "proposed",
+    "ready",
+    "running",
+    "awaiting_approval",
+    "applied",
+    "verifying",
+    "completed",
+    "measuring",
+    "paused",
+    "cancelled",
+    "failed",
+  ]),
+  attempt: z.number().int().positive(),
+  idempotency_key: z.string(),
+  depends_on: z.array(z.string()).default([]),
+  blocked_by: z.array(z.string()).optional(),
+  run_id: z.string().optional(),
+  linked_entity: humanExecutionRefSchema.optional(),
+  proof: cmoOpsProofSchema.optional(),
+  partial: z
+    .object({
+      applied_files: z.array(z.string()).optional(),
+      remaining_gate: z.string().optional(),
+    })
+    .optional(),
+  provenance: executionProvenanceSchema,
+  ownership: z.object({
+    contract: z.literal("ops_cadence"),
+    lifecycle: z.literal("execution_kernel"),
+    run: z.literal("run_event_bus").optional(),
+    asset: z.literal("human_execution_asset").optional(),
+  }),
+  paused_at: z.string().optional(),
+  started_at: z.string().optional(),
+  completed_at: z.string().optional(),
+  last_error: z.string().optional(),
+});
+
+export const executionKernelEventSchema = z.object({
+  id: z.string(),
+  task_id: z.string(),
+  type: z.enum([
+    "dispatched",
+    "status_changed",
+    "proof_submitted",
+    "partial_applied",
+    "retry_scheduled",
+    "paused",
+    "resumed",
+    "cancelled",
+  ]),
+  status: executionInstanceSchema.shape.status,
+  attempt: z.number().int().positive(),
+  provenance: executionProvenanceSchema,
+  at: z.string(),
+  detail: z.string().optional(),
+});
+
+export const executionKernelSchema = z.object({
+  id: z.string(),
+  project_id: z.string(),
+  ops_cadence_id: z.string().optional(),
+  instances: z.record(z.string(), executionInstanceSchema),
+  events: z.array(executionKernelEventSchema).default([]),
+  updated_at: z.string(),
 });
 
 export const laneBProofSchema = z.object({
@@ -892,6 +1088,8 @@ const strategicOptionSchema = z.object({
   mechanism_summary: z.string().optional(),
   mechanism_rationale: z.array(z.string()).optional(),
   mechanism_anti_pattern: z.string().optional(),
+  quality_evidence: z.array(z.string()).optional(),
+  why_not_summary: z.string().optional(),
 });
 
 const budgetBucketIdSchema = z.enum([
@@ -1332,6 +1530,8 @@ export const marketingProfileSchema = z.object({
   /** P17 — public presence policy + growth mechanism assessment. */
   public_presence_policy: z.record(z.string(), z.unknown()).optional(),
   growth_mechanism_profile: z.record(z.string(), z.unknown()).optional(),
+  /** P18 — thesis quality engine report (Part 7). */
+  thesis_quality_report: z.record(z.string(), z.unknown()).optional(),
   /** P14 — deterministic budget allocation and action-cost ledger. */
   budget_plan: budgetPlanSchema.optional(),
   /** P15 — measured activation/TTFV intake and Lane D product loop. */
@@ -1343,6 +1543,9 @@ export const marketingProfileSchema = z.object({
 
   /** P1 CMO operating cadence — daily ops + accountability (desktop/src/shared/cmoOpsCadence.ts). */
   ops_cadence: cmoOpsCadenceSchema.optional(),
+
+  /** Part 10 — unified execution kernel (desktop/src/shared/executionKernel.ts). */
+  execution_kernel: executionKernelSchema.optional(),
 
   /** P3 Lane B workspace — posting calendar / outreach / runbook (desktop/src/shared/cmoLaneB.ts). */
   lane_b_workspace: laneBWorkspaceSchema.optional(),

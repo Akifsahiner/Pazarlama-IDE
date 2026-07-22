@@ -4,6 +4,7 @@ import { useApp } from "@renderer/state/store";
 
 /** Shared dispatch for ExecutionRecordCard primary CTA. */
 export function useCommandSurfaceDispatch() {
+  const retryExecutionTask = useApp((s) => s.retryExecutionTask);
   const startOpsSystemTask = useApp((s) => s.startOpsSystemTask);
   const openOpsProofModal = useApp((s) => s.openOpsProofModal);
   const openDistributionProofModal = useApp((s) => s.openDistributionProofModal);
@@ -40,6 +41,15 @@ export function useCommandSurfaceDispatch() {
         startOpsSystemTask(resolved.taskId);
         setExecutionRecordDetailTab("diff");
         break;
+      case "retry_execution": {
+        const err = retryExecutionTask(resolved.taskId);
+        if (err) {
+          useApp.getState().appendEvent({ role: "system", kind: "error", text: err });
+        } else {
+          setExecutionRecordDetailTab("diff");
+        }
+        break;
+      }
       case "submit_proof":
         openOpsProofModal(resolved.taskId);
         setExecutionRecordDetailTab("proof");

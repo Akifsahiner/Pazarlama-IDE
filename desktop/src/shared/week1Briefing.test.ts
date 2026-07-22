@@ -72,7 +72,7 @@ describe("week1Briefing view model", () => {
     const founderFit = fit();
     const baseline = buildCmoIntake({ project: p, persona: "marketing", draft: true });
     const narrative = synthesizeGrowthNarrative({ project: p, founderFit });
-    const decision = buildStrategicDecision({
+    const { decision } = buildStrategicDecision({
       project: p,
       founderFit,
       narrative,
@@ -98,7 +98,7 @@ describe("week1Briefing view model", () => {
     const founderFit = fit();
     const baseline = buildCmoIntake({ project: p, persona: "marketing", draft: true });
     const narrative = synthesizeGrowthNarrative({ project: p, founderFit });
-    const decision = buildStrategicDecision({
+    const { decision } = buildStrategicDecision({
       project: p,
       founderFit,
       narrative,

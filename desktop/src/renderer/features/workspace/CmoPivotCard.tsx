@@ -12,7 +12,7 @@ import { Badge } from "@renderer/components/ui/Badge";
 import { useApp } from "@renderer/state/store";
 import { rollupBudgetActuals } from "@shared/cmoBudgetPlane";
 import { buildRevenueCloseout } from "@shared/cmoRevenuePlane";
-import { buildRevenueWeekReviewNudge, evaluateWeek1MetricsWithGa4Priority, hasGa4Connected } from "@shared/cmoProofLoop";
+import { buildRevenueWeekReviewNudge, evaluateWeek1MetricsWithGa4Priority, hasGa4Connected, weekReviewMeasurableStatus } from "@shared/cmoProofLoop";
 
 export function DistributionVerdictCard({ verdict }: { verdict: DistributionVerdict }) {
   const startNextCmoCycle = useApp((s) => s.startNextCmoCycle);
@@ -313,6 +313,7 @@ export function CmoWeekReviewModal() {
     ? buildRevenueCloseout(revenueProfile, profile?.manual_kpis, budgetCloseout)
     : null;
   const revenueNudge = buildRevenueWeekReviewNudge(profile, revenueProfile);
+  const measurableRows = weekReviewMeasurableStatus(cadence);
 
   const handleSubmit = () => {
     const err = complete(summary);
@@ -384,6 +385,34 @@ export function CmoWeekReviewModal() {
             </p>
           )}
         </div>
+        {measurableRows.length > 0 && (
+          <div
+            className="mt-3 rounded-[var(--radius-md)] border border-line bg-surface-2 px-3 py-2"
+            data-testid="week-review-measurable-checklist"
+          >
+            <p className="text-[10px] font-semibold uppercase text-text-3">Measurable tasks</p>
+            <table className="mt-2 w-full text-[10px]">
+              <thead>
+                <tr className="text-left text-text-3">
+                  <th className="pb-1 pr-2">Task</th>
+                  <th className="pb-1 pr-2">Metric</th>
+                  <th className="pb-1 pr-2">Target</th>
+                  <th className="pb-1">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {measurableRows.map(({ task, logged, target, value }) => (
+                  <tr key={task.id} className="border-t border-line/50 text-text-2">
+                    <td className="py-1 pr-2">{task.what.slice(0, 48)}…</td>
+                    <td className="py-1 pr-2">{task.metric?.name ?? "—"}</td>
+                    <td className="py-1 pr-2">{target ?? "—"}</td>
+                    <td className="py-1">{logged ? `✓ ${value ?? ""}` : task.status === "skipped" ? "skipped" : "✗ pending"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
         <textarea
           className="mt-3 w-full resize-none rounded-[var(--radius-md)] border border-line bg-surface-2 px-2.5 py-2 text-body-sm text-text"
           rows={5}

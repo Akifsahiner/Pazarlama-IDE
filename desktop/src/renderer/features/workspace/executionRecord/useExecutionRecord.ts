@@ -55,6 +55,9 @@ function useExecutionRecordInput(): BuildActiveExecutionRecordInput {
     [delegateRaw, channelThesis],
   );
 
+  const executionKernel = useApp(
+    (s) => s.executionKernel ?? s.marketingProfile?.execution_kernel,
+  );
   const distOperatorActive =
     !!distributionOperator &&
     isDistributionOperatorGate({
@@ -120,6 +123,7 @@ function useExecutionRecordInput(): BuildActiveExecutionRecordInput {
       approvalFileCount,
       marketingProfile,
       project,
+      executionKernel,
     }),
     [
       growthControlPlane,
@@ -142,8 +146,11 @@ function useExecutionRecordInput(): BuildActiveExecutionRecordInput {
       wedgePhase,
       marketingProfile?.growth_narrative?.one_liner,
       lastShipReceipt,
+      pendingVerify,
+      approvalFileCount,
       marketingProfile,
       project,
+      executionKernel,
     ],
   );
 }

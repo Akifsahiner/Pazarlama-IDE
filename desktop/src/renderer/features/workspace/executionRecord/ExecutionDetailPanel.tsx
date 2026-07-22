@@ -5,6 +5,7 @@ import { buildDoneWhenChecklist } from "@shared/doneWhenChecklist";
 import { getNowTask } from "@shared/cmoOpsCadence";
 import { shipReceiptToProofView } from "@shared/shipReceipt";
 import { Segmented } from "@renderer/components/ui/Segmented";
+import { Button } from "@renderer/components/ui/Button";
 import { useApp } from "@renderer/state/store";
 import { ShipPipelineBar } from "../ShipPipelineBar";
 import { RunCanvas } from "../canvas/RunCanvas";
@@ -37,6 +38,13 @@ export function ExecutionDetailPanel({
   const tab = useApp((s) => s.executionRecordDetailTab);
   const setTab = useApp((s) => s.setExecutionRecordDetailTab);
   const run = useApp((s) => s.run);
+  const replayExecutionTask = useApp((s) => s.replayExecutionTask);
+  const executionKernel = useApp((s) => s.executionKernel ?? s.marketingProfile?.execution_kernel);
+  const retryExecutionTask = useApp((s) => s.retryExecutionTask);
+  const pauseExecutionTask = useApp((s) => s.pauseExecutionTask);
+  const resumeExecutionTask = useApp((s) => s.resumeExecutionTask);
+  const cancelExecutionTask = useApp((s) => s.cancelExecutionTask);
+  const appendEvent = useApp((s) => s.appendEvent);
   const canvasMode = useApp((s) => s.canvas.mode);
   const surface = normalizeToWorkSurface(canvasMode);
   const opsCadence = useApp((s) => s.opsCadence ?? s.marketingProfile?.ops_cadence);
@@ -90,6 +98,11 @@ export function ExecutionDetailPanel({
 
   const activeTab = tab === "record" ? defaultHint : tab;
   const showWorkSurface = Boolean(surface);
+  const kernelTimeline = replayExecutionTask(record.id);
+  const kernelInst = executionKernel?.instances[record.id];
+  const kernelFailed = kernelInst?.status === "failed";
+  const kernelPaused = kernelInst?.status === "paused";
+  const kernelRunning = kernelInst?.status === "running" || kernelInst?.status === "awaiting_approval";
 
   return (
     <div
@@ -103,6 +116,16 @@ export function ExecutionDetailPanel({
           <span className="text-[11px] font-semibold uppercase tracking-wider text-text-3">
             Work surface
           </span>
+          {kernelFailed && (
+            <span className="text-[11px] font-medium text-warn" data-testid="execution-kernel-failed">
+              Failed{kernelInst?.last_error ? ` — ${kernelInst.last_error}` : ""}
+            </span>
+          )}
+          {kernelPaused && (
+            <span className="text-[11px] font-medium text-text-2" data-testid="execution-kernel-paused">
+              Paused
+            </span>
+          )}
           {runActive && (
             <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-accent">
               <Radio size={11} className="animate-pulse" />
@@ -110,11 +133,58 @@ export function ExecutionDetailPanel({
             </span>
           )}
         </div>
-        <Segmented
-          value={activeTab}
-          onChange={(v) => setTab(v as ExecutionRecordDetailTab)}
-          options={TAB_OPTIONS}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          {kernelFailed && (
+            <Button
+              variant="primary"
+              size="sm"
+              data-testid="execution-kernel-retry"
+              onClick={() => {
+                const err = retryExecutionTask(record.id);
+                if (err) appendEvent({ role: "system", kind: "error", text: err });
+              }}
+            >
+              Retry
+            </Button>
+          )}
+          {kernelPaused && (
+            <Button
+              variant="primary"
+              size="sm"
+              data-testid="execution-kernel-resume"
+              onClick={() => resumeExecutionTask(record.id)}
+            >
+              Resume
+            </Button>
+          )}
+          {(kernelRunning || kernelPaused) && (
+            <>
+              {kernelRunning && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="execution-kernel-pause"
+                  onClick={() => pauseExecutionTask(record.id)}
+                >
+                  Pause
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="execution-kernel-cancel"
+                onClick={() => cancelExecutionTask(record.id)}
+              >
+                Cancel
+              </Button>
+            </>
+          )}
+          <Segmented
+            value={activeTab}
+            onChange={(v) => setTab(v as ExecutionRecordDetailTab)}
+            options={TAB_OPTIONS}
+          />
+        </div>
       </div>
 
       <div
@@ -170,6 +240,22 @@ export function ExecutionDetailPanel({
           </div>
         )}
       </div>
+      {kernelTimeline.length > 0 && (
+        <div
+          className="border-t border-line/60 px-4 py-2 text-[11px] text-text-3"
+          data-testid="execution-kernel-replay"
+        >
+          <span className="font-semibold uppercase tracking-wider text-text-2">Kernel timeline</span>
+          <ul className="mt-1 space-y-0.5">
+            {kernelTimeline.slice(-6).map((entry, i) => (
+              <li key={`${entry.at}-${i}`}>
+                {entry.title}
+                {entry.detail ? ` — ${entry.detail}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

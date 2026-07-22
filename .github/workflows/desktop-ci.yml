@@ -38,6 +38,7 @@ jobs:
       - run: npm run build
       - run: npm run typecheck
       - run: npm run test:shared
+      - run: npm run test:execution-kernel-bypass
       - run: node scripts/trust-copy-regression.mjs
       - run: node scripts/golden-path-smoke.mjs
       - run: node scripts/verify-fixture-smoke.mjs
@@ -63,6 +64,9 @@ jobs:
       - run: npm run eval:skill-quality
       - run: npm run eval:p0-plan-smoke
       - run: npm run eval:devflow-plan-smoke
+      - run: npm run eval:thesis-quality
+      - run: npm run eval:task-contract
+      - run: npm run eval:execution-kernel
 
   gtm-eval:
     runs-on: ubuntu-latest

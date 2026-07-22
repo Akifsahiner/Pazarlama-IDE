@@ -9,8 +9,16 @@ import {
   type GtmBottleneck,
 } from "./bottleneck";
 import { applyMechanismToChannelThesis } from "./cmoGrowthEngine";
+import { evaluateThesisQuality } from "./cmoThesisQualityEngine";
 import { capWeek1Priorities } from "./cmoExecutionBind";
 import type { GrowthMechanismId } from "./cmoGrowthMechanismKnowledge";
+import {
+  enrichThesisWeek1Priorities,
+  type MarketingExecutionMode,
+  type MarketingTaskInput,
+  type MarketingTaskMetric,
+} from "./marketingTaskContract";
+import type { ExpectedProofKind } from "./opsExecutionPlan";
 import type {
   FounderFitProfile,
   GrowthNarrative,
@@ -42,7 +50,19 @@ export interface CmoWeek1Priority {
   why: string;
   owner: CmoTaskOwner;
   done_when: string;
+  /** P19 — operational contract fields */
+  deliverable?: string;
+  execution_mode?: MarketingExecutionMode;
+  estimated_effort_minutes?: number;
+  if_failed?: string;
+  day_offset?: number;
+  inputs?: MarketingTaskInput[];
+  required_proof?: ExpectedProofKind[];
+  metric?: MarketingTaskMetric;
+  depends_on?: string[];
 }
+
+export type { CmoWeek1PriorityWithContract } from "./marketingTaskContract";
 
 export interface ChannelThesis {
   id: ChannelThesisId;
@@ -692,8 +712,23 @@ export function buildCmoIntake(input: CmoIntakeInput): ChannelThesis {
   const { verdict, reason } = computeVerdict(input.project, signals);
   const primary_bottleneck = inferBottleneck(signals, input.persona);
   const weekIndex = Math.max(1, input.context?.cycle_index ?? 1);
-  const id =
-    input.context?.force_thesis_id ?? pickThesisId(input, signals, primary_bottleneck);
+  const founderFit = input.founder_fit ?? input.profile?.founder_fit;
+  let id = input.context?.force_thesis_id;
+  if (!id) {
+    if (founderFit) {
+      const report = evaluateThesisQuality({
+        project: input.project,
+        persona: input.persona,
+        profile: input.profile,
+        founder_fit: founderFit,
+        presence: input.profile?.public_presence_policy as import("./cmoGrowthEngine").PublicPresencePolicy | undefined,
+        activation: input.profile?.product_activation,
+      });
+      id = report.primary_thesis_id;
+    } else {
+      id = pickThesisId(input, signals, primary_bottleneck);
+    }
+  }
   const template = THESIS_TEMPLATES[id];
   const playbooks = BOTTLENECK_PLAYBOOKS[primary_bottleneck] ?? ["landing-conversion"];
 
@@ -706,7 +741,7 @@ export function buildCmoIntake(input: CmoIntakeInput): ChannelThesis {
     primary_bottleneck,
     rationale: appendCycleRationale(template.rationale, input.context, weekIndex),
     week1_priorities: capWeek1Priorities(
-      template.week1(signals, signals.heroPath).map((p, i) => ({
+      enrichThesisWeek1Priorities(template.week1(signals, signals.heroPath), id).map((p, i) => ({
         ...p,
         id: weekPriorityId(id, weekIndex, i),
       })),

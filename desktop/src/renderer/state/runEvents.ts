@@ -102,6 +102,17 @@ export function applyRunEvent(prev: RunInfo, event: RunEvent): RunReduction {
       run.pendingApproval = undefined;
       break;
 
+    case "task.dispatched":
+    case "task.status_changed":
+    case "task.proof_submitted":
+    case "task.partial_applied":
+    case "task.retry_scheduled":
+    case "task.paused":
+    case "task.resumed":
+    case "task.cancelled":
+      run.intent = event.summary ?? event.title ?? run.intent;
+      break;
+
     default:
       break;
   }

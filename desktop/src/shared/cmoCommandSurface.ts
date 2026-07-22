@@ -28,6 +28,7 @@ import { getNextMonetizationTask, type MonetizationWorkspace } from "./cmoRevenu
 import { withNarrativePrefix } from "./cmoNarrativeContext";
 import type { CmoOpsCadence } from "./cmoOpsCadence";
 import { evaluateWeek1MetricsWithGa4Priority, isWeekCloseReady } from "./cmoProofLoop";
+import { canRetryExecution } from "./executionRetryPolicy";
 
 type TodayWithoutWhy = Omit<GrowthTodayMove, "why"> & { why?: string };
 
@@ -88,6 +89,7 @@ export interface CommandSurfaceGovernanceInput {
   growthMemory?: GrowthMemoryState | null;
   laneDWorkspace?: LaneDWorkspace | null;
   monetizationWorkspace?: MonetizationWorkspace | null;
+  executionKernel?: import("./executionKernel").ExecutionKernelState | null;
   now?: number;
 }
 
@@ -379,6 +381,7 @@ export type CommandSurfaceAction =
   | { kind: "lane_b_proof"; itemId: string; label: string; testId: string }
   | { kind: "focus_war_room"; anchor: string; label: string; testId: string }
   | { kind: "focus_backstage"; anchor: string; label: string; testId: string }
+  | { kind: "retry_execution"; taskId: string; label: string; testId: string }
   | { kind: "none"; reason: string };
 
 export interface ResolveCommandSurfaceActionInput extends BuildCommandSurfaceModelInput {
@@ -505,6 +508,37 @@ export function resolveCommandSurfaceAction(
     };
   }
 
+  const kernelReady = getNextExecutionAction({
+    executionKernel: input.executionKernel,
+    cadence: input.cadence,
+  });
+
+  if (input.executionKernel && input.cadence) {
+    for (const task of input.cadence.tasks) {
+      const inst = input.executionKernel.instances[task.id];
+      if (inst?.status === "failed" && canRetryExecution(inst)) {
+        return {
+          kind: "retry_execution",
+          taskId: task.id,
+          label: `Retry — ${task.what.slice(0, 48)}`,
+          testId: "command-surface-retry-failed",
+        };
+      }
+    }
+  }
+
+  if (kernelReady && input.cadence) {
+    const kTask = input.cadence.tasks.find((t) => t.id === kernelReady.taskId);
+    if (kTask?.owner === "system") {
+      return {
+        kind: "run_system",
+        taskId: kernelReady.taskId,
+        label: "Start in IDE",
+        testId: "command-surface-start-move",
+      };
+    }
+  }
+
   const today = input.plane.today;
   if (today?.ops_task_id) {
     if (today.owner === "system") {
@@ -620,4 +654,21 @@ export function resolveCommandSurfaceAction(
   }
 
   return { kind: "none", reason: "No actionable move" };
+}
+
+/** Part 10 — kernel-aware next ready task for command surface priority. */
+export function getNextExecutionAction(input: {
+  executionKernel?: import("./executionKernel").ExecutionKernelState | null;
+  cadence?: import("./cmoOpsCadence").CmoOpsCadence | null;
+}): { taskId: string; execution_mode: string } | null {
+  const { executionKernel, cadence } = input;
+  if (!executionKernel || !cadence) return null;
+  const ordered = [...cadence.tasks].sort((a, b) => a.priority_index - b.priority_index);
+  for (const task of ordered) {
+    const inst = executionKernel.instances[task.id];
+    if (inst?.status === "ready") {
+      return { taskId: task.id, execution_mode: inst.execution_mode };
+    }
+  }
+  return null;
 }
