@@ -164,6 +164,8 @@ const MARKERS = [
   ["src/shared/kpiTrendSeries.ts", "buildKpiTrendSeries", "Faz 6 KPI trend sparkline"],
   ["src/shared/socialMetricsImport.ts", "parseSocialMetricsImport", "Faz 6 social metrics import"],
   ["src/renderer/features/workspace/executionRecord/DayPulseRow.tsx", "day-pulse-row", "Faz 6 pulse row UI"],
+  ["src/renderer/features/workspace/executionRecord/DayPulseRow.tsx", "day-pulse-checkpoint", "Faz 6 checkpoint rail"],
+  ["src/renderer/features/workspace/executionRecord/MorningBriefHero.tsx", "morning-brief-pulse-chip", "Faz 6 micro pulse chip"],
   ["src/renderer/features/workspace/executionRecord/HookLeaderboard.tsx", "hook-leaderboard", "Faz 6 hook leaderboard UI"],
   ["src/renderer/features/workspace/executionRecord/Ga4SyncChip.tsx", "ga4-sync-chip", "Faz 6 GA4 pull chip"],
   ["src/renderer/features/workspace/executionRecord/KpiTrendSparkline.tsx", "kpi-trend-sparkline", "Faz 6 KPI sparkline"],

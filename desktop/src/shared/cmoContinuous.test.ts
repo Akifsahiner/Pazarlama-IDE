@@ -132,7 +132,7 @@ describe("cmoContinuous", () => {
     );
   });
 
-  it("canStartNextCycle requires archived week + completed review", () => {
+  it("canStartNextCycle requires archived week in measuring phase", () => {
     const thesis = buildCmoIntake({ project: baseProject(), persona: "marketing" });
     const cadence = createOpsCadenceFromThesis(thesis);
     const state = createInitialContinuousState();
@@ -163,6 +163,20 @@ describe("cmoContinuous", () => {
     );
     assert.equal(
       isContinuousReplanReady(state, cadence, "executing"),
+      false,
+    );
+  });
+
+  it("isContinuousReplanReady before archive when week close ready", () => {
+    const thesis = buildCmoIntake({ project: baseProject(), persona: "marketing" });
+    const cadence = completedCadence(thesis);
+    const state = createInitialContinuousState();
+    assert.equal(
+      isContinuousReplanReady(state, cadence, "executing", true),
+      true,
+    );
+    assert.equal(
+      isContinuousReplanReady(state, cadence, "planning", true),
       false,
     );
   });

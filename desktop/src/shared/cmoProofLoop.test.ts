@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { buildCmoIntake } from "./cmoIntake";
 import { createOpsCadenceFromThesis, completeOpsTask } from "./cmoOpsCadence";
 import {
+  buildAutoWeekCloseSummary,
   buildPivotSuggestion,
   buildRevenueWeekReviewNudge,
   canCompleteWeekReview,
@@ -105,6 +106,22 @@ describe("cmoProofLoop", () => {
       profile,
     );
     assert.match(nudge ?? "", /4\/30/);
+  });
+
+  it("canCompleteWeekReview no longer requires free-text summary", () => {
+    const thesis = buildCmoIntake({ project: baseProject(), persona: "marketing" });
+    let cadence = createOpsCadenceFromThesis(thesis);
+    for (const task of cadence.tasks) {
+      cadence = completeOpsTask(cadence, task.id, {
+        kpi_value: task.owner === "user" ? 42 : undefined,
+        metric_snapshot: task.owner === "system" ? "42" : undefined,
+        note: task.owner === "user" ? "Logged" : undefined,
+      }).cadence;
+    }
+    const assessment = evaluateWeek1Metrics(cadence, null, thesis);
+    const check = canCompleteWeekReview(cadence, null, thesis);
+    assert.equal(check.ok, true);
+    assert.match(buildAutoWeekCloseSummary(cadence, assessment, thesis), /Week 1/);
   });
 
   it("canCompleteWeekReview blocks when monetization P0 is still open", () => {

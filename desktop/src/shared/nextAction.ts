@@ -4,7 +4,7 @@ import type { MarketingPlan, PlanTask, CampaignSession } from "./types";
 import type { ChannelThesis } from "./cmoIntake";
 import type { CmoOpsCadence } from "./cmoOpsCadence";
 import { getNowTask, isWeekReviewDue, opsQueueBlocksLaneWork } from "./cmoOpsCadence";
-import { allOpsTasksTerminal } from "./cmoProofLoop";
+import { allOpsTasksTerminal, isWeekCloseReady } from "./cmoProofLoop";
 import type { LaneBWorkspace } from "./cmoLaneB";
 import { getNextLaneBItem } from "./cmoLaneB";
 import type { CmoDelegateWorkspace } from "./cmoLaneC";
@@ -331,10 +331,14 @@ function resolveNextActionCore(input: NextActionInput): ResolvedNextAction | nul
   }
 
   if (input.opsCadence && !input.plan) {
+    const weekCloseReady = input.opsCadence
+      ? isWeekCloseReady(input.opsCadence)
+      : false;
     const replanReady = isContinuousReplanReady(
       input.cmoContinuous,
       input.opsCadence,
       input.campaignSession?.phase,
+      weekCloseReady,
     );
     if (replanReady) {
       const pivot = input.opsCadence.pivot_suggestion;
@@ -350,7 +354,7 @@ function resolveNextActionCore(input: NextActionInput): ResolvedNextAction | nul
         reason:
           input.growthMemory?.pending_replan?.rationale[0] ??
           pivot?.rationale[0] ??
-          "Measuring complete — replan from KPI truth, message memory, and scan delta.",
+          "KPI logged — memory saved automatically.",
         tone: pivot?.verdict === "flat" ? "warn" : "accent",
         primaryLabel:
           suggested && pivot && !pivot.dismissed_at
@@ -374,6 +378,7 @@ function resolveNextActionCore(input: NextActionInput): ResolvedNextAction | nul
     if (
       pivot &&
       !pivot.dismissed_at &&
+      weekCloseReady &&
       input.opsCadence.week_review.status === "completed"
     ) {
       return {
@@ -390,19 +395,24 @@ function resolveNextActionCore(input: NextActionInput): ResolvedNextAction | nul
     }
 
     if (
+      !weekCloseReady &&
       (isWeekReviewDue(input.opsCadence) ||
         (allOpsTasksTerminal(input.opsCadence) &&
           input.opsCadence.week_review.status === "pending")) &&
       input.opsCadence.week_review.status !== "completed"
     ) {
+      const now = getNowTask(input.opsCadence);
+      if (now && now.status !== "done" && now.status !== "skipped") {
+        return null;
+      }
       return {
-        id: "ops-week-review",
-        eyebrow: `Week ${input.opsCadence.week_index} review`,
-        title: `Close Week ${input.opsCadence.week_index} with KPI truth`,
-        reason: "Log outcomes and capture pivot decision before the next week.",
+        id: "ops-log-kpi",
+        eyebrow: `Week ${input.opsCadence.week_index}`,
+        title: "Log KPI before starting the next week",
+        reason: "Finish remaining ops tasks or log proof on completed user tasks.",
         tone: "warn",
-        primaryLabel: "Complete review",
-        dispatch: { type: "open_week_review" },
+        primaryLabel: "View ops table",
+        dispatch: { type: "focus_ops_board" },
         secondaryDispatch: { type: "focus_ops_board" },
       };
     }

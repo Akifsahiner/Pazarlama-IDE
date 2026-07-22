@@ -27,8 +27,7 @@ import { getNextProductRequest, type LaneDWorkspace } from "./cmoLaneD";
 import { getNextMonetizationTask, type MonetizationWorkspace } from "./cmoRevenuePlane";
 import { withNarrativePrefix } from "./cmoNarrativeContext";
 import type { CmoOpsCadence } from "./cmoOpsCadence";
-import { isWeekReviewDue } from "./cmoOpsCadence";
-import { evaluateWeek1MetricsWithGa4Priority } from "./cmoProofLoop";
+import { evaluateWeek1MetricsWithGa4Priority, isWeekCloseReady } from "./cmoProofLoop";
 
 type TodayWithoutWhy = Omit<GrowthTodayMove, "why"> & { why?: string };
 
@@ -186,31 +185,13 @@ export function resolveCommandSurfaceGovernance(
   const cadence = input.cadence;
   if (!cadence) return undefined;
 
-  if (isContinuousReplanReady(input.continuous, cadence, input.campaignPhase)) {
-    const pivot = cadence.pivot_suggestion;
-    const suggested = pivot?.suggested_thesis_ids[0];
-    const mode = suggested && pivot && !pivot.dismissed_at ? "pivot" : "double_down";
-    return {
-      kind: "replan",
-      title: `Start Week ${cadence.week_index + 1} from evidence`,
-      reason:
-        input.growthMemory?.pending_replan?.rationale[0] ??
-        pivot?.rationale[0] ??
-        "Replan from KPI truth, message memory, and the latest scan.",
-      primaryLabel: `Start Week ${cadence.week_index + 1}`,
-      thesisId: mode === "pivot" ? suggested : undefined,
-      mode,
-    };
-  }
-
-  if (isWeekReviewDue(cadence, input.now) && cadence.week_review.status !== "completed") {
-    return {
-      kind: "week_review",
-      title: `Close Week ${cadence.week_index} with KPI truth`,
-      reason: "Log outcomes before the next growth decision.",
-      primaryLabel: "Complete review",
-    };
-  }
+  const weekCloseReady = isWeekCloseReady(
+    cadence,
+    undefined,
+    undefined,
+    input.laneDWorkspace,
+    input.monetizationWorkspace,
+  );
 
   if (input.continuous?.marketing_paused && input.laneDWorkspace?.marketing_paused) {
     const next = getNextProductRequest(input.laneDWorkspace);
@@ -232,8 +213,32 @@ export function resolveCommandSurfaceGovernance(
     };
   }
 
+  if (
+    isContinuousReplanReady(
+      input.continuous,
+      cadence,
+      input.campaignPhase,
+      weekCloseReady,
+    )
+  ) {
+    const pivot = cadence.pivot_suggestion;
+    const suggested = pivot?.suggested_thesis_ids[0];
+    const mode = suggested && pivot && !pivot.dismissed_at ? "pivot" : "double_down";
+    return {
+      kind: "replan",
+      title: `Week ${cadence.week_index} ops complete — start Week ${cadence.week_index + 1}`,
+      reason:
+        input.growthMemory?.pending_replan?.rationale[0] ??
+        pivot?.rationale[0] ??
+        "KPI logged — memory saved automatically.",
+      primaryLabel: `Start Week ${cadence.week_index + 1}`,
+      thesisId: mode === "pivot" ? suggested : undefined,
+      mode,
+    };
+  }
+
   const pivot = cadence.pivot_suggestion;
-  if (pivot && !pivot.dismissed_at && cadence.week_review.status === "completed") {
+  if (pivot && !pivot.dismissed_at && weekCloseReady) {
     return {
       kind: "pivot",
       title: pivot.headline,
@@ -242,11 +247,11 @@ export function resolveCommandSurfaceGovernance(
     };
   }
 
-  if (input.continuous?.phase === "measuring") {
+  if (input.continuous?.phase === "measuring" || weekCloseReady) {
     return {
       kind: "measuring",
-      title: `Week ${cadence.week_index} is measuring`,
-      reason: "Keep KPI gaps explicit until evidence is ready.",
+      title: `Ready to plan Week ${cadence.week_index + 1}`,
+      reason: "Ops terminal and KPI logged — start the next week when ready.",
       primaryLabel: "View cycle",
     };
   }
@@ -395,14 +400,6 @@ export function resolveCommandSurfaceAction(
   }
 
   const governance = resolveCommandSurfaceGovernance(input);
-  if (governance?.kind === "week_review") {
-    return {
-      kind: "week_review",
-      label: governance.primaryLabel,
-      testId: "command-surface-week-review",
-    };
-  }
-
   if (governance?.kind === "replan") {
     return {
       kind: "start_next_cycle",

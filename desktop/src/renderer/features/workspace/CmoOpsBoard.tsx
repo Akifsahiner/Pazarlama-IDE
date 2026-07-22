@@ -14,7 +14,7 @@ import {
   needsOpsProof,
   opsCadenceProgress,
 } from "@shared/cmoOpsCadence";
-import { allOpsTasksTerminal } from "@shared/cmoProofLoop";
+import { allOpsTasksTerminal, isWeekCloseReady } from "@shared/cmoProofLoop";
 import type { ChannelThesis } from "@shared/cmoIntake";
 import { CmoPivotCard, DelegateVerdictCard, DistributionVerdictCard, InfluencerVerdictCard } from "@renderer/features/workspace/CmoPivotCard";
 import { Card } from "@renderer/components/ui/Card";
@@ -282,7 +282,9 @@ export function CmoOpsBoard({
   thesis?: ChannelThesis | null;
   compact?: boolean;
 }) {
-  const completeOpsWeekReview = useApp((s) => s.openWeekReviewModal);
+  const openWeekReviewModal = useApp((s) => s.openWeekReviewModal);
+  const startNextCmoCycle = useApp((s) => s.startNextCmoCycle);
+  const appendEvent = useApp((s) => s.appendEvent);
   const distributionOperator = useApp(
     (s) => s.distributionOperator ?? s.marketingProfile?.distribution_operator,
   );
@@ -306,6 +308,8 @@ export function CmoOpsBoard({
     cadence.week_review.status === "due" ||
     isWeekReviewDue(cadence) ||
     (allOpsTasksTerminal(cadence) && cadence.week_review.status === "pending");
+  const weekCloseReady = isWeekCloseReady(cadence);
+  const nextWeek = cadence.week_index + 1;
 
   return (
     <Card
@@ -369,19 +373,46 @@ export function CmoOpsBoard({
       {reviewDue && cadence.week_review.status !== "completed" && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-warn/30 bg-warn-soft/15 px-3 py-2.5">
           <div>
-            <p className="text-body-sm font-medium text-text">Week {cadence.week_index} review due</p>
+            <p className="text-body-sm font-medium text-text">
+              Week {cadence.week_index} ops complete — start Week {nextWeek} or adjust thesis
+            </p>
             <p className="text-mini text-text-2">
-              What moved the needle? What flat? Capture before the next ops week.
+              {weekCloseReady
+                ? "KPI logged — memory saved automatically when you start the next week."
+                : "Finish remaining ops tasks or log KPI proof before starting the next week."}
             </p>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            data-testid="ops-week-review-open"
-            onClick={() => completeOpsWeekReview()}
-          >
-            Complete review
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {weekCloseReady && (
+              <Button
+                variant="primary"
+                size="sm"
+                data-testid="ops-start-next-cycle"
+                onClick={() => {
+                  const pivot = cadence.pivot_suggestion;
+                  const suggested = pivot?.suggested_thesis_ids[0];
+                  const err = startNextCmoCycle({
+                    thesisId: suggested,
+                    mode:
+                      suggested && pivot && !pivot.dismissed_at && pivot.verdict === "flat"
+                        ? "pivot"
+                        : "double_down",
+                  });
+                  if (err) appendEvent({ role: "system", kind: "error", text: err });
+                }}
+              >
+                Start Week {nextWeek}
+              </Button>
+            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              data-testid="ops-week-review-open"
+              onClick={() => openWeekReviewModal()}
+            >
+              {weekCloseReady ? "Add notes (optional)" : "Log KPI / notes"}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -413,7 +444,7 @@ export function CmoOpsBoard({
 
       {cadence.week_review.status === "completed" && cadence.week_review.summary && (
         <p className="mt-3 text-mini text-text-2">
-          <span className="font-semibold text-ok">Week review:</span> {cadence.week_review.summary}
+          <span className="font-semibold text-ok">Week archive:</span> {cadence.week_review.summary}
         </p>
       )}
     </Card>

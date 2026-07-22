@@ -24,6 +24,7 @@ import {
   type MonetizationWorkspace,
   type RevenueProfile,
 } from "./cmoRevenuePlane";
+import { weekLabel } from "./cmoContinuous";
 import type { ManualKpi, MarketingProfile } from "./types";
 
 export interface OpsKpiGate {
@@ -248,6 +249,28 @@ export function enrichProofWithKpi(
 
 export function allOpsTasksTerminal(cadence: CmoOpsCadence): boolean {
   return cadence.tasks.every((t) => t.status === "done" || t.status === "skipped");
+}
+
+export function hasMinKpiLogged(cadence: CmoOpsCadence): boolean {
+  return doneUserOpsTasks(cadence).some((task) => task.proof?.kpi_value != null);
+}
+
+/** Deterministic archive line when the founder skips free-text week notes. */
+export function buildAutoWeekCloseSummary(
+  cadence: CmoOpsCadence,
+  assessment: Week1MetricAssessment,
+  thesis?: ChannelThesis | null,
+): string {
+  const wl = weekLabel(cadence.week_index);
+  const thesisTitle = thesis?.title ?? "Channel thesis";
+  const kpiPart =
+    assessment.primaryValue != null
+      ? `${assessment.primaryKpiId ?? "KPI"}: ${assessment.primaryValue}${
+          assessment.pctOfTarget != null ? ` (${assessment.pctOfTarget}% of target)` : ""
+        }`
+      : "KPI logged";
+  const verdictPart = assessment.verdict.replace(/_/g, " ");
+  return `${wl} · ${thesisTitle} · ${kpiPart} · ${verdictPart}.`;
 }
 
 export function doneUserOpsTasks(cadence: CmoOpsCadence): CmoOpsTask[] {
@@ -571,18 +594,31 @@ export function buildPivotSuggestion(
   };
 }
 
+export function isWeekCloseReady(
+  cadence: CmoOpsCadence,
+  profile?: MarketingProfile | null,
+  thesis?: ChannelThesis | null,
+  laneD?: LaneDWorkspace | null,
+  monetizationWorkspace?: MonetizationWorkspace | null,
+): boolean {
+  return canCompleteWeekReview(
+    cadence,
+    profile,
+    thesis,
+    undefined,
+    laneD,
+    monetizationWorkspace,
+  ).ok;
+}
+
 export function canCompleteWeekReview(
   cadence: CmoOpsCadence,
   profile: MarketingProfile | null | undefined,
   thesis?: ChannelThesis | null,
-  summary?: string,
+  _summary?: string,
   laneD?: LaneDWorkspace | null,
   monetizationWorkspace?: MonetizationWorkspace | null,
 ): OpsProofValidation {
-  if (!summary?.trim()) {
-    return { ok: false, errors: ["Week review summary is required."] };
-  }
-
   if (monetizationWorkspace?.revenue_binding.active) {
     const next = getNextMonetizationTask(monetizationWorkspace);
     if (next) {

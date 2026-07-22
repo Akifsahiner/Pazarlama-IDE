@@ -287,14 +287,14 @@ describe("P12 command surface", () => {
     assert.equal(governance?.kind, "replan");
   });
 
-  it("returns week-review governance when due", () => {
+  it("does not surface week-review ceremony when ops are still open", () => {
     const governance = resolveCommandSurfaceGovernance({
       cadence: cadence({
         week_review: { week_index: 1, due_at: "2020-01-01T00:00:00.000Z", status: "due" },
       }),
       now: Date.parse("2026-07-01T00:00:00.000Z"),
     });
-    assert.equal(governance?.kind, "week_review");
+    assert.notEqual(governance?.kind, "week_review");
   });
 
   it("surfaces product-loop governance while marketing is paused", () => {
@@ -364,19 +364,52 @@ describe("P12 command surface", () => {
     assert.match(governance?.title ?? "", /Instrument checkout/i);
   });
 
-  it("returns pivot governance after completed review", () => {
-    const governance = resolveCommandSurfaceGovernance({
-      cadence: cadence({
-        week_review: { week_index: 1, due_at: "2020-01-01T00:00:00.000Z", status: "completed" },
-        pivot_suggestion: {
-          verdict: "flat",
-          headline: "Pivot the channel",
-          rationale: ["No movement"],
-          suggested_thesis_ids: ["founder_social"],
-          suggested_actions: ["Test founder social"],
-          generated_at: "2026-07-08T00:00:00.000Z",
+  it("returns pivot governance when archived and week close-ready", () => {
+    const c = cadence({
+      week_review: { week_index: 1, due_at: "2020-01-01T00:00:00.000Z", status: "completed" },
+      tasks: [
+        {
+          id: "task.1",
+          priority_index: 0,
+          what: "Publish proof post",
+          why: "This tests the binding distribution hypothesis.",
+          owner: "user",
+          done_when: "Live URL logged",
+          status: "done",
+          day_slot: "now",
+          proof: {
+            kpi_id: "short_form_views",
+            kpi_value: 120,
+            completed_at: "2026-07-08T00:00:00.000Z",
+          },
         },
-      }),
+      ],
+      pivot_suggestion: {
+        verdict: "flat",
+        headline: "Pivot the channel",
+        rationale: ["No movement"],
+        suggested_thesis_ids: ["founder_social"],
+        suggested_actions: ["Test founder social"],
+        generated_at: "2026-07-08T00:00:00.000Z",
+      },
+    });
+    const governance = resolveCommandSurfaceGovernance({
+      cadence: c,
+      continuous: {
+        current_cycle_index: 1,
+        phase: "executing",
+        cycles: [
+          {
+            cycle_index: 1,
+            thesis_id: "viral_short_form",
+            thesis_title: "Viral",
+            started_at: c.started_at,
+            ops_cadence_id: c.id,
+          },
+        ],
+        updated_at: c.started_at,
+      },
+      campaignPhase: "executing",
     });
     assert.equal(governance?.kind, "pivot");
   });

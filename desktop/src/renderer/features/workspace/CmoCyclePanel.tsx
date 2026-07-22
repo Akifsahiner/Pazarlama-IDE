@@ -10,6 +10,7 @@ import type { ChannelThesis } from "@shared/cmoIntake";
 import { channelThesisTitle } from "@shared/cmoIntake";
 import type { CampaignSession } from "@shared/types";
 import type { GrowthMemoryState } from "@shared/cmoGrowthMemory";
+import { isWeekCloseReady } from "@shared/cmoProofLoop";
 import { Card } from "@renderer/components/ui/Card";
 import { Button } from "@renderer/components/ui/Button";
 import { Badge } from "@renderer/components/ui/Badge";
@@ -82,7 +83,13 @@ export function CmoCyclePanel({
   const startNextCmoCycle = useApp((s) => s.startNextCmoCycle);
   const navigate = useApp((s) => s.navigate);
 
-  const replanReady = isContinuousReplanReady(continuous, cadence ?? null, session?.phase);
+  const weekCloseReady = cadence ? isWeekCloseReady(cadence) : false;
+  const replanReady = isContinuousReplanReady(
+    continuous,
+    cadence ?? null,
+    session?.phase,
+    weekCloseReady,
+  );
   const pivot = cadence?.pivot_suggestion;
   const suggestedThesis = pivot?.suggested_thesis_ids[0];
   const weekIndex = cadence?.week_index ?? continuous.current_cycle_index;
@@ -110,9 +117,9 @@ export function CmoCyclePanel({
           <Badge tone={phaseTone}>
             {continuous.phase === "executing"
               ? weekLabel(continuous.current_cycle_index)
-              : continuous.phase === "pivot_ready"
+                : continuous.phase === "pivot_ready"
                 ? "Pivot ready"
-                : "Measuring"}
+                : "Ready to plan next week"}
           </Badge>
         </div>
         {thesis && (

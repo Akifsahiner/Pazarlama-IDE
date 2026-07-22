@@ -256,6 +256,7 @@ import {
   attachKpiToCompletedProof,
   buildManualKpiFromOpsProof,
   buildPivotSuggestion,
+  buildAutoWeekCloseSummary,
   canCompleteWeekReview,
   evaluateWeek1Metrics,
   evaluateWeek1MetricsWithGa4Priority,
@@ -967,7 +968,7 @@ interface AppState {
   executeOpsSystemTask: (taskId: string) => void;
   /** P6 — thesis-aware Lane A run (skills, scout, browser). */
   startLaneARun: (plan: LaneARunPlan) => void;
-  completeOpsWeekReview: (summary: string) => string | null;
+  completeOpsWeekReview: (summary?: string) => string | null;
   openWeekReviewModal: () => void;
   dismissWeekReviewModal: () => void;
   dismissPivotSuggestion: () => void;
@@ -6471,13 +6472,28 @@ export const useApp = create<AppState>((set, get) => {
       const { marketingProfile: profile, channelThesis } = get();
       const thesis = channelThesis ?? profile?.channel_thesis;
       const laneD = get().laneDWorkspace ?? profile?.lane_d_workspace;
+      const monetization = get().monetizationWorkspace ?? profile?.monetization_workspace;
+      const preCloseAssessment = evaluateWeek1MetricsWithGa4Priority(
+        cadence,
+        profile,
+        thesis,
+        get().distributionOperator ?? profile?.distribution_operator,
+        get().influencerOperator ?? profile?.influencer_operator,
+        get().delegateOperator ??
+          get().delegateWorkspace ??
+          profile?.delegate_operator,
+        get().growthMemory ?? profile?.growth_memory,
+        get().revenueProfile ?? profile?.revenue_profile,
+      );
+      const effectiveSummary =
+        summary?.trim() || buildAutoWeekCloseSummary(cadence, preCloseAssessment, thesis);
       const check = canCompleteWeekReview(
         cadence,
         profile,
         thesis,
-        summary,
+        effectiveSummary,
         laneD,
-        get().monetizationWorkspace ?? profile?.monetization_workspace,
+        monetization,
       );
       if (!check.ok) return check.errors.join(" ");
       if (!thesis) return "Channel thesis required for week review.";
@@ -6496,7 +6512,7 @@ export const useApp = create<AppState>((set, get) => {
               get().growthMemory ?? profile?.growth_memory,
             )
           : null;
-      const next = completeWeekReview(cadence, summary, pivot);
+      const next = completeWeekReview(cadence, effectiveSummary, pivot);
       syncOpsCadenceState(next);
       set({ week1FocusMode: false });
       get().advanceCampaignPhase({ type: "log_kpi" });
@@ -6608,7 +6624,7 @@ export const useApp = create<AppState>((set, get) => {
         cadence: next,
         thesis,
         assessment,
-        weekReviewSummary: summary,
+        weekReviewSummary: effectiveSummary,
         pivot,
         laneBWorkspaceId: laneBWorkspace?.id,
         hookSummary: infOp?.verdict?.headline ?? distOp?.verdict?.headline,
@@ -6641,7 +6657,7 @@ export const useApp = create<AppState>((set, get) => {
       appendEvent({
         role: "system",
         kind: "status",
-        text: `${weekLabel(cadence.week_index)} review captured — ${summary.trim().slice(0, 120)}`,
+        text: `${weekLabel(cadence.week_index)} archived — ${effectiveSummary.trim().slice(0, 120)}`,
       });
       if (pivot?.verdict === "flat") {
         appendEvent({
@@ -6675,14 +6691,34 @@ export const useApp = create<AppState>((set, get) => {
 
     startNextCmoCycle: (opts) => {
       const { project, settings, marketingProfile, channelThesis, opsCadence } = get();
-      const cadence = opsCadence;
+      let cadence = opsCadence;
       const priorThesis = channelThesis ?? marketingProfile?.channel_thesis;
-      const continuous = get().cmoContinuous ?? marketingProfile?.cmo_continuous;
+      let continuous = get().cmoContinuous ?? marketingProfile?.cmo_continuous;
       const session = marketingProfile?.campaign_session;
+
+      if (!project || !priorThesis || !cadence) return "Missing project or thesis.";
+
+      const archived =
+        continuous?.cycles.some((cycle) => cycle.cycle_index === cadence!.week_index) ?? false;
+      if (!archived && cadence.week_review.status !== "completed") {
+        const laneD = get().laneDWorkspace ?? marketingProfile?.lane_d_workspace;
+        const closeCheck = canCompleteWeekReview(
+          cadence,
+          marketingProfile,
+          priorThesis,
+          undefined,
+          laneD,
+          get().monetizationWorkspace ?? marketingProfile?.monetization_workspace,
+        );
+        if (!closeCheck.ok) return closeCheck.errors.join(" ");
+        const closeErr = get().completeOpsWeekReview(undefined);
+        if (closeErr) return closeErr;
+        cadence = get().opsCadence!;
+        continuous = get().cmoContinuous ?? marketingProfile?.cmo_continuous;
+      }
 
       const check = canStartNextCycle(continuous, cadence);
       if (!check.ok) return check.errors.join(" ");
-      if (!project || !priorThesis || !cadence) return "Missing project or thesis.";
 
       const mode: NextCycleMode = opts?.mode ?? "pivot";
       if (mode === "pivot") {
@@ -6698,7 +6734,7 @@ export const useApp = create<AppState>((set, get) => {
           get().growthMemory ?? marketingProfile?.growth_memory,
         );
         if (assessment.primaryValue == null || assessment.loggedCount <= 0) {
-          return "Log a numeric KPI in week review before pivoting thesis.";
+          return "Log a numeric KPI in ops proof before pivoting thesis.";
         }
       }
       const forceThesisId = resolveNextCycleThesisId(cadence, {
