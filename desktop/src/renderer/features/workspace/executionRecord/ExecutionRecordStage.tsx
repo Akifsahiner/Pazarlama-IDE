@@ -8,6 +8,7 @@ import { ReplanPreviewCard } from "@renderer/features/workspace/ReplanPreviewCar
 import { ShipWinCard } from "@renderer/features/workspace/ShipWinCard";
 import { ShipRecoveryCard } from "@renderer/features/agent/ShipRecoveryCard";
 import { QuickStartSealBanner } from "@renderer/features/onboarding/QuickStartSealBanner";
+import { LaunchReadinessBanner } from "./LaunchReadinessBanner";
 import { ExecutionRecordCard } from "./ExecutionRecordCard";
 import { ExecutionDetailPanel } from "./ExecutionDetailPanel";
 import { ExecutionHistoryTimeline } from "./ExecutionHistoryTimeline";
@@ -86,6 +87,7 @@ export function ExecutionRecordStage() {
             {showQuickStartSealBanner && (
               <QuickStartSealBanner onSeal={() => openStrategicIntake()} />
             )}
+            <LaunchReadinessBanner />
             <ExecutionRecordEmpty record={record} />
             {shipRecovery && !runActive && <ShipRecoveryCard recovery={shipRecovery} />}
             {firstShipAt && firstShipLedger && !runActive && (

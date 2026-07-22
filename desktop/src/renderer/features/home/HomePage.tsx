@@ -477,7 +477,7 @@ export function HomePage() {
         />
       )}
 
-      {planHourStarted && !campaignSession && (
+      {planHourStarted && !campaignSession && !opsCadence && (
         <FirstHourProgressCard
           done={planDone}
           total={planTotal}

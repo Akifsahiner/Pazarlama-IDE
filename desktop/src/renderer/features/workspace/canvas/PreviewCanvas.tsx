@@ -341,12 +341,18 @@ export function PreviewCanvas() {
                       </button>
                       <button
                         type="button"
-                        disabled={runApplySelection.length === 0 || applyGate.blocked}
-                        onClick={() => void applyRunChanges(runApplySelection)}
+                        disabled={runApplySelection.length === 0}
+                        onClick={() => {
+                          if (applyGate.blocked) {
+                            validateRun();
+                            return;
+                          }
+                          void applyRunChanges(runApplySelection);
+                        }}
                         data-testid="ship-apply-primary"
                         className="btn-accent rounded-[var(--radius-sm)] px-2.5 py-1 text-micro disabled:opacity-40"
                       >
-                        Apply first change
+                        {applyGate.blocked ? "Run validation first" : "Apply first change"}
                       </button>
                     </div>
                   </div>

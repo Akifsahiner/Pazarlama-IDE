@@ -312,6 +312,10 @@ import { canCompleteHumanProof } from "@shared/humanProofProgress";
 import { outreachTrackerToCsv } from "@shared/cmoOutreachExport";
 import { assertCadenceContractComplete } from "@shared/marketingTaskContract";
 import {
+  migrateProjectLocalStorage,
+  EXECUTION_PERSISTENCE_KEYS,
+} from "@shared/executionPersistence";
+import {
   ensureExecutionKernel,
   EXECUTION_KERNEL_LS,
   kernelCancel,
@@ -1644,6 +1648,53 @@ export const useApp = create<AppState>((set, get) => {
     } catch {
       /* quota / private mode */
     }
+  };
+
+  const persistHumanProofDraftsLocal = (
+    projectId: string,
+    drafts: Record<string, import("@shared/humanExecutionAsset").HumanProofDraft>,
+  ) => {
+    try {
+      localStorage.setItem(
+        `${EXECUTION_PERSISTENCE_KEYS.humanProofDrafts}.${projectId}`,
+        JSON.stringify(drafts),
+      );
+    } catch {
+      /* quota */
+    }
+  };
+
+  const loadHumanProofDraftsLocal = (
+    projectId: string,
+  ): Record<string, import("@shared/humanExecutionAsset").HumanProofDraft> | undefined => {
+    try {
+      const raw = localStorage.getItem(
+        `${EXECUTION_PERSISTENCE_KEYS.humanProofDrafts}.${projectId}`,
+      );
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw) as Record<
+        string,
+        import("@shared/humanExecutionAsset").HumanProofDraft
+      >;
+      return parsed && typeof parsed === "object" ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const hydrateHumanProofDraftsLocal = (projectId: string) => {
+    const drafts = loadHumanProofDraftsLocal(projectId);
+    if (drafts && Object.keys(drafts).length > 0) {
+      set({ humanProofDrafts: drafts });
+    }
+  };
+
+  const syncHumanProofDraftsLocal = (
+    drafts: Record<string, import("@shared/humanExecutionAsset").HumanProofDraft>,
+  ) => {
+    const pid = get().activeProjectId;
+    set({ humanProofDrafts: drafts });
+    if (pid) persistHumanProofDraftsLocal(pid, drafts);
   };
 
   const hydrateOpsCadenceLocal = (projectId: string) => {
@@ -7600,7 +7651,7 @@ export const useApp = create<AppState>((set, get) => {
         posted_at: new Date().toISOString(),
         note,
       };
-      set({ humanProofDrafts: drafts });
+      syncHumanProofDraftsLocal(drafts);
       return null;
     },
 
@@ -7617,7 +7668,7 @@ export const useApp = create<AppState>((set, get) => {
         note: input.note ?? drafts[key]?.note,
         measure_deferred: input.measure_deferred,
       };
-      set({ humanProofDrafts: drafts });
+      syncHumanProofDraftsLocal(drafts);
     },
 
     completeHumanTaskKit: (ref) => {
@@ -7677,7 +7728,8 @@ export const useApp = create<AppState>((set, get) => {
 
       const nextDrafts = { ...(get().humanProofDrafts ?? {}) };
       delete nextDrafts[ref.item_id];
-      set({ humanProofDrafts: nextDrafts, pendingHumanTaskKitRef: undefined });
+      syncHumanProofDraftsLocal(nextDrafts);
+      set({ pendingHumanTaskKitRef: undefined });
       return null;
     },
 
@@ -8135,6 +8187,7 @@ export const useApp = create<AppState>((set, get) => {
           lastTurnReceipt: undefined,
           lastAskAssets: [],
           lastAnswerText: undefined,
+          humanProofDrafts: loadHumanProofDraftsLocal(project.id),
         });
         hydrateTurnReceiptLocal(project.id);
         const cwd =
@@ -8151,6 +8204,7 @@ export const useApp = create<AppState>((set, get) => {
         hydrateCampaignSessionLocal(project.id);
         hydrateOpsCadenceLocal(project.id);
         hydrateExecutionKernelLocal(project.id);
+        hydrateHumanProofDraftsLocal(project.id);
         hydrateLaneBLocal(project.id);
         hydrateLaneALocal(project.id);
         hydrateContinuousLocal(project.id);
@@ -8170,6 +8224,7 @@ export const useApp = create<AppState>((set, get) => {
         void (async () => {
           try {
             const { settings, auth } = get();
+            const localProjectId = project.id;
             const { project: created } = await apiCreateProject(settings, auth.authEnabled, {
               name: project.name,
               source: toServerSource(project.source),
@@ -8177,6 +8232,7 @@ export const useApp = create<AppState>((set, get) => {
               productType: project.productType,
               profileJson: project,
             });
+            migrateProjectLocalStorage(localProjectId, created.id);
             set({ activeProjectId: created.id });
             const mp = get().marketingProfile;
             if (mp) void get().updateMarketingProfile(mp);
@@ -9878,7 +9934,7 @@ export const useApp = create<AppState>((set, get) => {
                 reason:
                   "Changes are applied — connect backend + Computer Use to capture live CTA proof.",
                 primaryLabel: "Open settings",
-                primaryAction: "home",
+                primaryAction: "settings",
               },
             });
           } else if (requiresVerify && !previewUrl) {

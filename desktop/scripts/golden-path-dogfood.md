@@ -16,6 +16,8 @@ Matrix geçmek ≠ kullanıcı ship eder. This protocol validates the **founder 
 
 ## Setup (each session)
 
+See **[`golden-path-dogfood-setup.md`](./golden-path-dogfood-setup.md)** for server, desktop, track choice, and launch-setup steps.
+
 1. Fresh project folder (real landing or SaaS repo — not empty)
 2. Backend connected; Computer Use enabled when testing Lane A verify
 3. Screen record full session (Loom/OBS)
@@ -26,7 +28,7 @@ Matrix geçmek ≠ kullanıcı ship eder. This protocol validates the **founder 
 | Step | Founder does | Pass criterion |
 |------|----------------|----------------|
 | 1 | Open project → intake completes | Channel thesis visible |
-| 2 | Seal strategic decision | Ops Week 1 table appears |
+| 2 | Seal strategic decision | Launch setup complete → **Start Week 1** → ops table appears |
 | 3 | Start first **system** ops task | Edit run produces diff |
 | 4 | **Run validation** → Apply | Typecheck/lint gate respected (or explicit override with reason noted) |
 | 5 | Browser verify (if CU online) | Task not marked done until verify passes OR clear “CU offline” handoff |

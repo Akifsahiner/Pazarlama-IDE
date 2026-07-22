@@ -257,7 +257,18 @@ export function resolveNextAction(input: NextActionInput): ResolvedNextAction | 
     opsCadence: input.opsCadence,
   });
   let action = resolveNextActionCore(input);
-  if (action && commandSurfaceActive && isCommandSurfaceOwnedAction(action.id)) {
+  const planCompetesWithOps =
+    Boolean(input.plan) &&
+    isCommandSurfaceActive({
+      growthControlPlane: input.growthControlPlane,
+      opsCadence: input.opsCadence,
+    });
+  if (
+    action &&
+    commandSurfaceActive &&
+    isCommandSurfaceOwnedAction(action.id) &&
+    !planCompetesWithOps
+  ) {
     // The command surface owns CMO daily/governance work. Resolve again without
     // those sources so blocking run/apply/approval actions can still surface.
     action = resolveNextActionCore({
@@ -302,7 +313,19 @@ export function resolveNextAction(input: NextActionInput): ResolvedNextAction | 
   return withCampaign;
 }
 
-function resolveNextActionCore(input: NextActionInput): ResolvedNextAction | null {
+function opsWeekActive(
+  input: NextActionInput,
+): input is NextActionInput & { opsCadence: CmoOpsCadence } {
+  if (!input.opsCadence) return false;
+  if (!input.plan) return true;
+  return isCommandSurfaceActive({
+    growthControlPlane: input.growthControlPlane,
+    opsCadence: input.opsCadence,
+  });
+}
+
+/** @internal Exported for unit tests — core priority ladder without suppression. */
+export function resolveNextActionCore(input: NextActionInput): ResolvedNextAction | null {
   if (input.planLoading) return null;
 
   if (!input.hasProject) {
@@ -330,7 +353,7 @@ function resolveNextActionCore(input: NextActionInput): ResolvedNextAction | nul
     };
   }
 
-  if (input.opsCadence && !input.plan) {
+  if (opsWeekActive(input)) {
     const weekCloseReady = input.opsCadence
       ? isWeekCloseReady(input.opsCadence)
       : false;
@@ -454,7 +477,7 @@ function resolveNextActionCore(input: NextActionInput): ResolvedNextAction | nul
   }
 
   const laneWorkUnblocked =
-    !!input.opsCadence && !input.plan && !opsQueueBlocksLaneWork(input.opsCadence);
+    opsWeekActive(input) && !opsQueueBlocksLaneWork(input.opsCadence!);
 
   if (laneWorkUnblocked && input.delegateWorkspace) {
     const rubric = getNextDelegateRubricDay(

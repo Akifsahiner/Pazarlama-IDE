@@ -21,7 +21,56 @@ export const EXECUTION_PERSISTENCE_KEYS = {
   opsCadence: "ops_cadence.v1",
   delegateOperator: "delegate_operator.v1",
   laneCWorkspace: "lane_c_workspace.v1",
+  humanProofDrafts: "human_proof_drafts.v1",
+  campaignSession: "campaign_session.v1",
+  laneB: "lane_b_workspace.v1",
+  laneA: "lane_a_workspace.v1",
+  growthPlane: "growth_control_plane.v1",
+  distributionOperator: "distribution_operator.v1",
+  influencerOperator: "influencer_operator.v1",
+  cmoContinuous: "cmo_continuous.v1",
+  growthMemory: "growth_memory.v1",
+  budgetPlan: "budget_plan.v1",
+  productActivation: "product_activation.v1",
+  laneD: "lane_d_workspace.v1",
+  revenueProfile: "revenue_profile.v1",
+  monetizationWorkspace: "monetization_workspace.v1",
+  founderFit: "founder_fit.v1",
+  growthNarrative: "growth_narrative.v1",
+  strategicDecision: "strategic_decision.v1",
+  publicPresence: "public_presence_policy.v1",
+  growthMechanism: "growth_mechanism_profile.v1",
+  firstShipAt: "first_ship_at.v1",
+  shipReceipt: "ship_receipt.v1",
 } as const;
+
+/** Prefixes migrated when folder hash id → server project id. */
+export const PROJECT_LOCAL_STORAGE_PREFIXES: string[] = [
+  ...Object.values(EXECUTION_PERSISTENCE_KEYS),
+  "turn_receipts.v1",
+  "first_ship_ledger.v1",
+  "execution_metrics.v1",
+  "onboarding_track.v1",
+];
+
+export function migrateProjectLocalStorage(fromProjectId: string, toProjectId: string): void {
+  if (!fromProjectId || !toProjectId || fromProjectId === toProjectId) return;
+  if (typeof localStorage === "undefined") return;
+  for (const prefix of PROJECT_LOCAL_STORAGE_PREFIXES) {
+    const fromKey = projectStorageKey(prefix, fromProjectId);
+    const toKey = projectStorageKey(prefix, toProjectId);
+    try {
+      const raw = localStorage.getItem(fromKey);
+      if (!raw) continue;
+      if (!localStorage.getItem(toKey)) {
+        localStorage.setItem(toKey, raw);
+      }
+      localStorage.removeItem(fromKey);
+    } catch {
+      /* quota / private mode */
+    }
+  }
+}
 
 export type ExecutionPersistenceKey =
   (typeof EXECUTION_PERSISTENCE_KEYS)[keyof typeof EXECUTION_PERSISTENCE_KEYS];
